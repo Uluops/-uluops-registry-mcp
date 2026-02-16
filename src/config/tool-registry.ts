@@ -111,8 +111,8 @@ export const toolRegistry: ToolSpec[] = [
     sideEffects: 'write',
     maxArgsSize: 10 * KB,
     maxEgressBytes: 10 * KB,
-    quotaPerMinute: 10,
-    quotaPerHour: 50,
+    quotaPerMinute: 60,
+    quotaPerHour: 500,
   },
   {
     name: 'list_versions',

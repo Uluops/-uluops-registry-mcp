@@ -1,7 +1,7 @@
 /**
  * delete_definition tool
  *
- * Delete a draft definition (published definitions cannot be deleted).
+ * Delete a definition version. Blocked only if other definitions fork from or depend on it.
  */
 
 import { z } from 'zod';
@@ -21,7 +21,7 @@ export function registerDeleteDefinitionTool(
 ): void {
   server.tool(
     'delete_definition',
-    'Delete a draft definition version. Published definitions cannot be deleted.',
+    'Delete a definition version. Blocked only if other definitions fork from or depend on it.',
     DeleteDefinitionInputSchema.shape,
     createToolHandler(DeleteDefinitionInputSchema, (n) =>
       registryClient.definitions.delete(

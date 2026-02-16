@@ -1,0 +1,43 @@
+/**
+ * search_definitions tool
+ *
+ * Convenience alias — search definitions by keyword.
+ */
+
+import { z } from 'zod';
+import type { RegistryClient } from '@uluops/registry-sdk';
+import {
+  DefinitionTypeSchema,
+  DefinitionStatusSchema,
+  DomainSchema,
+  type McpServerToolRegistration,
+} from '../types/index.js';
+import { createToolHandler } from '../utils/tool-handler.js';
+
+export const SearchDefinitionsInputSchema = z.object({
+  query: z.string().min(1),
+  type: DefinitionTypeSchema.optional(),
+  status: DefinitionStatusSchema.optional(),
+  domain: DomainSchema.optional(),
+  limit: z.number().int().positive().max(100).default(20),
+});
+
+export function registerSearchDefinitionsTool(
+  server: McpServerToolRegistration,
+  registryClient: RegistryClient
+): void {
+  server.tool(
+    'search_definitions',
+    'Search definitions by keyword with optional type, status, and domain filters.',
+    SearchDefinitionsInputSchema.shape,
+    createToolHandler(SearchDefinitionsInputSchema, (n) =>
+      registryClient.definitions.list({
+        search: n.query,
+        type: n.type,
+        status: n.status,
+        domain: n.domain,
+        limit: n.limit,
+      })
+    )
+  );
+}

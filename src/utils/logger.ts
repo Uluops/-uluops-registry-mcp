@@ -63,6 +63,8 @@ export function createLogger(config: LoggerConfig | LogLevel): Logger {
     ensureLogDir(resolvedLogDir);
   }
 
+  let fileLoggingFailed = false;
+
   const log = (logLevel: LogLevel, message: string, context?: Record<string, unknown>): void => {
     if (LOG_LEVELS[logLevel] < minLevel) {
       return;
@@ -76,7 +78,10 @@ export function createLogger(config: LoggerConfig | LogLevel): Logger {
         const filePath = getLogFilePath(resolvedLogDir);
         appendFileSync(filePath, formatted + '\n', 'utf-8');
       } catch {
-        // Silently ignore file logging errors to avoid disrupting MCP
+        if (!fileLoggingFailed) {
+          fileLoggingFailed = true;
+          console.error(formatLogEntry('warn', 'File logging failed, further file log errors suppressed'));
+        }
       }
     }
   };

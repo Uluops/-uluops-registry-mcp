@@ -12,17 +12,22 @@ function toCamelCase(str: string): string {
   return str.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase());
 }
 
+const MAX_DEPTH = 20;
+
 /**
  * Recursively convert all object keys from snake_case to camelCase.
  */
-export function normalizeKeys(input: unknown): unknown {
+export function normalizeKeys(input: unknown, depth = 0): unknown {
+  if (depth > MAX_DEPTH) {
+    return input;
+  }
   if (Array.isArray(input)) {
-    return input.map(normalizeKeys);
+    return input.map((item) => normalizeKeys(item, depth + 1));
   }
   if (input !== null && typeof input === 'object') {
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
-      result[toCamelCase(key)] = normalizeKeys(value);
+      result[toCamelCase(key)] = normalizeKeys(value, depth + 1);
     }
     return result;
   }

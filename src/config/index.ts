@@ -73,8 +73,14 @@ export function validateConfig(config: RegistryMcpConfig): void {
   }
 
   try {
-    new URL(config.api.baseUrl);
-  } catch {
+    const parsed = new URL(config.api.baseUrl);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error(`Registry API URL must use http or https scheme, got: ${parsed.protocol}`);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('scheme')) {
+      throw error;
+    }
     throw new Error(`Invalid Registry API URL: ${config.api.baseUrl}`);
   }
 

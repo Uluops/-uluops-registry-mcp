@@ -36,11 +36,11 @@ const SENSITIVE_PATTERNS: RegExp[] = [
   /relation\s+['"`]\w+['"`]\s+does not exist/i,
 ];
 
-function containsSensitiveData(message: string): boolean {
+export function containsSensitiveData(message: string): boolean {
   return SENSITIVE_PATTERNS.some((pattern) => pattern.test(message));
 }
 
-function sanitizeErrorMessage(message: string): string {
+export function sanitizeErrorMessage(message: string): string {
   if (containsSensitiveData(message)) {
     return 'An error occurred while processing your request';
   }

@@ -14,7 +14,6 @@ export const GetDependenciesInputSchema = z.object({
   name: z.string().min(1),
   version: z.string().min(1),
   depth: z.number().int().positive().optional(),
-  flat: z.boolean().optional(),
 });
 
 export function registerGetDependenciesTool(
@@ -27,8 +26,7 @@ export function registerGetDependenciesTool(
     GetDependenciesInputSchema.shape,
     createToolHandler(GetDependenciesInputSchema, (n) => {
       const options: Record<string, unknown> = {};
-      if (n.depth !== undefined) options.depth = n.depth;
-      if (n.flat !== undefined) options.flat = n.flat;
+      if (n.depth !== undefined) options.maxDepth = n.depth;
       return registryClient.dependencies.get(
         n.type,
         n.name,

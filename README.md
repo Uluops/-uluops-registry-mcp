@@ -177,7 +177,7 @@ This client uses [mcp-secure-server](https://github.com/anthropics/mcp-secure-se
 }
 ```
 
-Read-heavy tools (list, get, search) have higher per-minute quotas (240/min). Write tools (create, update, publish) are more conservative (30-60/min). Admin operations like `sync_models` and `delete_definition` are tightly limited (10/min).
+Per-tool quotas are configured in `src/config/tool-registry.ts`. Read-heavy tools (list, get, search) allow up to 240 req/min. Write tools (create, update, publish) are 30-60 req/min. Admin operations like `sync_models` are tightly limited (10 req/min).
 
 ## Development
 

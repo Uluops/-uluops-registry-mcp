@@ -26,7 +26,7 @@ export function registerRetranslateDefinitionTool(
     RetranslateDefinitionInputSchema.shape,
     createToolHandler(RetranslateDefinitionInputSchema, (n) => {
       const options: Record<string, unknown> = {};
-      if (n.force !== undefined) options.force = n.force;
+      if (n.force !== undefined) options.createNewVersion = n.force;
       return registryClient.translation.retranslate(
         n.type,
         n.name,

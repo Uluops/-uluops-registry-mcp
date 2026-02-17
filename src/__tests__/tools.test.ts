@@ -168,6 +168,20 @@ describe('Tool Registration & SDK Calls', () => {
       );
     });
 
+    it('remaps page→offset, sort→sortBy, order→sortOrder, tags→tag', async () => {
+      registerListDefinitionsTool(server, client);
+      await getHandler(server)({ page: 2, limit: 10, sort: 'name', order: 'desc', tags: ['security'] });
+      expect(client.definitions.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          offset: 10,
+          limit: 10,
+          sortBy: 'name',
+          sortOrder: 'desc',
+          tag: ['security'],
+        })
+      );
+    });
+
     it('returns data as JSON', async () => {
       const mockData = { items: [{ name: 'test' }], total: 1 };
       (client.definitions.list as ReturnType<typeof vi.fn>).mockResolvedValue(mockData);
@@ -530,18 +544,18 @@ describe('Tool Registration & SDK Calls', () => {
       expect(server.tools[0].name).toBe('get_dependencies');
     });
 
-    it('passes positional args and optional depth/flat', async () => {
+    it('passes positional args and maps depth to maxDepth', async () => {
       registerGetDependenciesTool(server, client);
-      await getHandler(server)({ type: 'workflow', name: 'ship', version: '1.0.0', depth: 3, flat: true });
+      await getHandler(server)({ type: 'workflow', name: 'ship', version: '1.0.0', depth: 3 });
       expect(client.dependencies.get).toHaveBeenCalledWith(
         'workflow',
         'ship',
         '1.0.0',
-        expect.objectContaining({ depth: 3, flat: true })
+        expect.objectContaining({ maxDepth: 3 })
       );
     });
 
-    it('passes empty options when depth/flat not provided', async () => {
+    it('passes empty options when depth not provided', async () => {
       registerGetDependenciesTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
       const opts = (client.dependencies.get as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<string, unknown>;
@@ -711,14 +725,14 @@ describe('Tool Registration & SDK Calls', () => {
       expect(server.tools[0].name).toBe('retranslate_definition');
     });
 
-    it('passes positional args and optional force flag', async () => {
+    it('passes positional args and maps force to createNewVersion', async () => {
       registerRetranslateDefinitionTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0', force: true });
       expect(client.translation.retranslate).toHaveBeenCalledWith(
         'agent',
         'test',
         '1.0.0',
-        expect.objectContaining({ force: true })
+        expect.objectContaining({ createNewVersion: true })
       );
     });
 

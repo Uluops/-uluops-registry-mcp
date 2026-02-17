@@ -17,7 +17,6 @@ export const ListModelsInputSchema = z.object({
   provider: z.string().optional(),
   tier: ModelTierSchema.optional(),
   status: ModelStatusSchema.optional(),
-  search: z.string().optional(),
 });
 
 export function registerListModelsTool(
@@ -26,7 +25,7 @@ export function registerListModelsTool(
 ): void {
   server.tool(
     'list_models',
-    'List available AI models with optional provider, tier, status, and search filters.',
+    'List available AI models with optional provider, tier, and status filters.',
     ListModelsInputSchema.shape,
     createToolHandler(ListModelsInputSchema, (n) =>
       registryClient.models.list(n)

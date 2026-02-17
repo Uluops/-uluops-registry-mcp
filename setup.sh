@@ -10,7 +10,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DIST_ENTRY="$SCRIPT_DIR/dist/index.js"
-TOOL_POLICIES="$SCRIPT_DIR/tool-policies.json"
 DEFAULT_URL="http://localhost:3001/api/v1"
 
 print_config() {
@@ -27,8 +26,7 @@ Add this to your .mcp.json (project-level or ~/.claude/.mcp.json for global):
       "args": ["$DIST_ENTRY"],
       "env": {
         "ULUOPS_REGISTRY_URL": "$api_url",
-        "ULUOPS_API_KEY": "$api_key",
-        "TOOL_POLICIES_PATH": "$TOOL_POLICIES"
+        "ULUOPS_API_KEY": "$api_key"
       }
     }
   }

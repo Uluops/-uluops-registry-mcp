@@ -18,8 +18,6 @@ export const CreateDefinitionInputSchema = z.object({
   name: z.string().min(1),
   yaml: z.string().min(1),
   visibility: VisibilitySchema.optional(),
-  description: z.string().optional(),
-  tags: z.array(z.string()).optional(),
 });
 
 export function registerCreateDefinitionTool(

@@ -1,11 +1,48 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import type { McpServerToolRegistration } from '../types/index.js';
+
+// --- Tool register imports (all 31) ---
+// Definitions
 import { registerListDefinitionsTool } from '../tools/list-definitions.js';
 import { registerGetDefinitionTool } from '../tools/get-definition.js';
-import { registerDeleteDefinitionTool } from '../tools/delete-definition.js';
 import { registerSearchDefinitionsTool } from '../tools/search-definitions.js';
 import { registerCreateDefinitionTool } from '../tools/create-definition.js';
+import { registerUpdateDefinitionTool } from '../tools/update-definition.js';
+import { registerPublishDefinitionTool } from '../tools/publish-definition.js';
+import { registerDeprecateDefinitionTool } from '../tools/deprecate-definition.js';
+import { registerDeleteDefinitionTool } from '../tools/delete-definition.js';
+// Models
+import { registerListModelsTool } from '../tools/list-models.js';
+import { registerGetModelTool } from '../tools/get-model.js';
+import { registerResolveAliasTool } from '../tools/resolve-alias.js';
+import { registerListProvidersTool } from '../tools/list-providers.js';
+import { registerListAliasesTool } from '../tools/list-aliases.js';
+import { registerSyncModelsTool } from '../tools/sync-models.js';
+// Versions
+import { registerListVersionsTool } from '../tools/list-versions.js';
+import { registerDiffVersionsTool } from '../tools/diff-versions.js';
+// Dependencies
+import { registerGetDependenciesTool } from '../tools/get-dependencies.js';
+import { registerGetDependentsTool } from '../tools/get-dependents.js';
+// Forks
+import { registerListForksTool } from '../tools/list-forks.js';
+import { registerCheckForkableTool } from '../tools/check-forkable.js';
+import { registerGetForkLineageTool } from '../tools/get-fork-lineage.js';
+import { registerForkDefinitionTool } from '../tools/fork-definition.js';
+// Executions
+import { registerRecordExecutionTool } from '../tools/record-execution.js';
+import { registerGetExecutionStatsTool } from '../tools/get-execution-stats.js';
+// Translation
+import { registerRetranslateDefinitionTool } from '../tools/retranslate-definition.js';
+import { registerGetTranslatorVersionTool } from '../tools/get-translator-version.js';
+import { registerUpgradeDefinitionTool } from '../tools/upgrade-definition.js';
+// Validation & Render
+import { registerValidateDefinitionTool } from '../tools/validate-definition.js';
+import { registerRenderDefinitionTool } from '../tools/render-definition.js';
+// Users
+import { registerGetUserTool } from '../tools/get-user.js';
+import { registerBatchUsersTool } from '../tools/batch-users.js';
 
 // Mock the registry SDK error module
 vi.mock('@uluops/registry-sdk/errors', () => ({
@@ -18,6 +55,8 @@ vi.mock('@uluops/registry-sdk/errors', () => ({
   UnauthorizedError: class extends Error {},
   ForbiddenError: class extends Error {},
 }));
+
+// --- Test helpers ---
 
 type ToolEntry = {
   name: string;
@@ -36,20 +75,73 @@ function createMockServer(): McpServerToolRegistration & { tools: ToolEntry[] } 
   };
 }
 
-function createMockRegistryClient(overrides?: Record<string, unknown>): RegistryClient {
+function createMockRegistryClient(): RegistryClient {
   return {
     definitions: {
       list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
       get: vi.fn().mockResolvedValue({ name: 'test', type: 'agent' }),
       search: vi.fn().mockResolvedValue({ items: [], total: 0 }),
       create: vi.fn().mockResolvedValue({ name: 'new-def', type: 'agent' }),
+      update: vi.fn().mockResolvedValue({ name: 'test', type: 'agent' }),
+      publish: vi.fn().mockResolvedValue({ name: 'test', status: 'published' }),
+      deprecate: vi.fn().mockResolvedValue({ name: 'test', status: 'deprecated' }),
       delete: vi.fn().mockResolvedValue(undefined),
-      ...overrides,
+    },
+    models: {
+      list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+      get: vi.fn().mockResolvedValue({ provider: 'anthropic', modelId: 'claude-sonnet-4-5' }),
+      resolveAlias: vi.fn().mockResolvedValue({ provider: 'anthropic', modelId: 'claude-sonnet-4-5' }),
+      listProviders: vi.fn().mockResolvedValue([{ id: 'anthropic', name: 'Anthropic' }]),
+      listAliases: vi.fn().mockResolvedValue([{ alias: 'sonnet', provider: 'anthropic' }]),
+      sync: vi.fn().mockResolvedValue({ synced: 5 }),
+    },
+    versions: {
+      list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+      diff: vi.fn().mockResolvedValue({ changes: [] }),
+    },
+    dependencies: {
+      get: vi.fn().mockResolvedValue({ nodes: [], edges: [] }),
+      getDependents: vi.fn().mockResolvedValue({ nodes: [], edges: [] }),
+    },
+    forks: {
+      list: vi.fn().mockResolvedValue({ forks: [], totalForks: 0 }),
+      checkForkable: vi.fn().mockResolvedValue({ forkable: true }),
+      getLineage: vi.fn().mockResolvedValue({ isFork: false }),
+      create: vi.fn().mockResolvedValue({ name: 'forked-def', type: 'agent' }),
+    },
+    executions: {
+      record: vi.fn().mockResolvedValue({ recorded: true }),
+      getStats: vi.fn().mockResolvedValue({ totalExecutions: 0 }),
+    },
+    translation: {
+      retranslate: vi.fn().mockResolvedValue({ retranslated: true }),
+      getVersion: vi.fn().mockResolvedValue({ version: '2.0.0' }),
+      upgrade: vi.fn().mockResolvedValue({ upgraded: true }),
+    },
+    validation: {
+      validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }),
+    },
+    render: {
+      get: vi.fn().mockResolvedValue({ markdown: '# Test' }),
+    },
+    users: {
+      get: vi.fn().mockResolvedValue({ id: 'user-1', displayName: 'Test User' }),
+      batch: vi.fn().mockResolvedValue([{ id: 'user-1' }, { id: 'user-2' }]),
     },
   } as unknown as RegistryClient;
 }
 
-describe('Tool Registration', () => {
+function getHandler(server: ReturnType<typeof createMockServer>): ToolEntry['handler'] {
+  return server.tools[0].handler;
+}
+
+function parseResult(result: { content: { text: string }[] }): unknown {
+  return JSON.parse(result.content[0].text);
+}
+
+// --- Tests ---
+
+describe('Tool Registration & SDK Calls', () => {
   let server: ReturnType<typeof createMockServer>;
   let client: RegistryClient;
 
@@ -58,141 +150,726 @@ describe('Tool Registration', () => {
     client = createMockRegistryClient();
   });
 
+  // ═══════════════════════════════════════════
+  // DEFINITIONS DOMAIN (8 tools)
+  // ═══════════════════════════════════════════
+
   describe('list_definitions', () => {
-    it('registers the tool with correct name', () => {
+    it('registers with correct name', () => {
       registerListDefinitionsTool(server, client);
-      expect(server.tools).toHaveLength(1);
       expect(server.tools[0].name).toBe('list_definitions');
     });
 
-    it('calls registryClient.definitions.list with normalized args', async () => {
+    it('passes normalized args as object to SDK', async () => {
       registerListDefinitionsTool(server, client);
-      const handler = server.tools[0].handler;
-
-      await handler({ type: 'agent', status: 'published' });
+      await getHandler(server)({ type: 'agent', status: 'published' });
       expect(client.definitions.list).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'agent', status: 'published' })
       );
     });
 
-    it('returns list result as JSON', async () => {
+    it('returns data as JSON', async () => {
       const mockData = { items: [{ name: 'test' }], total: 1 };
-      client = createMockRegistryClient({ list: vi.fn().mockResolvedValue(mockData) });
-      server = createMockServer();
+      (client.definitions.list as ReturnType<typeof vi.fn>).mockResolvedValue(mockData);
       registerListDefinitionsTool(server, client);
-
-      const result = await server.tools[0].handler({});
+      const result = await getHandler(server)({});
       expect(result.isError).toBeUndefined();
-      expect(JSON.parse(result.content[0].text)).toEqual(mockData);
+      expect(parseResult(result)).toEqual(mockData);
     });
 
     it('rejects invalid enum values', async () => {
       registerListDefinitionsTool(server, client);
-      const result = await server.tools[0].handler({ type: 'invalid_type' });
+      const result = await getHandler(server)({ type: 'invalid_type' });
       expect(result.isError).toBe(true);
     });
   });
 
   describe('get_definition', () => {
-    it('registers the tool with correct name', () => {
+    it('registers with correct name', () => {
       registerGetDefinitionTool(server, client);
       expect(server.tools[0].name).toBe('get_definition');
     });
 
-    it('passes type and name as positional args', async () => {
+    it('passes positional args and options to SDK', async () => {
       registerGetDefinitionTool(server, client);
-      await server.tools[0].handler({ type: 'agent', name: 'code-validator' });
-      expect(client.definitions.get).toHaveBeenCalledWith(
-        'agent',
-        'code-validator',
-        undefined,
-        expect.any(Object)
-      );
-    });
-
-    it('passes include options correctly', async () => {
-      registerGetDefinitionTool(server, client);
-      await server.tools[0].handler({
+      await getHandler(server)({
         type: 'agent',
-        name: 'test',
+        name: 'code-validator',
+        version: '1.0.0',
         include_yaml: true,
         include_runtime: false,
       });
       expect(client.definitions.get).toHaveBeenCalledWith(
         'agent',
-        'test',
-        undefined,
+        'code-validator',
+        '1.0.0',
         expect.objectContaining({ includeYaml: true, includeRuntime: false })
       );
     });
 
     it('rejects missing required name', async () => {
       registerGetDefinitionTool(server, client);
-      const result = await server.tools[0].handler({ type: 'agent' });
+      const result = await getHandler(server)({ type: 'agent' });
       expect(result.isError).toBe(true);
     });
   });
 
+  describe('search_definitions', () => {
+    it('registers with correct name', () => {
+      registerSearchDefinitionsTool(server, client);
+      expect(server.tools[0].name).toBe('search_definitions');
+    });
+
+    it('maps query to definitions.list search param', async () => {
+      registerSearchDefinitionsTool(server, client);
+      await getHandler(server)({ query: 'code-validator', type: 'agent' });
+      expect(client.definitions.list).toHaveBeenCalledWith(
+        expect.objectContaining({ search: 'code-validator', type: 'agent' })
+      );
+    });
+
+    it('rejects empty query', async () => {
+      registerSearchDefinitionsTool(server, client);
+      const result = await getHandler(server)({ query: '' });
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe('create_definition', () => {
+    it('registers with correct name', () => {
+      registerCreateDefinitionTool(server, client);
+      expect(server.tools[0].name).toBe('create_definition');
+    });
+
+    it('passes type, name as positional and options object', async () => {
+      registerCreateDefinitionTool(server, client);
+      await getHandler(server)({
+        type: 'agent',
+        name: 'my-agent',
+        yaml: 'name: my-agent',
+        visibility: 'public',
+      });
+      expect(client.definitions.create).toHaveBeenCalledWith(
+        'agent',
+        'my-agent',
+        expect.objectContaining({ yaml: 'name: my-agent', visibility: 'public' })
+      );
+    });
+
+    it('rejects missing yaml', async () => {
+      registerCreateDefinitionTool(server, client);
+      const result = await getHandler(server)({ type: 'agent', name: 'test' });
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe('update_definition', () => {
+    it('registers with correct name', () => {
+      registerUpdateDefinitionTool(server, client);
+      expect(server.tools[0].name).toBe('update_definition');
+    });
+
+    it('passes type, name, version as positional and body with conditional props', async () => {
+      registerUpdateDefinitionTool(server, client);
+      await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+        yaml: 'updated: true',
+        visibility: 'private',
+        description: 'Updated desc',
+        tags: ['v2'],
+        change_type: 'minor',
+      });
+      expect(client.definitions.update).toHaveBeenCalledWith(
+        'agent',
+        'test',
+        '1.0.0',
+        expect.objectContaining({
+          yaml: 'updated: true',
+          visibility: 'private',
+          description: 'Updated desc',
+          tags: ['v2'],
+          changeType: 'minor',
+        })
+      );
+    });
+
+    it('only includes defined optional fields in body', async () => {
+      registerUpdateDefinitionTool(server, client);
+      await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+        yaml: 'content: here',
+      });
+      const body = (client.definitions.update as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<string, unknown>;
+      expect(body).toHaveProperty('yaml');
+      expect(body).not.toHaveProperty('visibility');
+      expect(body).not.toHaveProperty('description');
+      expect(body).not.toHaveProperty('tags');
+      expect(body).not.toHaveProperty('changeType');
+    });
+  });
+
+  describe('publish_definition', () => {
+    it('registers with correct name', () => {
+      registerPublishDefinitionTool(server, client);
+      expect(server.tools[0].name).toBe('publish_definition');
+    });
+
+    it('passes type, name, version as positional args', async () => {
+      registerPublishDefinitionTool(server, client);
+      await getHandler(server)({ type: 'workflow', name: 'ship', version: '2.0.0' });
+      expect(client.definitions.publish).toHaveBeenCalledWith('workflow', 'ship', '2.0.0');
+    });
+  });
+
+  describe('deprecate_definition', () => {
+    it('registers with correct name', () => {
+      registerDeprecateDefinitionTool(server, client);
+      expect(server.tools[0].name).toBe('deprecate_definition');
+    });
+
+    it('passes positional args plus options with reason and successor', async () => {
+      registerDeprecateDefinitionTool(server, client);
+      await getHandler(server)({
+        type: 'agent',
+        name: 'old-agent',
+        version: '1.0.0',
+        reason: 'Replaced by v2',
+        successor: 'new-agent',
+      });
+      expect(client.definitions.deprecate).toHaveBeenCalledWith(
+        'agent',
+        'old-agent',
+        '1.0.0',
+        expect.objectContaining({ reason: 'Replaced by v2', successor: 'new-agent' })
+      );
+    });
+
+    it('omits successor when not provided', async () => {
+      registerDeprecateDefinitionTool(server, client);
+      await getHandler(server)({
+        type: 'agent',
+        name: 'old-agent',
+        version: '1.0.0',
+        reason: 'No longer needed',
+      });
+      const opts = (client.definitions.deprecate as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<string, unknown>;
+      expect(opts.reason).toBe('No longer needed');
+      expect(opts).not.toHaveProperty('successor');
+    });
+  });
+
   describe('delete_definition', () => {
-    it('registers the tool with correct name', () => {
+    it('registers with correct name', () => {
       registerDeleteDefinitionTool(server, client);
       expect(server.tools[0].name).toBe('delete_definition');
     });
 
     it('passes type, name, version as positional args', async () => {
       registerDeleteDefinitionTool(server, client);
-      await server.tools[0].handler({ type: 'agent', name: 'test', version: '1.0.0' });
+      await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
       expect(client.definitions.delete).toHaveBeenCalledWith('agent', 'test', '1.0.0');
     });
 
     it('returns success: true for void response', async () => {
       registerDeleteDefinitionTool(server, client);
-      const result = await server.tools[0].handler({ type: 'agent', name: 'test', version: '1.0.0' });
+      const result = await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
       expect(result.isError).toBeUndefined();
-      expect(JSON.parse(result.content[0].text)).toEqual({ success: true });
+      expect(parseResult(result)).toEqual({ success: true });
     });
 
     it('rejects missing version', async () => {
       registerDeleteDefinitionTool(server, client);
-      const result = await server.tools[0].handler({ type: 'agent', name: 'test' });
+      const result = await getHandler(server)({ type: 'agent', name: 'test' });
       expect(result.isError).toBe(true);
     });
   });
 
-  describe('search_definitions', () => {
-    it('registers the tool with correct name', () => {
-      registerSearchDefinitionsTool(server, client);
-      expect(server.tools[0].name).toBe('search_definitions');
+  // ═══════════════════════════════════════════
+  // MODELS DOMAIN (6 tools)
+  // ═══════════════════════════════════════════
+
+  describe('list_models', () => {
+    it('registers with correct name', () => {
+      registerListModelsTool(server, client);
+      expect(server.tools[0].name).toBe('list_models');
     });
 
-    it('passes search query to definitions.list with search param', async () => {
-      registerSearchDefinitionsTool(server, client);
-      await server.tools[0].handler({ query: 'code-validator' });
-      expect(client.definitions.list).toHaveBeenCalledWith(
-        expect.objectContaining({ search: 'code-validator' })
+    it('passes filter args as object to SDK', async () => {
+      registerListModelsTool(server, client);
+      await getHandler(server)({ provider: 'anthropic', tier: 'premium', status: 'available' });
+      expect(client.models.list).toHaveBeenCalledWith(
+        expect.objectContaining({ provider: 'anthropic', tier: 'premium', status: 'available' })
+      );
+    });
+
+    it('works with empty args', async () => {
+      registerListModelsTool(server, client);
+      await getHandler(server)({});
+      expect(client.models.list).toHaveBeenCalled();
+    });
+  });
+
+  describe('get_model', () => {
+    it('registers with correct name', () => {
+      registerGetModelTool(server, client);
+      expect(server.tools[0].name).toBe('get_model');
+    });
+
+    it('passes provider and modelId (camelCased from model_id)', async () => {
+      registerGetModelTool(server, client);
+      await getHandler(server)({ provider: 'anthropic', model_id: 'claude-sonnet-4-5' });
+      expect(client.models.get).toHaveBeenCalledWith('anthropic', 'claude-sonnet-4-5');
+    });
+
+    it('rejects missing model_id', async () => {
+      registerGetModelTool(server, client);
+      const result = await getHandler(server)({ provider: 'anthropic' });
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe('resolve_alias', () => {
+    it('registers with correct name', () => {
+      registerResolveAliasTool(server, client);
+      expect(server.tools[0].name).toBe('resolve_alias');
+    });
+
+    it('passes alias to SDK', async () => {
+      registerResolveAliasTool(server, client);
+      await getHandler(server)({ alias: 'sonnet' });
+      expect(client.models.resolveAlias).toHaveBeenCalledWith('sonnet');
+    });
+  });
+
+  describe('list_providers (no args)', () => {
+    it('registers with correct name', () => {
+      registerListProvidersTool(server, client);
+      expect(server.tools[0].name).toBe('list_providers');
+    });
+
+    it('calls SDK with no arguments', async () => {
+      registerListProvidersTool(server, client);
+      await getHandler(server)({});
+      expect(client.models.listProviders).toHaveBeenCalled();
+    });
+  });
+
+  describe('list_aliases (no args)', () => {
+    it('registers with correct name', () => {
+      registerListAliasesTool(server, client);
+      expect(server.tools[0].name).toBe('list_aliases');
+    });
+
+    it('calls SDK with no arguments', async () => {
+      registerListAliasesTool(server, client);
+      await getHandler(server)({});
+      expect(client.models.listAliases).toHaveBeenCalled();
+    });
+  });
+
+  describe('sync_models (no args)', () => {
+    it('registers with correct name', () => {
+      registerSyncModelsTool(server, client);
+      expect(server.tools[0].name).toBe('sync_models');
+    });
+
+    it('calls SDK with no arguments', async () => {
+      registerSyncModelsTool(server, client);
+      await getHandler(server)({});
+      expect(client.models.sync).toHaveBeenCalled();
+    });
+  });
+
+  // ═══════════════════════════════════════════
+  // VERSIONS DOMAIN (2 tools)
+  // ═══════════════════════════════════════════
+
+  describe('list_versions', () => {
+    it('registers with correct name', () => {
+      registerListVersionsTool(server, client);
+      expect(server.tools[0].name).toBe('list_versions');
+    });
+
+    it('passes type and name as positional args', async () => {
+      registerListVersionsTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'code-validator' });
+      expect(client.versions.list).toHaveBeenCalledWith('agent', 'code-validator');
+    });
+  });
+
+  describe('diff_versions', () => {
+    it('registers with correct name', () => {
+      registerDiffVersionsTool(server, client);
+      expect(server.tools[0].name).toBe('diff_versions');
+    });
+
+    it('passes type, name, from, to as positional args', async () => {
+      registerDiffVersionsTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'test', from: '1.0.0', to: '2.0.0' });
+      expect(client.versions.diff).toHaveBeenCalledWith('agent', 'test', '1.0.0', '2.0.0');
+    });
+
+    it('rejects missing from/to', async () => {
+      registerDiffVersionsTool(server, client);
+      const result = await getHandler(server)({ type: 'agent', name: 'test', from: '1.0.0' });
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  // ═══════════════════════════════════════════
+  // DEPENDENCIES DOMAIN (2 tools)
+  // ═══════════════════════════════════════════
+
+  describe('get_dependencies', () => {
+    it('registers with correct name', () => {
+      registerGetDependenciesTool(server, client);
+      expect(server.tools[0].name).toBe('get_dependencies');
+    });
+
+    it('passes positional args and optional depth/flat', async () => {
+      registerGetDependenciesTool(server, client);
+      await getHandler(server)({ type: 'workflow', name: 'ship', version: '1.0.0', depth: 3, flat: true });
+      expect(client.dependencies.get).toHaveBeenCalledWith(
+        'workflow',
+        'ship',
+        '1.0.0',
+        expect.objectContaining({ depth: 3, flat: true })
+      );
+    });
+
+    it('passes empty options when depth/flat not provided', async () => {
+      registerGetDependenciesTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      const opts = (client.dependencies.get as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<string, unknown>;
+      expect(opts).toEqual({});
+    });
+  });
+
+  describe('get_dependents', () => {
+    it('registers with correct name', () => {
+      registerGetDependentsTool(server, client);
+      expect(server.tools[0].name).toBe('get_dependents');
+    });
+
+    it('passes type, name, version as positional args', async () => {
+      registerGetDependentsTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      expect(client.dependencies.getDependents).toHaveBeenCalledWith('agent', 'test', '1.0.0');
+    });
+  });
+
+  // ═══════════════════════════════════════════
+  // FORKS DOMAIN (4 tools)
+  // ═══════════════════════════════════════════
+
+  describe('list_forks', () => {
+    it('registers with correct name', () => {
+      registerListForksTool(server, client);
+      expect(server.tools[0].name).toBe('list_forks');
+    });
+
+    it('passes type, name, version as positional args', async () => {
+      registerListForksTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      expect(client.forks.list).toHaveBeenCalledWith('agent', 'test', '1.0.0');
+    });
+  });
+
+  describe('check_forkable', () => {
+    it('registers with correct name', () => {
+      registerCheckForkableTool(server, client);
+      expect(server.tools[0].name).toBe('check_forkable');
+    });
+
+    it('passes type, name, version as positional args', async () => {
+      registerCheckForkableTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      expect(client.forks.checkForkable).toHaveBeenCalledWith('agent', 'test', '1.0.0');
+    });
+  });
+
+  describe('get_fork_lineage', () => {
+    it('registers with correct name', () => {
+      registerGetForkLineageTool(server, client);
+      expect(server.tools[0].name).toBe('get_fork_lineage');
+    });
+
+    it('passes type, name, version as positional args', async () => {
+      registerGetForkLineageTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      expect(client.forks.getLineage).toHaveBeenCalledWith('agent', 'test', '1.0.0');
+    });
+  });
+
+  describe('fork_definition', () => {
+    it('registers with correct name', () => {
+      registerForkDefinitionTool(server, client);
+      expect(server.tools[0].name).toBe('fork_definition');
+    });
+
+    it('passes positional args and options with newName (camelCased from new_name)', async () => {
+      registerForkDefinitionTool(server, client);
+      await getHandler(server)({
+        type: 'agent',
+        name: 'original',
+        version: '1.0.0',
+        new_name: 'my-fork',
+        description: 'My fork',
+      });
+      expect(client.forks.create).toHaveBeenCalledWith(
+        'agent',
+        'original',
+        '1.0.0',
+        expect.objectContaining({ name: 'my-fork', description: 'My fork' })
+      );
+    });
+
+    it('omits description when not provided', async () => {
+      registerForkDefinitionTool(server, client);
+      await getHandler(server)({
+        type: 'agent',
+        name: 'original',
+        version: '1.0.0',
+        new_name: 'my-fork',
+      });
+      const opts = (client.forks.create as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<string, unknown>;
+      expect(opts.name).toBe('my-fork');
+      expect(opts).not.toHaveProperty('description');
+    });
+  });
+
+  // ═══════════════════════════════════════════
+  // EXECUTIONS DOMAIN (2 tools)
+  // ═══════════════════════════════════════════
+
+  describe('record_execution', () => {
+    it('registers with correct name', () => {
+      registerRecordExecutionTool(server, client);
+      expect(server.tools[0].name).toBe('record_execution');
+    });
+
+    it('passes positional args and options with source and optional runId', async () => {
+      registerRecordExecutionTool(server, client);
+      await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+        source: 'cli',
+        run_id: 'run-abc',
+      });
+      expect(client.executions.record).toHaveBeenCalledWith(
+        'agent',
+        'test',
+        '1.0.0',
+        expect.objectContaining({ source: 'cli', runId: 'run-abc' })
+      );
+    });
+
+    it('omits runId when not provided', async () => {
+      registerRecordExecutionTool(server, client);
+      await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+      });
+      const opts = (client.executions.record as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<string, unknown>;
+      expect(opts.source).toBe('mcp'); // default
+      expect(opts).not.toHaveProperty('runId');
+    });
+  });
+
+  describe('get_execution_stats', () => {
+    it('registers with correct name', () => {
+      registerGetExecutionStatsTool(server, client);
+      expect(server.tools[0].name).toBe('get_execution_stats');
+    });
+
+    it('passes type, name, version, window as positional args', async () => {
+      registerGetExecutionStatsTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0', window: 30 });
+      expect(client.executions.getStats).toHaveBeenCalledWith('agent', 'test', '1.0.0', 30);
+    });
+
+    it('passes undefined window when not provided', async () => {
+      registerGetExecutionStatsTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      expect(client.executions.getStats).toHaveBeenCalledWith('agent', 'test', '1.0.0', undefined);
+    });
+  });
+
+  // ═══════════════════════════════════════════
+  // TRANSLATION DOMAIN (3 tools)
+  // ═══════════════════════════════════════════
+
+  describe('retranslate_definition', () => {
+    it('registers with correct name', () => {
+      registerRetranslateDefinitionTool(server, client);
+      expect(server.tools[0].name).toBe('retranslate_definition');
+    });
+
+    it('passes positional args and optional force flag', async () => {
+      registerRetranslateDefinitionTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0', force: true });
+      expect(client.translation.retranslate).toHaveBeenCalledWith(
+        'agent',
+        'test',
+        '1.0.0',
+        expect.objectContaining({ force: true })
+      );
+    });
+
+    it('passes empty options when force not provided', async () => {
+      registerRetranslateDefinitionTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      const opts = (client.translation.retranslate as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<string, unknown>;
+      expect(opts).toEqual({});
+    });
+  });
+
+  describe('get_translator_version (no args)', () => {
+    it('registers with correct name', () => {
+      registerGetTranslatorVersionTool(server, client);
+      expect(server.tools[0].name).toBe('get_translator_version');
+    });
+
+    it('calls SDK with no arguments', async () => {
+      registerGetTranslatorVersionTool(server, client);
+      await getHandler(server)({});
+      expect(client.translation.getVersion).toHaveBeenCalled();
+    });
+
+    it('returns version data', async () => {
+      registerGetTranslatorVersionTool(server, client);
+      const result = await getHandler(server)({});
+      expect(parseResult(result)).toEqual({ version: '2.0.0' });
+    });
+  });
+
+  describe('upgrade_definition', () => {
+    it('registers with correct name', () => {
+      registerUpgradeDefinitionTool(server, client);
+      expect(server.tools[0].name).toBe('upgrade_definition');
+    });
+
+    it('passes type, name, and yaml object to SDK', async () => {
+      registerUpgradeDefinitionTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'test', yaml: 'old: format' });
+      expect(client.translation.upgrade).toHaveBeenCalledWith(
+        'agent',
+        'test',
+        expect.objectContaining({ yaml: 'old: format' })
       );
     });
   });
 
-  describe('create_definition', () => {
-    it('registers the tool with correct name', () => {
-      registerCreateDefinitionTool(server, client);
-      expect(server.tools[0].name).toBe('create_definition');
+  // ═══════════════════════════════════════════
+  // VALIDATION DOMAIN (1 tool)
+  // ═══════════════════════════════════════════
+
+  describe('validate_definition', () => {
+    it('registers with correct name', () => {
+      registerValidateDefinitionTool(server, client);
+      expect(server.tools[0].name).toBe('validate_definition');
+    });
+
+    it('passes type and yaml as positional args', async () => {
+      registerValidateDefinitionTool(server, client);
+      await getHandler(server)({ type: 'agent', yaml: 'name: test' });
+      expect(client.validation.validate).toHaveBeenCalledWith('agent', 'name: test');
+    });
+
+    it('rejects empty yaml', async () => {
+      registerValidateDefinitionTool(server, client);
+      const result = await getHandler(server)({ type: 'agent', yaml: '' });
+      expect(result.isError).toBe(true);
     });
   });
 
-  describe('SDK error handling in tools', () => {
-    it('maps SDK errors to MCP error responses', async () => {
-      const failingClient = createMockRegistryClient({
-        list: vi.fn().mockRejectedValue(new Error('Connection refused')),
-      });
-      server = createMockServer();
-      registerListDefinitionsTool(server, failingClient);
+  // ═══════════════════════════════════════════
+  // RENDER DOMAIN (1 tool)
+  // ═══════════════════════════════════════════
 
-      const result = await server.tools[0].handler({});
+  describe('render_definition', () => {
+    it('registers with correct name', () => {
+      registerRenderDefinitionTool(server, client);
+      expect(server.tools[0].name).toBe('render_definition');
+    });
+
+    it('passes type, name, version as positional args', async () => {
+      registerRenderDefinitionTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      expect(client.render.get).toHaveBeenCalledWith('agent', 'test', '1.0.0');
+    });
+  });
+
+  // ═══════════════════════════════════════════
+  // USERS DOMAIN (2 tools)
+  // ═══════════════════════════════════════════
+
+  describe('get_user', () => {
+    it('registers with correct name', () => {
+      registerGetUserTool(server, client);
+      expect(server.tools[0].name).toBe('get_user');
+    });
+
+    it('passes id as positional arg', async () => {
+      registerGetUserTool(server, client);
+      await getHandler(server)({ id: 'user-123' });
+      expect(client.users.get).toHaveBeenCalledWith('user-123');
+    });
+
+    it('rejects empty id', async () => {
+      registerGetUserTool(server, client);
+      const result = await getHandler(server)({ id: '' });
       expect(result.isError).toBe(true);
-      const parsed = JSON.parse(result.content[0].text);
+    });
+  });
+
+  describe('batch_users', () => {
+    it('registers with correct name', () => {
+      registerBatchUsersTool(server, client);
+      expect(server.tools[0].name).toBe('batch_users');
+    });
+
+    it('passes ids array to SDK', async () => {
+      registerBatchUsersTool(server, client);
+      await getHandler(server)({ ids: ['user-1', 'user-2', 'user-3'] });
+      expect(client.users.batch).toHaveBeenCalledWith(['user-1', 'user-2', 'user-3']);
+    });
+
+    it('rejects empty ids array', async () => {
+      registerBatchUsersTool(server, client);
+      const result = await getHandler(server)({ ids: [] });
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  // ═══════════════════════════════════════════
+  // CROSS-CUTTING: Error handling
+  // ═══════════════════════════════════════════
+
+  describe('SDK error handling', () => {
+    it('maps SDK errors to MCP error responses', async () => {
+      (client.definitions.list as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Connection refused')
+      );
+      registerListDefinitionsTool(server, client);
+      const result = await getHandler(server)({});
+      expect(result.isError).toBe(true);
+      const parsed = parseResult(result) as { error: string };
       expect(parsed.error).toBe('Connection refused');
+    });
+
+    it('handles void SDK responses as success: true', async () => {
+      (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      registerPublishDefinitionTool(server, client);
+      const result = await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      expect(result.isError).toBeUndefined();
+      expect(parseResult(result)).toEqual({ success: true });
     });
   });
 });

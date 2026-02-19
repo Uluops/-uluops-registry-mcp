@@ -30,7 +30,7 @@ function isMcpToolResponse(value: unknown): value is McpToolResponse {
  * 3. Call SDK method with normalized input
  * 4. Return success response or mapped error
  */
-export function createToolHandler<TInput>(
+export function createToolHandler<TInput extends Record<string, unknown>>(
   schema: z.ZodSchema<TInput>,
   // SAFETY: Zod validates input structure before normalizeKeys() runs. The callback receives
   // `any` because TypeScript cannot statically track the snake_case→camelCase key renaming.

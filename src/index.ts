@@ -9,20 +9,16 @@
 import { SecureMcpServer } from 'mcp-secure-server';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { RegistryClient } from '@uluops/registry-sdk';
-import { createRequire } from 'module';
 
-import { loadConfig, validateConfig } from './config/index.js';
+import { loadConfig, validateConfig, VERSION } from './config/index.js';
 import { toolRegistry } from './config/tool-registry.js';
 import { registerAllTools } from './tools/index.js';
 import { registerAllResources } from './resources/index.js';
 import { createLogger } from './utils/logger.js';
 
-const require = createRequire(import.meta.url);
-const { version } = require('../package.json') as { version: string };
-
 async function main(): Promise<void> {
   if (process.argv.includes('--version') || process.argv.includes('-v')) {
-    console.log(version);
+    console.log(VERSION);
     process.exit(0);
   }
 
@@ -36,7 +32,7 @@ async function main(): Promise<void> {
   });
 
   logger.info('Starting UluOps Registry MCP client', {
-    version,
+    version: config.server.version,
     apiUrl: config.api.baseUrl,
   });
 
@@ -48,10 +44,7 @@ async function main(): Promise<void> {
   });
 
   const server = await SecureMcpServer.create(
-    {
-      name: 'uluops-registry-client',
-      version,
-    },
+    config.server,
     {
       securityLevel: 'basic',
       maxRequestsPerMinute: 120,

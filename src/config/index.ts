@@ -4,7 +4,14 @@
  * Loads configuration from environment variables with sensible defaults.
  */
 
+import { createRequire } from 'module';
 import type { RegistryMcpConfig, LogLevel } from '../types/index.js';
+
+const require = createRequire(import.meta.url);
+const { version: pkgVersion } = require('../../package.json') as { version: string };
+
+/** Package version read from package.json at module load time. */
+export const VERSION = pkgVersion;
 
 const DEFAULT_TIMEOUT = 30000;
 const DEFAULT_RETRIES = 3;
@@ -52,7 +59,7 @@ export function loadConfig(): RegistryMcpConfig {
     },
     server: {
       name: 'uluops-registry-client',
-      version: '1.0.0',
+      version: pkgVersion,
     },
     security: {
       logLevel: parseLogLevel(process.env['LOG_LEVEL']),

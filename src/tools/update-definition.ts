@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import type { RegistryClient } from '@uluops/registry-sdk';
+import type { RegistryClient, UpdateDefinitionBody } from '@uluops/registry-sdk';
 import {
   DefinitionTypeSchema,
   VisibilitySchema,
@@ -34,13 +34,13 @@ export function registerUpdateDefinitionTool(
     'Update a draft definition version with new YAML, visibility, description, or tags.',
     UpdateDefinitionInputSchema.shape,
     createToolHandler(UpdateDefinitionInputSchema, (n) => {
-      const body: Record<string, unknown> = {};
+      const body: UpdateDefinitionBody = {};
       if (n.yaml !== undefined) body.yaml = n.yaml;
       if (n.visibility !== undefined) body.visibility = n.visibility;
       if (n.description !== undefined) body.description = n.description;
       if (n.tags !== undefined) body.tags = n.tags;
       if (n.changeType !== undefined) body.changeType = n.changeType;
-      return registryClient.definitions.update(n.type, n.name, n.version, body as any);
+      return registryClient.definitions.update(n.type, n.name, n.version, body);
     })
   );
 }

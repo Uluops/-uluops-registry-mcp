@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { RegistryClient } from '@uluops/registry-sdk';
-import type { McpServerResourceRegistration, ResourceHandler, ResourceMetadata } from '../types/index.js';
+import type {
+  McpServerResourceRegistration,
+  ResourceHandler,
+  ResourceMetadata,
+} from '../types/index.js';
 import { registerDefinitionsResource } from '../resources/definitions.js';
 import { registerModelsResource } from '../resources/models.js';
 import { registerDefinitionTypesResource } from '../resources/definition-types.js';
@@ -38,7 +42,9 @@ function createMockServer(): McpServerResourceRegistration & { resources: Resour
 function createMockRegistryClient(): RegistryClient {
   return {
     definitions: {
-      list: vi.fn().mockResolvedValue({ items: [{ name: 'code-validator', type: 'agent' }], total: 1 }),
+      list: vi
+        .fn()
+        .mockResolvedValue({ items: [{ name: 'code-validator', type: 'agent' }], total: 1 }),
     },
     models: {
       list: vi.fn().mockResolvedValue({ items: [{ modelId: 'claude-sonnet-4-5' }], total: 1 }),
@@ -144,7 +150,10 @@ describe('Resource Registration & Handlers', () => {
     it('returns all 4 definition types', async () => {
       registerDefinitionTypesResource(server);
       const result = await server.resources[0].handler();
-      const data = JSON.parse(result.contents[0].text ?? '') as { type: string; description: string }[];
+      const data = JSON.parse(result.contents[0].text ?? '') as {
+        type: string;
+        description: string;
+      }[];
       expect(data).toHaveLength(4);
       const types = data.map((d) => d.type);
       expect(types).toEqual(['agent', 'command', 'workflow', 'pipeline']);
@@ -153,7 +162,10 @@ describe('Resource Registration & Handlers', () => {
     it('each type has a description', async () => {
       registerDefinitionTypesResource(server);
       const result = await server.resources[0].handler();
-      const data = JSON.parse(result.contents[0].text ?? '') as { type: string; description: string }[];
+      const data = JSON.parse(result.contents[0].text ?? '') as {
+        type: string;
+        description: string;
+      }[];
       for (const entry of data) {
         expect(entry.description).toBeTruthy();
       }

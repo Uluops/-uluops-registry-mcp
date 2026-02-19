@@ -54,7 +54,7 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
   let message: string;
 
   if (isNotFoundError(error)) {
-    message = (error as Error).message || 'Resource not found';
+    message = sanitizeErrorMessage((error as Error).message || 'Resource not found');
   } else if (isRateLimitError(error)) {
     message = 'Rate limit exceeded, please retry later';
   } else if (isValidationError(error)) {

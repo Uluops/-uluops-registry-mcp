@@ -95,6 +95,14 @@ describe('mapSdkErrorToMcp', () => {
     expect(parseErrorText(result)).toBe('Definition not found');
   });
 
+  it('sanitizes NotFoundError messages containing sensitive data', () => {
+    const result = mapSdkErrorToMcp(
+      new NotFoundError('Definition not found at /app/src/index.ts apiKey=sk_live_123')
+    );
+    expect(result.isError).toBe(true);
+    expect(parseErrorText(result)).toBe('An error occurred while processing your request');
+  });
+
   it('maps RateLimitError to rate limit message', () => {
     const result = mapSdkErrorToMcp(new RateLimitError('Too many requests'));
     expect(result.isError).toBe(true);
@@ -135,6 +143,22 @@ describe('mapSdkErrorToMcp', () => {
     const result = mapSdkErrorToMcp(new RegistryApiError('Server error'));
     expect(result.isError).toBe(true);
     expect(parseErrorText(result)).toBe('Server error');
+  });
+
+  it('sanitizes RegistryApiError messages containing sensitive data', () => {
+    const result = mapSdkErrorToMcp(
+      new RegistryApiError('ER_DUP_ENTRY: duplicate key in users table')
+    );
+    expect(result.isError).toBe(true);
+    expect(parseErrorText(result)).toBe('An error occurred while processing your request');
+  });
+
+  it('sanitizes RegistryApiError messages containing SQL errors', () => {
+    const result = mapSdkErrorToMcp(
+      new RegistryApiError('syntax error near SQL SELECT * FROM secrets')
+    );
+    expect(result.isError).toBe(true);
+    expect(parseErrorText(result)).toBe('An error occurred while processing your request');
   });
 
   it('maps generic Error with sanitized message', () => {

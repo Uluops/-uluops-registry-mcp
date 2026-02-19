@@ -24,11 +24,7 @@ export function registerGetDependentsTool(
     'Get the reverse dependency graph — what depends on this definition version.',
     GetDependentsInputSchema.shape,
     createToolHandler(GetDependentsInputSchema, (n) =>
-      registryClient.dependencies.getDependents(
-        n.type,
-        n.name,
-        n.version
-      )
+      registryClient.dependencies.getDependents(n.type, n.name, n.version)
     )
   );
 }

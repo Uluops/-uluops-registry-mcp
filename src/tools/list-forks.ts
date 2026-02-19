@@ -24,11 +24,7 @@ export function registerListForksTool(
     'List all forks of a definition version.',
     ListForksInputSchema.shape,
     createToolHandler(ListForksInputSchema, (n) =>
-      registryClient.forks.list(
-        n.type,
-        n.name,
-        n.version
-      )
+      registryClient.forks.list(n.type, n.name, n.version)
     )
   );
 }

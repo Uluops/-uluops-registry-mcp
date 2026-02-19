@@ -22,8 +22,6 @@ export function registerGetModelTool(
     'get_model',
     'Get details for a specific AI model by provider and model ID.',
     GetModelInputSchema.shape,
-    createToolHandler(GetModelInputSchema, (n) =>
-      registryClient.models.get(n.provider, n.modelId)
-    )
+    createToolHandler(GetModelInputSchema, (n) => registryClient.models.get(n.provider, n.modelId))
   );
 }

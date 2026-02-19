@@ -16,7 +16,8 @@ const DEFINITION_TYPES = [
   },
   {
     type: 'workflow',
-    description: 'Multi-phase orchestration pipelines that sequence commands with gates and dependencies',
+    description:
+      'Multi-phase orchestration pipelines that sequence commands with gates and dependencies',
   },
   {
     type: 'pipeline',
@@ -24,9 +25,7 @@ const DEFINITION_TYPES = [
   },
 ];
 
-export function registerDefinitionTypesResource(
-  server: McpServerResourceRegistration
-): void {
+export function registerDefinitionTypesResource(server: McpServerResourceRegistration): void {
   server.resource(
     'definition-types',
     'registry://definition-types',

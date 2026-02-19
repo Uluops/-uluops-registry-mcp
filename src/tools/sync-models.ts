@@ -19,8 +19,6 @@ export function registerSyncModelsTool(
     'sync_models',
     'Sync the model catalog with upstream providers (admin operation).',
     SyncModelsInputSchema.shape,
-    createToolHandler(SyncModelsInputSchema, () =>
-      registryClient.models.sync()
-    )
+    createToolHandler(SyncModelsInputSchema, () => registryClient.models.sync())
   );
 }

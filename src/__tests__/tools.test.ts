@@ -62,7 +62,9 @@ type ToolEntry = {
   name: string;
   description: string;
   schema: unknown;
-  handler: (args: unknown) => Promise<{ content: { type: string; text: string }[]; isError?: boolean }>;
+  handler: (
+    args: unknown
+  ) => Promise<{ content: { type: string; text: string }[]; isError?: boolean }>;
 };
 
 function createMockServer(): McpServerToolRegistration & { tools: ToolEntry[] } {
@@ -90,7 +92,9 @@ function createMockRegistryClient(): RegistryClient {
     models: {
       list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
       get: vi.fn().mockResolvedValue({ provider: 'anthropic', modelId: 'claude-sonnet-4-5' }),
-      resolveAlias: vi.fn().mockResolvedValue({ provider: 'anthropic', modelId: 'claude-sonnet-4-5' }),
+      resolveAlias: vi
+        .fn()
+        .mockResolvedValue({ provider: 'anthropic', modelId: 'claude-sonnet-4-5' }),
       listProviders: vi.fn().mockResolvedValue([{ id: 'anthropic', name: 'Anthropic' }]),
       listAliases: vi.fn().mockResolvedValue([{ alias: 'sonnet', provider: 'anthropic' }]),
       sync: vi.fn().mockResolvedValue({ synced: 5 }),
@@ -170,7 +174,13 @@ describe('Tool Registration & SDK Calls', () => {
 
     it('remaps page→offset, sort→sortBy, order→sortOrder, tags→tag', async () => {
       registerListDefinitionsTool(server, client);
-      await getHandler(server)({ page: 2, limit: 10, sort: 'name', order: 'desc', tags: ['security'] });
+      await getHandler(server)({
+        page: 2,
+        limit: 10,
+        sort: 'name',
+        order: 'desc',
+        tags: ['security'],
+      });
       expect(client.definitions.list).toHaveBeenCalledWith(
         expect.objectContaining({
           offset: 10,
@@ -329,7 +339,8 @@ describe('Tool Registration & SDK Calls', () => {
         version: '1.0.0',
         yaml: 'content: here',
       });
-      const body = (client.definitions.update as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<string, unknown>;
+      const body = (client.definitions.update as ReturnType<typeof vi.fn>).mock
+        .calls[0][3] as Record<string, unknown>;
       expect(body).toHaveProperty('yaml');
       expect(body).not.toHaveProperty('visibility');
       expect(body).not.toHaveProperty('description');
@@ -382,7 +393,8 @@ describe('Tool Registration & SDK Calls', () => {
         version: '1.0.0',
         reason: 'No longer needed',
       });
-      const opts = (client.definitions.deprecate as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<string, unknown>;
+      const opts = (client.definitions.deprecate as ReturnType<typeof vi.fn>).mock
+        .calls[0][3] as Record<string, unknown>;
       expect(opts.reason).toBe('No longer needed');
       expect(opts).not.toHaveProperty('successor');
     });
@@ -589,7 +601,10 @@ describe('Tool Registration & SDK Calls', () => {
     it('passes empty options when depth not provided', async () => {
       registerGetDependenciesTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
-      const opts = (client.dependencies.get as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<string, unknown>;
+      const opts = (client.dependencies.get as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<
+        string,
+        unknown
+      >;
       expect(opts).toEqual({});
     });
   });
@@ -689,7 +704,10 @@ describe('Tool Registration & SDK Calls', () => {
         version: '1.0.0',
         new_name: 'my-fork',
       });
-      const opts = (client.forks.create as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<string, unknown>;
+      const opts = (client.forks.create as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<
+        string,
+        unknown
+      >;
       expect(opts.name).toBe('my-fork');
       expect(opts).not.toHaveProperty('description');
     });
@@ -729,7 +747,8 @@ describe('Tool Registration & SDK Calls', () => {
         name: 'test',
         version: '1.0.0',
       });
-      const opts = (client.executions.record as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<string, unknown>;
+      const opts = (client.executions.record as ReturnType<typeof vi.fn>).mock
+        .calls[0][3] as Record<string, unknown>;
       expect(opts.source).toBe('mcp'); // default
       expect(opts).not.toHaveProperty('runId');
     });
@@ -786,7 +805,8 @@ describe('Tool Registration & SDK Calls', () => {
     it('passes empty options when force not provided', async () => {
       registerRetranslateDefinitionTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
-      const opts = (client.translation.retranslate as ReturnType<typeof vi.fn>).mock.calls[0][3] as Record<string, unknown>;
+      const opts = (client.translation.retranslate as ReturnType<typeof vi.fn>).mock
+        .calls[0][3] as Record<string, unknown>;
       expect(opts).toEqual({});
     });
   });

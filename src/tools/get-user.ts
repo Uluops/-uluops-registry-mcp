@@ -21,8 +21,6 @@ export function registerGetUserTool(
     'get_user',
     'Get a public user profile by ID.',
     GetUserInputSchema.shape,
-    createToolHandler(GetUserInputSchema, (n) =>
-      registryClient.users.get(n.id)
-    )
+    createToolHandler(GetUserInputSchema, (n) => registryClient.users.get(n.id))
   );
 }

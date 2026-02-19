@@ -19,8 +19,6 @@ export function registerListProvidersTool(
     'list_providers',
     'List all available AI model providers.',
     ListProvidersInputSchema.shape,
-    createToolHandler(ListProvidersInputSchema, () =>
-      registryClient.models.listProviders()
-    )
+    createToolHandler(ListProvidersInputSchema, () => registryClient.models.listProviders())
   );
 }

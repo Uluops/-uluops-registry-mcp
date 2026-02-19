@@ -60,6 +60,8 @@ async function main(): Promise<void> {
 
       burstThreshold: 15,
       burstWindowMs: 5000,
+      // Disabled: this MCP server is designed for programmatic use by Claude Code;
+      // automation is the expected usage pattern, not abuse.
       automationDetection: {
         enabled: false,
       },

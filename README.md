@@ -52,6 +52,10 @@ All configuration is passed via environment variables in the `env` block of `.mc
 | `ULUOPS_REGISTRY_TIMEOUT` | Request timeout (ms) | No | 30000 |
 | `ULUOPS_REGISTRY_RETRIES` | Retry attempts | No | 3 |
 | `LOG_LEVEL` | Logging level | No | info |
+| `ENABLE_FILE_LOGGING` | Write logs to disk | No | false |
+| `LOG_DIR` | Log file directory | No | ./logs |
+| `VERBOSE_LOGGING` | Verbose security decision logging | No | false |
+| `LOG_PERFORMANCE_METRICS` | Log performance metrics | No | false |
 
 A `.env.example` is included for reference if you prefer file-based config during development.
 
@@ -74,6 +78,10 @@ resolve_alias({ alias: "sonnet" })
 
 // Validate YAML before publishing
 validate_definition({ type: "agent", yaml: "..." })
+
+// Create and publish a definition
+create_definition({ type: "agent", name: "my-agent", yaml: "name: my-agent\nversion: 1.0.0\n..." })
+publish_definition({ type: "agent", name: "my-agent", version: "1.0.0" })
 ```
 
 ## Available Tools

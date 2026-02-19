@@ -21,17 +21,22 @@ export function registerDefinitionsResource(
       mimeType: 'application/json',
     },
     async () => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         const result = await Promise.race([
           registryClient.definitions.list({ status: 'published', limit: 100 }),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Resource request timed out')), RESOURCE_TIMEOUT_MS)
-          ),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => {
+              reject(new Error('Resource request timed out'));
+            }, RESOURCE_TIMEOUT_MS);
+          }),
         ]);
         return createResourceResponse('registry://definitions', result);
       } catch (error) {
         const raw = error instanceof Error ? error.message : 'Unknown error';
         return createErrorResourceResponse('registry://definitions', sanitizeErrorMessage(raw));
+      } finally {
+        clearTimeout(timer);
       }
     }
   );

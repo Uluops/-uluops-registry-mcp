@@ -27,12 +27,7 @@ export function registerRetranslateDefinitionTool(
     createToolHandler(RetranslateDefinitionInputSchema, (n) => {
       const options: Record<string, unknown> = {};
       if (n.force !== undefined) options.createNewVersion = n.force;
-      return registryClient.translation.retranslate(
-        n.type,
-        n.name,
-        n.version,
-        options
-      );
+      return registryClient.translation.retranslate(n.type, n.name, n.version, options);
     })
   );
 }

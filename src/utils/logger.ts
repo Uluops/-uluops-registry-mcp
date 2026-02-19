@@ -5,7 +5,7 @@
  */
 
 import { appendFileSync, mkdirSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve, isAbsolute } from 'node:path';
 import type { LogLevel } from '../types/index.js';
 
 export interface LoggerConfig {
@@ -47,6 +47,26 @@ function getLogFilePath(logDir: string): string {
   return join(logDir, `registry-mcp-${date}.log`);
 }
 
+/**
+ * Validate that a log directory path is safe to write to.
+ * Rejects paths containing traversal sequences or pointing outside the working tree.
+ */
+function validateLogDir(logDir: string): string {
+  const resolved = resolve(logDir);
+  const cwd = process.cwd();
+  // Reject path traversal patterns
+  if (logDir.includes('..')) {
+    throw new Error(`LOG_DIR must not contain path traversal sequences: ${logDir}`);
+  }
+  // Absolute paths must be under cwd or a well-known logs location
+  if (isAbsolute(logDir) && !resolved.startsWith(cwd) && !resolved.startsWith('/tmp/')) {
+    throw new Error(
+      `LOG_DIR absolute path must be under the working directory or /tmp/: ${logDir}`
+    );
+  }
+  return resolved;
+}
+
 function ensureLogDir(logDir: string): void {
   if (!existsSync(logDir)) {
     mkdirSync(logDir, { recursive: true });
@@ -57,7 +77,8 @@ export function createLogger(config: LoggerConfig | LogLevel): Logger {
   const resolvedConfig: LoggerConfig = typeof config === 'string' ? { level: config } : config;
   const { level, enableFileLogging = false, logDir } = resolvedConfig;
   const minLevel = LOG_LEVELS[level];
-  const resolvedLogDir = logDir ?? join(process.cwd(), 'logs');
+  const rawLogDir = logDir ?? join(process.cwd(), 'logs');
+  const resolvedLogDir = enableFileLogging ? validateLogDir(rawLogDir) : rawLogDir;
 
   if (enableFileLogging) {
     ensureLogDir(resolvedLogDir);
@@ -80,7 +101,9 @@ export function createLogger(config: LoggerConfig | LogLevel): Logger {
       } catch {
         if (!fileLoggingFailed) {
           fileLoggingFailed = true;
-          console.error(formatLogEntry('warn', 'File logging failed, further file log errors suppressed'));
+          console.error(
+            formatLogEntry('warn', 'File logging failed, further file log errors suppressed')
+          );
         }
       }
     }

@@ -27,8 +27,6 @@ export function registerListModelsTool(
     'list_models',
     'List available AI models with optional provider, tier, and status filters.',
     ListModelsInputSchema.shape,
-    createToolHandler(ListModelsInputSchema, (n) =>
-      registryClient.models.list(n)
-    )
+    createToolHandler(ListModelsInputSchema, (n) => registryClient.models.list(n))
   );
 }

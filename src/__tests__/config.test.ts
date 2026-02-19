@@ -127,62 +127,98 @@ describe('validateConfig', () => {
   });
 
   it('throws when baseUrl is empty', () => {
-    expect(() => validateConfig(makeConfig({ api: { baseUrl: '', apiKey: 'key', timeout: 30000, retries: 3 } }))).toThrow(
-      'Registry API base URL is required'
-    );
+    expect(() =>
+      validateConfig(
+        makeConfig({ api: { baseUrl: '', apiKey: 'key', timeout: 30000, retries: 3 } })
+      )
+    ).toThrow('Registry API base URL is required');
   });
 
   it('throws when baseUrl is invalid URL', () => {
     expect(() =>
-      validateConfig(makeConfig({ api: { baseUrl: 'not-a-url', apiKey: 'key', timeout: 30000, retries: 3 } }))
+      validateConfig(
+        makeConfig({ api: { baseUrl: 'not-a-url', apiKey: 'key', timeout: 30000, retries: 3 } })
+      )
     ).toThrow('Invalid Registry API URL');
   });
 
   it('throws when baseUrl uses non-http scheme', () => {
     expect(() =>
-      validateConfig(makeConfig({ api: { baseUrl: 'file:///etc/passwd', apiKey: 'key', timeout: 30000, retries: 3 } }))
+      validateConfig(
+        makeConfig({
+          api: { baseUrl: 'file:///etc/passwd', apiKey: 'key', timeout: 30000, retries: 3 },
+        })
+      )
     ).toThrow('must use http or https scheme');
   });
 
   it('accepts https URLs', () => {
     expect(() =>
-      validateConfig(makeConfig({ api: { baseUrl: 'https://api.example.com', apiKey: 'key', timeout: 30000, retries: 3 } }))
+      validateConfig(
+        makeConfig({
+          api: { baseUrl: 'https://api.example.com', apiKey: 'key', timeout: 30000, retries: 3 },
+        })
+      )
     ).not.toThrow();
   });
 
   it('throws when apiKey is missing', () => {
     expect(() =>
-      validateConfig(makeConfig({ api: { baseUrl: 'http://localhost:3001', apiKey: undefined, timeout: 30000, retries: 3 } }))
+      validateConfig(
+        makeConfig({
+          api: { baseUrl: 'http://localhost:3001', apiKey: undefined, timeout: 30000, retries: 3 },
+        })
+      )
     ).toThrow('API key is required');
   });
 
   it('throws when apiKey is empty string', () => {
     expect(() =>
-      validateConfig(makeConfig({ api: { baseUrl: 'http://localhost:3001', apiKey: '', timeout: 30000, retries: 3 } }))
+      validateConfig(
+        makeConfig({
+          api: { baseUrl: 'http://localhost:3001', apiKey: '', timeout: 30000, retries: 3 },
+        })
+      )
     ).toThrow('API key is required');
   });
 
   it('throws when timeout is zero', () => {
     expect(() =>
-      validateConfig(makeConfig({ api: { baseUrl: 'http://localhost:3001', apiKey: 'key', timeout: 0, retries: 3 } }))
+      validateConfig(
+        makeConfig({
+          api: { baseUrl: 'http://localhost:3001', apiKey: 'key', timeout: 0, retries: 3 },
+        })
+      )
     ).toThrow('Timeout must be a positive number');
   });
 
   it('throws when timeout is negative', () => {
     expect(() =>
-      validateConfig(makeConfig({ api: { baseUrl: 'http://localhost:3001', apiKey: 'key', timeout: -1, retries: 3 } }))
+      validateConfig(
+        makeConfig({
+          api: { baseUrl: 'http://localhost:3001', apiKey: 'key', timeout: -1, retries: 3 },
+        })
+      )
     ).toThrow('Timeout must be a positive number');
   });
 
   it('throws when retries is negative', () => {
     expect(() =>
-      validateConfig(makeConfig({ api: { baseUrl: 'http://localhost:3001', apiKey: 'key', timeout: 30000, retries: -1 } }))
+      validateConfig(
+        makeConfig({
+          api: { baseUrl: 'http://localhost:3001', apiKey: 'key', timeout: 30000, retries: -1 },
+        })
+      )
     ).toThrow('Retries must be a non-negative number');
   });
 
   it('allows zero retries', () => {
     expect(() =>
-      validateConfig(makeConfig({ api: { baseUrl: 'http://localhost:3001', apiKey: 'key', timeout: 30000, retries: 0 } }))
+      validateConfig(
+        makeConfig({
+          api: { baseUrl: 'http://localhost:3001', apiKey: 'key', timeout: 30000, retries: 0 },
+        })
+      )
     ).not.toThrow();
   });
 });

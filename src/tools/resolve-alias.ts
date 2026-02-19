@@ -21,8 +21,6 @@ export function registerResolveAliasTool(
     'resolve_alias',
     'Resolve a model alias (e.g. "sonnet", "haiku") to its provider and model ID.',
     ResolveAliasInputSchema.shape,
-    createToolHandler(ResolveAliasInputSchema, (n) =>
-      registryClient.models.resolveAlias(n.alias)
-    )
+    createToolHandler(ResolveAliasInputSchema, (n) => registryClient.models.resolveAlias(n.alias))
   );
 }

@@ -31,12 +31,7 @@ export function registerGetDefinitionTool(
       if (n.includeYaml !== undefined) options.includeYaml = n.includeYaml;
       if (n.includeRuntime !== undefined) options.includeRuntime = n.includeRuntime;
       if (n.includeRefs !== undefined) options.includeRefs = n.includeRefs;
-      return registryClient.definitions.get(
-        n.type,
-        n.name,
-        n.version,
-        options
-      );
+      return registryClient.definitions.get(n.type, n.name, n.version, options);
     })
   );
 }

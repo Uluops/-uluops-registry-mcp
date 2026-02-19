@@ -27,12 +27,7 @@ export function registerGetDependenciesTool(
     createToolHandler(GetDependenciesInputSchema, (n) => {
       const options: Record<string, unknown> = {};
       if (n.depth !== undefined) options.maxDepth = n.depth;
-      return registryClient.dependencies.get(
-        n.type,
-        n.name,
-        n.version,
-        options
-      );
+      return registryClient.dependencies.get(n.type, n.name, n.version, options);
     })
   );
 }

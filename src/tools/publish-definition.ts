@@ -24,11 +24,7 @@ export function registerPublishDefinitionTool(
     'Publish a draft definition version, making it available for use.',
     PublishDefinitionInputSchema.shape,
     createToolHandler(PublishDefinitionInputSchema, (n) =>
-      registryClient.definitions.publish(
-        n.type,
-        n.name,
-        n.version
-      )
+      registryClient.definitions.publish(n.type, n.name, n.version)
     )
   );
 }

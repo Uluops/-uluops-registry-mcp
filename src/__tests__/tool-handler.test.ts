@@ -77,9 +77,7 @@ describe('createToolHandler', () => {
     });
 
     await handler({ definition_type: 'agent' });
-    expect(sdkCall).toHaveBeenCalledWith(
-      expect.objectContaining({ definitionType: 'AGENT' })
-    );
+    expect(sdkCall).toHaveBeenCalledWith(expect.objectContaining({ definitionType: 'AGENT' }));
   });
 
   it('supports preProcess short-circuit with McpToolResponse', async () => {
@@ -104,8 +102,6 @@ describe('createToolHandler', () => {
 
     await handler({ definition_type: 'agent' });
     // sdkCall should be called because preProcess returned TInput, not McpToolResponse
-    expect(sdkCall).toHaveBeenCalledWith(
-      expect.objectContaining({ definitionType: 'modified' })
-    );
+    expect(sdkCall).toHaveBeenCalledWith(expect.objectContaining({ definitionType: 'modified' }));
   });
 });

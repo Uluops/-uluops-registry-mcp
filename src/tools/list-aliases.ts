@@ -19,8 +19,6 @@ export function registerListAliasesTool(
     'list_aliases',
     'List all model aliases and their resolved provider+model mappings.',
     ListAliasesInputSchema.shape,
-    createToolHandler(ListAliasesInputSchema, () =>
-      registryClient.models.listAliases()
-    )
+    createToolHandler(ListAliasesInputSchema, () => registryClient.models.listAliases())
   );
 }

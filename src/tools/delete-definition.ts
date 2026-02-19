@@ -24,11 +24,7 @@ export function registerDeleteDefinitionTool(
     'Delete a definition version. Blocked only if other definitions fork from or depend on it.',
     DeleteDefinitionInputSchema.shape,
     createToolHandler(DeleteDefinitionInputSchema, (n) =>
-      registryClient.definitions.delete(
-        n.type,
-        n.name,
-        n.version
-      )
+      registryClient.definitions.delete(n.type, n.name, n.version)
     )
   );
 }

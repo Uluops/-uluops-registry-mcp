@@ -25,12 +25,7 @@ export function registerDiffVersionsTool(
     'Compare two versions of a definition, showing YAML differences.',
     DiffVersionsInputSchema.shape,
     createToolHandler(DiffVersionsInputSchema, (n) =>
-      registryClient.versions.diff(
-        n.type,
-        n.name,
-        n.from,
-        n.to
-      )
+      registryClient.versions.diff(n.type, n.name, n.from, n.to)
     )
   );
 }

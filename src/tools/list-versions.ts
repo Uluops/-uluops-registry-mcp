@@ -22,8 +22,6 @@ export function registerListVersionsTool(
     'list_versions',
     'List all versions of a definition with their status and metadata.',
     ListVersionsInputSchema.shape,
-    createToolHandler(ListVersionsInputSchema, (n) =>
-      registryClient.versions.list(n.type, n.name)
-    )
+    createToolHandler(ListVersionsInputSchema, (n) => registryClient.versions.list(n.type, n.name))
   );
 }

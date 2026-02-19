@@ -56,6 +56,9 @@
     "mcp-secure-server": "^0.0.6-security",
     "zod": "^3.23.0"
   },
+  "overrides": {
+    "mcp-secure-server>minimatch": ">=10.2.1"
+  },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@types/node": "^22.10.0",

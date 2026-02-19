@@ -25,12 +25,7 @@ export function registerGetExecutionStatsTool(
     'Get execution statistics for a definition version. Optional window parameter (days).',
     GetExecutionStatsInputSchema.shape,
     createToolHandler(GetExecutionStatsInputSchema, (n) =>
-      registryClient.executions.getStats(
-        n.type,
-        n.name,
-        n.version,
-        n.window
-      )
+      registryClient.executions.getStats(n.type, n.name, n.version, n.window)
     )
   );
 }

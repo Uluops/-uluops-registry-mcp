@@ -17,9 +17,10 @@ export interface McpToolResponse {
  * Handles void/undefined SDK responses (e.g., delete operations).
  */
 export function createSuccessResponse(data: unknown): McpToolResponse {
-  const text = data === undefined || data === null
-    ? JSON.stringify({ success: true })
-    : JSON.stringify(data, null, 2);
+  const text =
+    data === undefined || data === null
+      ? JSON.stringify({ success: true })
+      : JSON.stringify(data, null, 2);
   return {
     content: [{ type: 'text', text }],
   };

@@ -93,4 +93,25 @@ describe('createLogger', () => {
     const parsed = JSON.parse(output);
     expect(parsed).not.toHaveProperty('context');
   });
+
+  it('rejects LOG_DIR with path traversal sequences', () => {
+    expect(() =>
+      createLogger({ level: 'info', enableFileLogging: true, logDir: '../../../etc' })
+    ).toThrow('LOG_DIR must not contain path traversal sequences');
+  });
+
+  it('rejects absolute LOG_DIR outside working directory', () => {
+    expect(() =>
+      createLogger({ level: 'info', enableFileLogging: true, logDir: '/etc/passwd' })
+    ).toThrow('LOG_DIR absolute path must be under the working directory or /tmp/');
+  });
+
+  it('accepts LOG_DIR under /tmp/', () => {
+    const logger = createLogger({
+      level: 'info',
+      enableFileLogging: true,
+      logDir: '/tmp/test-logs',
+    });
+    expect(logger).toHaveProperty('info');
+  });
 });

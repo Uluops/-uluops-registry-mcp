@@ -94,4 +94,18 @@ describe('createToolHandler', () => {
     expect(sdkCall).not.toHaveBeenCalled();
     expect(JSON.parse(result.content[0].text)).toEqual({ cached: true });
   });
+
+  it('does not treat objects with non-array content as McpToolResponse', async () => {
+    const sdkCall = vi.fn().mockResolvedValue({});
+    const handler = createToolHandler(testSchema, sdkCall, {
+      // preProcess returns a TInput-shaped object that has a "content" property (string, not array)
+      preProcess: (input) => ({ ...input, definition_type: 'modified' }),
+    });
+
+    await handler({ definition_type: 'agent' });
+    // sdkCall should be called because preProcess returned TInput, not McpToolResponse
+    expect(sdkCall).toHaveBeenCalledWith(
+      expect.objectContaining({ definitionType: 'modified' })
+    );
+  });
 });

@@ -21,6 +21,11 @@ const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
 
 async function main(): Promise<void> {
+  if (process.argv.includes('--version') || process.argv.includes('-v')) {
+    console.log(version);
+    process.exit(0);
+  }
+
   const config = loadConfig();
   validateConfig(config);
 

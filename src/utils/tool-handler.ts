@@ -10,6 +10,15 @@ import { mapSdkErrorToMcp, mapZodErrorToMcp } from '../client/sdk-error-mapper.j
 import { normalizeKeys } from './normalize-keys.js';
 import { createSuccessResponse, type McpToolResponse } from '../types/index.js';
 
+function isMcpToolResponse(value: unknown): value is McpToolResponse {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'content' in value &&
+    Array.isArray((value as McpToolResponse).content)
+  );
+}
+
 /**
  * Creates a standardized tool handler with Zod validation, key normalization,
  * and SDK error mapping.
@@ -34,10 +43,10 @@ export function createToolHandler<TInput>(
 
       if (options?.preProcess) {
         const preResult = options.preProcess(input);
-        if ('content' in (preResult as McpToolResponse)) {
-          return preResult as McpToolResponse;
+        if (isMcpToolResponse(preResult)) {
+          return preResult;
         }
-        input = preResult as TInput;
+        input = preResult;
       }
 
       const normalized = normalizeKeys(input) as Record<string, unknown>;

@@ -182,12 +182,14 @@ describe('Tool Registration & SDK Calls', () => {
       );
     });
 
-    it('returns data as JSON', async () => {
+    it('returns data as JSON with correct response shape', async () => {
       const mockData = { items: [{ name: 'test' }], total: 1 };
       (client.definitions.list as ReturnType<typeof vi.fn>).mockResolvedValue(mockData);
       registerListDefinitionsTool(server, client);
       const result = await getHandler(server)({});
       expect(result.isError).toBeUndefined();
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0].type).toBe('text');
       expect(parseResult(result)).toEqual(mockData);
     });
 
@@ -219,6 +221,16 @@ describe('Tool Registration & SDK Calls', () => {
         '1.0.0',
         expect.objectContaining({ includeYaml: true, includeRuntime: false })
       );
+    });
+
+    it('returns response with correct shape', async () => {
+      registerGetDefinitionTool(server, client);
+      const result = await getHandler(server)({ type: 'agent', name: 'code-validator' });
+      expect(result.isError).toBeUndefined();
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0].type).toBe('text');
+      const parsed = parseResult(result) as { name: string };
+      expect(parsed.name).toBe('test');
     });
 
     it('rejects missing required name', async () => {
@@ -425,6 +437,16 @@ describe('Tool Registration & SDK Calls', () => {
       await getHandler(server)({});
       expect(client.models.list).toHaveBeenCalled();
     });
+
+    it('returns response with correct shape', async () => {
+      registerListModelsTool(server, client);
+      const result = await getHandler(server)({});
+      expect(result.isError).toBeUndefined();
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0].type).toBe('text');
+      const parsed = parseResult(result) as { items: unknown[] };
+      expect(parsed).toHaveProperty('items');
+    });
   });
 
   describe('get_model', () => {
@@ -456,6 +478,15 @@ describe('Tool Registration & SDK Calls', () => {
       registerResolveAliasTool(server, client);
       await getHandler(server)({ alias: 'sonnet' });
       expect(client.models.resolveAlias).toHaveBeenCalledWith('sonnet');
+    });
+
+    it('returns resolved model in response', async () => {
+      registerResolveAliasTool(server, client);
+      const result = await getHandler(server)({ alias: 'sonnet' });
+      expect(result.isError).toBeUndefined();
+      const parsed = parseResult(result) as { provider: string; modelId: string };
+      expect(parsed.provider).toBe('anthropic');
+      expect(parsed.modelId).toBe('claude-sonnet-4-5');
     });
   });
 
@@ -591,6 +622,14 @@ describe('Tool Registration & SDK Calls', () => {
       await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
       expect(client.forks.list).toHaveBeenCalledWith('agent', 'test', '1.0.0');
     });
+
+    it('returns response with correct shape', async () => {
+      registerListForksTool(server, client);
+      const result = await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      expect(result.isError).toBeUndefined();
+      const parsed = parseResult(result) as { forks: unknown[] };
+      expect(parsed).toHaveProperty('forks');
+    });
   });
 
   describe('check_forkable', () => {
@@ -712,6 +751,14 @@ describe('Tool Registration & SDK Calls', () => {
       registerGetExecutionStatsTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
       expect(client.executions.getStats).toHaveBeenCalledWith('agent', 'test', '1.0.0', undefined);
+    });
+
+    it('returns execution stats in response', async () => {
+      registerGetExecutionStatsTool(server, client);
+      const result = await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      expect(result.isError).toBeUndefined();
+      const parsed = parseResult(result) as { totalExecutions: number };
+      expect(parsed.totalExecutions).toBe(0);
     });
   });
 

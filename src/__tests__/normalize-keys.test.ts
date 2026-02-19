@@ -69,4 +69,28 @@ describe('normalizeKeys', () => {
     // Top levels should be converted (snake_case -> camelCase)
     expect(result).toHaveProperty('level24');
   });
+
+  it('does not convert keys beyond max depth', () => {
+    // Build exactly 21 levels (depth 0-20), so the innermost object hits depth > 20
+    let deep: Record<string, unknown> = { leaf_key: 'value' };
+    for (let i = 0; i < 21; i++) {
+      deep = { [`level_${String(i)}`]: deep };
+    }
+    // Drill down to the leaf through the result
+    let node = normalizeKeys(deep) as Record<string, unknown>;
+    for (let i = 20; i >= 1; i--) {
+      node = node[`level${String(i)}`] as Record<string, unknown>;
+    }
+    // At depth 21, the innermost key should NOT be converted (still snake_case)
+    const innermost = node.level0 as Record<string, unknown>;
+    expect(innermost).toHaveProperty('leaf_key');
+    expect(innermost).not.toHaveProperty('leafKey');
+  });
+
+  it('does not mutate the original input', () => {
+    const input = { snake_key: 'value', nested: { inner_key: 42 } };
+    const inputCopy = JSON.parse(JSON.stringify(input));
+    normalizeKeys(input);
+    expect(input).toEqual(inputCopy);
+  });
 });

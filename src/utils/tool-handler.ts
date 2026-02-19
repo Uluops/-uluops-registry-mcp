@@ -10,6 +10,7 @@ import { mapSdkErrorToMcp, mapZodErrorToMcp } from '../client/sdk-error-mapper.j
 import { normalizeKeys } from './normalize-keys.js';
 import { createSuccessResponse, type McpToolResponse } from '../types/index.js';
 
+/** Type guard: checks if a value is a complete MCP tool response (has content array). */
 function isMcpToolResponse(value: unknown): value is McpToolResponse {
   return (
     typeof value === 'object' &&
@@ -31,6 +32,9 @@ function isMcpToolResponse(value: unknown): value is McpToolResponse {
  */
 export function createToolHandler<TInput>(
   schema: z.ZodSchema<TInput>,
+  // SAFETY: Zod validates input structure before normalizeKeys() runs. The callback receives
+  // `any` because TypeScript cannot statically track the snake_case→camelCase key renaming.
+  // Each tool extracts positional args (n.type, n.name, etc.) which are guaranteed valid by Zod.
   sdkCall: (normalized: any) => Promise<unknown>,
   options?: {
     /** Transform parsed input before normalization. Return McpToolResponse to short-circuit. */

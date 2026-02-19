@@ -16,11 +16,16 @@ export interface McpToolResponse {
  * Create a successful MCP tool response.
  * Handles void/undefined SDK responses (e.g., delete operations).
  */
+/** JSON replacer that converts BigInt to string to prevent serialization errors. */
+function safeReplacer(_key: string, value: unknown): unknown {
+  return typeof value === 'bigint' ? value.toString() : value;
+}
+
 export function createSuccessResponse(data: unknown): McpToolResponse {
   const text =
     data === undefined || data === null
       ? JSON.stringify({ success: true })
-      : JSON.stringify(data, null, 2);
+      : JSON.stringify(data, safeReplacer, 2);
   return {
     content: [{ type: 'text', text }],
   };

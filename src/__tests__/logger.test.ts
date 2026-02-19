@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { existsSync, readFileSync, readdirSync, rmSync, mkdirSync } from 'node:fs';
 import { createLogger } from '../utils/logger.js';
 
 describe('createLogger', () => {
@@ -113,5 +114,32 @@ describe('createLogger', () => {
       logDir: '/tmp/test-logs',
     });
     expect(logger).toHaveProperty('info');
+  });
+
+  it('writes log entries to file when file logging is enabled', () => {
+    const logDir = '/tmp/registry-mcp-test-logs';
+
+    // Clean up from any prior run
+    if (existsSync(logDir)) {
+      rmSync(logDir, { recursive: true });
+    }
+    mkdirSync(logDir, { recursive: true });
+
+    const logger = createLogger({
+      level: 'info',
+      enableFileLogging: true,
+      logDir,
+    });
+
+    logger.info('file logging test');
+
+    const files = readdirSync(logDir).filter((f) => f.endsWith('.log'));
+    expect(files.length).toBeGreaterThan(0);
+
+    const content = readFileSync(`${logDir}/${files[0] ?? ''}`, 'utf-8');
+    expect(content).toContain('file logging test');
+
+    // Clean up
+    rmSync(logDir, { recursive: true });
   });
 });

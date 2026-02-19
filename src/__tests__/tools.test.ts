@@ -508,10 +508,13 @@ describe('Tool Registration & SDK Calls', () => {
       expect(server.tools[0].name).toBe('list_providers');
     });
 
-    it('calls SDK with no arguments', async () => {
+    it('calls SDK and returns providers in response', async () => {
       registerListProvidersTool(server, client);
-      await getHandler(server)({});
+      const result = await getHandler(server)({});
       expect(client.models.listProviders).toHaveBeenCalled();
+      expect(result.isError).toBeUndefined();
+      const parsed = parseResult(result) as { id: string }[];
+      expect(parsed[0].id).toBe('anthropic');
     });
   });
 
@@ -521,10 +524,13 @@ describe('Tool Registration & SDK Calls', () => {
       expect(server.tools[0].name).toBe('list_aliases');
     });
 
-    it('calls SDK with no arguments', async () => {
+    it('calls SDK and returns aliases in response', async () => {
       registerListAliasesTool(server, client);
-      await getHandler(server)({});
+      const result = await getHandler(server)({});
       expect(client.models.listAliases).toHaveBeenCalled();
+      expect(result.isError).toBeUndefined();
+      const parsed = parseResult(result) as { alias: string }[];
+      expect(parsed[0].alias).toBe('sonnet');
     });
   });
 
@@ -534,10 +540,13 @@ describe('Tool Registration & SDK Calls', () => {
       expect(server.tools[0].name).toBe('sync_models');
     });
 
-    it('calls SDK with no arguments', async () => {
+    it('calls SDK and returns sync result in response', async () => {
       registerSyncModelsTool(server, client);
-      await getHandler(server)({});
+      const result = await getHandler(server)({});
       expect(client.models.sync).toHaveBeenCalled();
+      expect(result.isError).toBeUndefined();
+      const parsed = parseResult(result) as { synced: number };
+      expect(parsed.synced).toBe(5);
     });
   });
 
@@ -817,10 +826,13 @@ describe('Tool Registration & SDK Calls', () => {
       expect(server.tools[0].name).toBe('get_translator_version');
     });
 
-    it('calls SDK with no arguments', async () => {
+    it('calls SDK and returns version in response', async () => {
       registerGetTranslatorVersionTool(server, client);
-      await getHandler(server)({});
+      const result = await getHandler(server)({});
       expect(client.translation.getVersion).toHaveBeenCalled();
+      expect(result.isError).toBeUndefined();
+      const parsed = parseResult(result) as { version: string };
+      expect(parsed.version).toBe('2.0.0');
     });
 
     it('returns version data', async () => {

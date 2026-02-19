@@ -15,6 +15,7 @@ import {
   isConflictError,
   isUnprocessableError,
 } from '@uluops/registry-sdk/errors';
+import type { ZodError } from 'zod';
 import type { McpToolResponse } from '../types/index.js';
 
 const MAX_ERROR_MESSAGE_LENGTH = 200;
@@ -92,15 +93,13 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
 export function mapZodErrorToMcp(error: unknown): McpToolResponse {
   let message = 'Invalid input parameters';
 
-  if (error instanceof Error) {
-    const zodError = error as { errors?: Array<{ path: string[]; message: string }> };
-    if (zodError.errors && Array.isArray(zodError.errors)) {
-      const details = zodError.errors
-        .slice(0, 3)
-        .map((e) => `${e.path.join('.')}: ${e.message}`)
-        .join('; ');
-      message = `Validation failed: ${details}`;
-    }
+  if (error instanceof Error && 'issues' in error) {
+    const zodError = error as ZodError<unknown>;
+    const details = zodError.issues
+      .slice(0, 3)
+      .map((e) => `${e.path.join('.')}: ${e.message}`)
+      .join('; ');
+    message = `Validation failed: ${details}`;
   }
 
   return {

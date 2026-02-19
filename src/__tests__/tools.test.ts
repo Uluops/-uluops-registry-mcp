@@ -203,6 +203,29 @@ describe('Tool Registration & SDK Calls', () => {
       expect(parseResult(result)).toEqual(mockData);
     });
 
+    it('passes domain, agent_type, visibility, and search filters individually', async () => {
+      registerListDefinitionsTool(server, client);
+      await getHandler(server)({ domain: 'software', agent_type: 'validator', visibility: 'public', search: 'test' });
+      expect(client.definitions.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          domain: 'software',
+          agentType: 'validator',
+          visibility: 'public',
+          search: 'test',
+        })
+      );
+    });
+
+    it('omits undefined optional filters from SDK query', async () => {
+      registerListDefinitionsTool(server, client);
+      await getHandler(server)({ type: 'agent' });
+      const call = (client.definitions.list as ReturnType<typeof vi.fn>).mock.calls[0][0] as Record<string, unknown>;
+      expect(call).toHaveProperty('type', 'agent');
+      expect(call).not.toHaveProperty('domain');
+      expect(call).not.toHaveProperty('agentType');
+      expect(call).not.toHaveProperty('search');
+    });
+
     it('rejects invalid enum values', async () => {
       registerListDefinitionsTool(server, client);
       const result = await getHandler(server)({ type: 'invalid_type' });

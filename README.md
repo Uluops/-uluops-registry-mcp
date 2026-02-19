@@ -1,4 +1,4 @@
-# UluOps Registry MCP Client
+# UluOps Registry MCP Client v1.0.0
 
 MCP (Model Context Protocol) client for the UluOps Registry API. Provides **31 tools** and **4 resources** that enable Claude Code to browse, create, validate, and manage AI workflow definitions (agents, commands, workflows, pipelines).
 
@@ -171,19 +171,15 @@ read_resource("registry://definition-types")
 
 ## Rate Limiting Configuration
 
-This client uses [mcp-secure-server](https://github.com/anthropics/mcp-secure-server) with configuration optimized for Claude Code's usage patterns.
+This client uses [mcp-secure-server](https://github.com/anthropics/mcp-secure-server) with configuration optimized for Claude Code's usage patterns. Source of truth: `src/index.ts` (global) and `src/config/tool-registry.ts` (per-tool).
 
-```typescript
-{
-  securityLevel: 'basic',
-  maxRequestsPerMinute: 120,
-  burstThreshold: 15,
-  burstWindowMs: 5000,
-  automationDetection: {
-    enabled: false,      // Claude Code is trusted automation
-  },
-}
-```
+| Setting | Value | Notes |
+|---------|-------|-------|
+| Security level | `basic` | |
+| Max requests/min | 120 | Global rate limit |
+| Burst threshold | 15 | Requests within burst window |
+| Burst window | 5000ms | |
+| Automation detection | Disabled | Claude Code is trusted automation |
 
 Per-tool quotas are configured in `src/config/tool-registry.ts`. Read-heavy tools (list, get, search) allow up to 240 req/min. Write tools (create, update, publish) are 30-60 req/min. Admin operations like `sync_models` are tightly limited (10 req/min).
 

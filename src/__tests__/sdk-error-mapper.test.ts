@@ -85,7 +85,9 @@ const {
 } = await import('@uluops/registry-sdk/errors');
 
 function parseErrorText(response: { content: { text: string }[] }): string {
-  return JSON.parse(response.content[0].text).error;
+  const first = response.content[0];
+  if (!first) throw new Error('Expected at least one content entry');
+  return JSON.parse(first.text).error as string;
 }
 
 describe('mapSdkErrorToMcp', () => {
@@ -202,7 +204,8 @@ describe('mapSdkErrorToMcp', () => {
     const result = mapSdkErrorToMcp(new Error(longMessage));
     expect(result.isError).toBe(true);
     const text = parseErrorText(result);
-    expect(text.length).toBeLessThanOrEqual(220); // 200 + "... (truncated)"
+    // MAX_ERROR_MESSAGE_LENGTH (200) + '... (truncated)' suffix (16) = 216 max
+    expect(text.length).toBeLessThanOrEqual(216);
     expect(text).toContain('... (truncated)');
   });
 

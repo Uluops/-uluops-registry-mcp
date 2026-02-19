@@ -26,6 +26,8 @@ export function normalizeKeys(input: unknown, depth = 0): unknown {
   }
   if (input !== null && typeof input === 'object') {
     const result: Record<string, unknown> = {};
+    // SAFETY: Non-null object is guaranteed by the guard above. Object.entries requires
+    // Record<string, unknown> cast since `input` is typed as `object` (no index signature).
     for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
       result[toCamelCase(key)] = normalizeKeys(value, depth + 1);
     }

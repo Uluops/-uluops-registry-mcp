@@ -13,7 +13,7 @@ export type {
 
 // MCP types
 export type { McpTextContent, McpToolResponse } from './mcp.js';
-export { createSuccessResponse, createErrorResponse } from './mcp.js';
+export { createSuccessResponse } from './mcp.js';
 
 // Server types
 export type {

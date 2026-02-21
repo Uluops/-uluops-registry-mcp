@@ -32,10 +32,12 @@ function isMcpToolResponse(value: unknown): value is McpToolResponse {
  */
 export function createToolHandler<TInput extends Record<string, unknown>>(
   schema: z.ZodSchema<TInput>,
-  // SAFETY: Zod validates input structure before normalizeKeys() runs. The callback receives
-  // `any` because TypeScript cannot statically track the snake_case→camelCase key renaming.
-  // Each tool extracts positional args (n.type, n.name, etc.) which are guaranteed valid by Zod.
-  sdkCall: (normalized: any) => Promise<unknown>,
+  sdkCall: (
+    // SAFETY: Typed as `any` because Zod validates input structure before normalizeKeys()
+    // runs, and TypeScript cannot statically track the snake_case→camelCase key renaming.
+    // Each tool extracts positional args (n.type, n.name, etc.) guaranteed valid by Zod.
+    normalized: any
+  ) => Promise<unknown>,
   options?: {
     /** Transform parsed input before normalization. Must be synchronous (MCP SDK constraint). Return McpToolResponse to short-circuit. */
     preProcess?: (input: TInput) => TInput | McpToolResponse;

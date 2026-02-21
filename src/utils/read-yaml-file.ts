@@ -11,6 +11,12 @@ import { createErrorResponse, type McpToolResponse } from '../types/mcp.js';
 
 const ALLOWED_EXTENSIONS = new Set(['.yaml', '.yml']);
 
+/**
+ * Read a YAML file from disk synchronously.
+ * @param filePath - Absolute or relative path to a .yaml/.yml file.
+ * @returns The raw file contents as a UTF-8 string.
+ * @throws If the file has an invalid extension, does not exist, or is unreadable.
+ */
 export function readYamlFile(filePath: string): string {
   const resolved = resolve(filePath);
 
@@ -43,6 +49,12 @@ export function readYamlFile(filePath: string): string {
  *
  * When `required` is true, exactly one of yaml or file_path must be provided.
  * When `required` is false (e.g., update_definition), neither is required.
+ */
+/**
+ * Resolve yaml/file_path mutual exclusion for tool preProcess hooks.
+ * @param input - Parsed tool input containing optional `yaml` and/or `file_path`.
+ * @param options - `{ required: true }` if at least one must be provided (create/validate), `false` for update.
+ * @returns The input with `yaml` populated from file (if file_path given), or an McpToolResponse error.
  */
 export function resolveYamlInput<T extends { yaml?: string; file_path?: string }>(
   input: T,

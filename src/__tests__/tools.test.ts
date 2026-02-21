@@ -234,7 +234,12 @@ describe('Tool Registration & SDK Calls', () => {
 
     it('passes domain, agent_type, visibility, and search filters individually', async () => {
       registerListDefinitionsTool(server, client);
-      await getHandler(server)({ domain: 'software', agent_type: 'validator', visibility: 'public', search: 'test' });
+      await getHandler(server)({
+        domain: 'software',
+        agent_type: 'validator',
+        visibility: 'public',
+        search: 'test',
+      });
       expect(client.definitions.list).toHaveBeenCalledWith(
         expect.objectContaining({
           domain: 'software',
@@ -248,7 +253,10 @@ describe('Tool Registration & SDK Calls', () => {
     it('omits undefined optional filters from SDK query', async () => {
       registerListDefinitionsTool(server, client);
       await getHandler(server)({ type: 'agent' });
-      const call = (client.definitions.list as ReturnType<typeof vi.fn>).mock.calls[0][0] as Record<string, unknown>;
+      const call = (client.definitions.list as ReturnType<typeof vi.fn>).mock.calls[0][0] as Record<
+        string,
+        unknown
+      >;
       expect(call).toHaveProperty('type', 'agent');
       expect(call).not.toHaveProperty('domain');
       expect(call).not.toHaveProperty('agentType');
@@ -560,10 +568,12 @@ describe('Tool Registration & SDK Calls', () => {
       );
     });
 
-    it('works with empty args', async () => {
+    it('works with empty args and returns success response', async () => {
       registerListModelsTool(server, client);
-      await getHandler(server)({});
-      expect(client.models.list).toHaveBeenCalled();
+      const result = await getHandler(server)({});
+      expect(client.models.list).toHaveBeenCalledWith(expect.any(Object));
+      expect(result.isError).toBeUndefined();
+      expect(result.content).toHaveLength(1);
     });
 
     it('returns response with correct shape', async () => {
@@ -936,24 +946,17 @@ describe('Tool Registration & SDK Calls', () => {
     });
   });
 
-  describe('get_translator_version (no args)', () => {
+  describe('get_translator_version', () => {
     it('registers with correct name', () => {
       registerGetTranslatorVersionTool(server, client);
       expect(server.tools[0].name).toBe('get_translator_version');
     });
 
-    it('calls SDK and returns version in response', async () => {
+    it('calls SDK with empty args and returns version string', async () => {
       registerGetTranslatorVersionTool(server, client);
       const result = await getHandler(server)({});
       expect(client.translation.getVersion).toHaveBeenCalled();
       expect(result.isError).toBeUndefined();
-      const parsed = parseResult(result) as { version: string };
-      expect(parsed.version).toBe('2.0.0');
-    });
-
-    it('returns version data', async () => {
-      registerGetTranslatorVersionTool(server, client);
-      const result = await getHandler(server)({});
       expect(parseResult(result)).toEqual({ version: '2.0.0' });
     });
   });

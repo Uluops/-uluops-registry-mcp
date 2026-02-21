@@ -7,13 +7,13 @@
 
 import { z } from 'zod';
 
-// Definition types
+/** Registry definition types: agent, command, workflow, or pipeline. */
 export const DefinitionTypeSchema = z.enum(['agent', 'command', 'workflow', 'pipeline']);
 
-// Definition statuses
+/** Lifecycle statuses for definitions. */
 export const DefinitionStatusSchema = z.enum(['draft', 'published', 'deprecated']);
 
-// Domain categories
+/** Knowledge domain categories for definitions. */
 export const DomainSchema = z.enum([
   'software',
   'security',
@@ -26,23 +26,23 @@ export const DomainSchema = z.enum([
   'general',
 ]);
 
-// Agent subtypes
+/** Agent behavioral subtypes. */
 export const AgentTypeSchema = z.enum(['validator', 'executor', 'analyst', 'generator']);
 
-// Visibility levels
+/** Access control levels for definitions. */
 export const VisibilitySchema = z.enum(['private', 'unlisted', 'public']);
 
-// Sort fields
+/** Sortable fields for list queries. */
 export const SortFieldSchema = z.enum(['name', 'createdAt', 'updatedAt', 'executionCount']);
 
-// Sort orders
+/** Sort direction. */
 export const SortOrderSchema = z.enum(['asc', 'desc']);
 
-// Model tiers
+/** AI model pricing/capability tiers. */
 export const ModelTierSchema = z.enum(['budget', 'standard', 'premium', 'reasoning']);
 
-// Model statuses
+/** AI model availability statuses. */
 export const ModelStatusSchema = z.enum(['available', 'preview', 'deprecated']);
 
-// Version change types
+/** Semantic version change types for definition updates. */
 export const ChangeTypeSchema = z.enum(['major', 'minor', 'patch']);

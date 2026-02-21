@@ -63,9 +63,11 @@ A `.env.example` is included as a template showing available variables. This fil
 
 Once configured, Claude Code can use the registry tools:
 
-```typescript
+```jsonc
+// These are MCP tool calls — Claude Code invokes them automatically.
+
 // Browse published definitions
-list_definitions({ type: "agent", status: "published", limit: 10 })
+list_definitions({ "type": "agent", "status": "published", "limit": 10 })
 
 // Get a specific definition with its rendered YAML
 get_definition({ type: "agent", name: "code-validator", include_yaml: true })

@@ -43,38 +43,35 @@ async function main(): Promise<void> {
     retries: config.api.retries,
   });
 
-  const server = await SecureMcpServer.create(
-    config.server,
-    {
-      securityLevel: 'basic',
-      maxRequestsPerMinute: 120,
-      maxMessageSize: 500 * 1024,
-      maxParamCount: 500,
+  const server = await SecureMcpServer.create(config.server, {
+    securityLevel: 'basic',
+    maxRequestsPerMinute: 120,
+    maxMessageSize: 500 * 1024,
+    maxParamCount: 500,
 
-      burstThreshold: 15,
-      burstWindowMs: 5000,
-      // Disabled: this MCP server is designed for programmatic use by Claude Code;
-      // automation is the expected usage pattern, not abuse.
-      automationDetection: {
-        enabled: false,
-      },
+    burstThreshold: 15,
+    burstWindowMs: 5000,
+    // Disabled: this MCP server is designed for programmatic use by Claude Code;
+    // automation is the expected usage pattern, not abuse.
+    automationDetection: {
+      enabled: false,
+    },
 
-      toolRegistry,
+    toolRegistry,
 
-      defaultPolicy: {
-        allowWrites: true,
-        allowNetwork: true,
-      },
+    defaultPolicy: {
+      allowWrites: true,
+      allowNetwork: true,
+    },
 
-      resourcePolicy: {
-        allowedSchemes: ['registry'],
-      },
+    resourcePolicy: {
+      allowedSchemes: ['registry'],
+    },
 
-      enableLogging: config.security.enableLogging,
-      verboseLogging: config.security.verboseLogging,
-      logPerformanceMetrics: config.security.logPerformanceMetrics,
-    }
-  );
+    enableLogging: config.security.enableLogging,
+    verboseLogging: config.security.verboseLogging,
+    logPerformanceMetrics: config.security.logPerformanceMetrics,
+  });
 
   registerAllTools(server, registryClient);
   registerAllResources(server, registryClient);
@@ -105,6 +102,8 @@ async function main(): Promise<void> {
   });
 
   const transport = new StdioServerTransport();
+  // Cast: StdioServerTransport satisfies the MCP SDK's Transport interface but
+  // the types are imported from different packages, causing a structural mismatch.
   await server.connect(transport as Parameters<typeof server.connect>[0]);
 
   logger.info('MCP server connected and ready', {

@@ -204,8 +204,9 @@ describe('mapSdkErrorToMcp', () => {
     const result = mapSdkErrorToMcp(new Error(longMessage));
     expect(result.isError).toBe(true);
     const text = parseErrorText(result);
-    // MAX_ERROR_MESSAGE_LENGTH (200) + '... (truncated)' suffix (16) = 216 max
-    expect(text.length).toBeLessThanOrEqual(216);
+    const TRUNCATION_SUFFIX = '... (truncated)';
+    const MAX_TRUNCATED_LENGTH = 200 + TRUNCATION_SUFFIX.length; // 216
+    expect(text.length).toBeLessThanOrEqual(MAX_TRUNCATED_LENGTH);
     expect(text).toContain('... (truncated)');
   });
 

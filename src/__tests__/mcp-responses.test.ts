@@ -38,6 +38,13 @@ describe('createSuccessResponse', () => {
     const result = createSuccessResponse('hello');
     expect(JSON.parse(result.content[0].text)).toBe('hello');
   });
+
+  it('serializes BigInt values as strings without throwing', () => {
+    const data = { count: 9007199254740993n };
+    const result = createSuccessResponse(data);
+    const parsed = JSON.parse(result.content[0].text) as { count: string };
+    expect(parsed.count).toBe('9007199254740993');
+  });
 });
 
 describe('createErrorResponse', () => {

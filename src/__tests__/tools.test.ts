@@ -45,11 +45,15 @@ import { registerGetUserTool } from '../tools/get-user.js';
 import { registerBatchUsersTool } from '../tools/batch-users.js';
 
 // Mock the registry SDK error module
+// Default: all type guards return false. Tests can override per-call via mockReturnValueOnce.
+const mockIsNotFoundError = vi.fn().mockReturnValue(false);
+const mockIsValidationError = vi.fn().mockReturnValue(false);
+
 vi.mock('@uluops/registry-sdk/errors', () => ({
   isRegistryApiError: () => false,
-  isNotFoundError: () => false,
+  isNotFoundError: (...args: unknown[]) => mockIsNotFoundError(...args),
   isRateLimitError: () => false,
-  isValidationError: () => false,
+  isValidationError: (...args: unknown[]) => mockIsValidationError(...args),
   isConflictError: () => false,
   isUnprocessableError: () => false,
   UnauthorizedError: class extends Error {},
@@ -181,6 +185,8 @@ describe('Tool Registration & SDK Calls', () => {
     server = createMockServer();
     client = createMockRegistryClient();
     mockReadYamlFile.mockClear();
+    mockIsNotFoundError.mockReset().mockReturnValue(false);
+    mockIsValidationError.mockReset().mockReturnValue(false);
   });
 
   // ═══════════════════════════════════════════
@@ -470,6 +476,105 @@ describe('Tool Registration & SDK Calls', () => {
       });
       expect(result.isError).toBeUndefined();
       expect(mockReadYamlFile).not.toHaveBeenCalled();
+    });
+
+    // Smart version-up: auto-create on NotFoundError or published status
+    it('auto-creates when version not found and yaml provided', async () => {
+      const notFoundErr = new Error('Definition not found: agent/test@2.0.0');
+      (client.definitions.update as ReturnType<typeof vi.fn>).mockRejectedValue(notFoundErr);
+      mockIsNotFoundError.mockImplementation((e: unknown) => e === notFoundErr);
+      (client.definitions.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+        name: 'test',
+        type: 'agent',
+        version: '2.0.0',
+        status: 'draft',
+      });
+
+      registerUpdateDefinitionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '2.0.0',
+        yaml: 'name: test\nversion: 2.0.0',
+      });
+
+      expect(result.isError).toBeUndefined();
+      expect(client.definitions.create).toHaveBeenCalledWith('agent', 'test', {
+        yaml: 'name: test\nversion: 2.0.0',
+      });
+      const parsed = parseResult(result) as { version: string; _note: string };
+      expect(parsed.version).toBe('2.0.0');
+      expect(parsed._note).toContain("not found");
+      expect(parsed._note).toContain("Created new draft");
+    });
+
+    it('auto-creates when version is published and yaml provided', async () => {
+      const publishedErr = new Error(
+        "Cannot modify definition in 'published' status. Only draft definitions can be modified."
+      );
+      (client.definitions.update as ReturnType<typeof vi.fn>).mockRejectedValue(publishedErr);
+      mockIsValidationError.mockImplementation((e: unknown) => e === publishedErr);
+      (client.definitions.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+        name: 'test',
+        type: 'agent',
+        version: '1.1.0',
+        status: 'draft',
+      });
+
+      registerUpdateDefinitionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+        yaml: 'name: test\nversion: 1.1.0',
+        visibility: 'public',
+      });
+
+      expect(result.isError).toBeUndefined();
+      expect(client.definitions.create).toHaveBeenCalledWith('agent', 'test', {
+        yaml: 'name: test\nversion: 1.1.0',
+        visibility: 'public',
+      });
+      const parsed = parseResult(result) as { version: string; _note: string };
+      expect(parsed.version).toBe('1.1.0');
+      expect(parsed._note).toContain("published");
+      expect(parsed._note).toContain("Created new draft");
+    });
+
+    it('propagates published error when no yaml provided', async () => {
+      const publishedErr = new Error(
+        "Cannot modify definition in 'published' status. Only draft definitions can be modified."
+      );
+      (client.definitions.update as ReturnType<typeof vi.fn>).mockRejectedValue(publishedErr);
+      mockIsValidationError.mockImplementation((e: unknown) => e === publishedErr);
+
+      registerUpdateDefinitionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+        visibility: 'private',
+      });
+
+      expect(result.isError).toBe(true);
+      expect(client.definitions.create).not.toHaveBeenCalled();
+    });
+
+    it('propagates non-recoverable errors even with yaml', async () => {
+      (client.definitions.update as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Connection refused')
+      );
+
+      registerUpdateDefinitionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+        yaml: 'name: test',
+      });
+
+      expect(result.isError).toBe(true);
+      expect(client.definitions.create).not.toHaveBeenCalled();
     });
   });
 

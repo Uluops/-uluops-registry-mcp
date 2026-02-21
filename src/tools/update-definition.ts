@@ -3,10 +3,15 @@
  *
  * Update a draft definition version with new YAML, visibility, description, or tags.
  * Accepts either inline `yaml` or a `file_path` to read from disk.
+ *
+ * Smart version-up: If the target version is published or doesn't exist and YAML is
+ * provided, automatically creates a new draft version via the create endpoint instead
+ * of failing. The API server extracts the version from the YAML content.
  */
 
 import { z } from 'zod';
 import type { RegistryClient, UpdateDefinitionBody } from '@uluops/registry-sdk';
+import { isNotFoundError, isValidationError } from '@uluops/registry-sdk/errors';
 import {
   DefinitionTypeSchema,
   VisibilitySchema,
@@ -28,6 +33,13 @@ export const UpdateDefinitionInputSchema = z.object({
   change_type: ChangeTypeSchema.optional(),
 });
 
+/** Check if an error is a "published status" validation error from the API. */
+function isPublishedStatusError(error: unknown): boolean {
+  return isValidationError(error) &&
+    error instanceof Error &&
+    error.message.includes("'published' status");
+}
+
 export function registerUpdateDefinitionTool(
   server: McpServerToolRegistration,
   registryClient: RegistryClient
@@ -36,14 +48,33 @@ export function registerUpdateDefinitionTool(
     'update_definition',
     'Update a draft definition version with new YAML, visibility, description, or tags.',
     UpdateDefinitionInputSchema.shape,
-    createToolHandler(UpdateDefinitionInputSchema, (n) => {
+    createToolHandler(UpdateDefinitionInputSchema, async (n) => {
       const body: UpdateDefinitionBody = {};
       if (n.yaml !== undefined) body.yaml = n.yaml;
       if (n.visibility !== undefined) body.visibility = n.visibility;
       if (n.description !== undefined) body.description = n.description;
       if (n.tags !== undefined) body.tags = n.tags;
       if (n.changeType !== undefined) body.changeType = n.changeType;
-      return registryClient.definitions.update(n.type, n.name, n.version, body);
+
+      try {
+        return await registryClient.definitions.update(n.type, n.name, n.version, body);
+      } catch (error) {
+        // Smart version-up: if version doesn't exist or is published, and YAML is
+        // provided, auto-create a new draft version instead of failing.
+        if (n.yaml && (isNotFoundError(error) || isPublishedStatusError(error))) {
+          const created = await registryClient.definitions.create(n.type, n.name, {
+            yaml: n.yaml,
+            ...(n.visibility !== undefined && { visibility: n.visibility }),
+          });
+          return {
+            ...created,
+            _note: isNotFoundError(error)
+              ? `Version '${String(n.version)}' not found. Created new draft version '${created.version}'.`
+              : `Version '${String(n.version)}' is published. Created new draft version '${created.version}'.`,
+          };
+        }
+        throw error;
+      }
     },
       {
         preProcess: (input) => resolveYamlInput(input, { required: false }),

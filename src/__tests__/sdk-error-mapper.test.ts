@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { mapSdkErrorToMcp, mapZodErrorToMcp } from '../client/sdk-error-mapper.js';
+import { mapSdkErrorToMcp, mapZodErrorToMcp, containsSensitiveData } from '../client/sdk-error-mapper.js';
 import { ZodError, ZodIssueCode } from 'zod';
 
 // Mock the registry-sdk error type guards and classes
@@ -216,6 +216,36 @@ describe('mapSdkErrorToMcp', () => {
     expect(result.content[0]).toHaveProperty('type', 'text');
     expect(result.content[0]).toHaveProperty('text');
     expect(result.isError).toBe(true);
+  });
+});
+
+describe('containsSensitiveData', () => {
+  it.each([
+    ['api_key=abc123', 'api_key'],
+    ['apiKey: sk_live_xyz', 'apiKey'],
+    ['password=hunter2', 'password'],
+    ['secret: my-secret-value', 'secret'],
+    ['token: abc123def', 'token assignment'],
+    ['Bearer eyJhbGciOiJIUzI1NiJ9', 'bearer token'],
+    ['authorization: Basic dXNlcjpwYXNz', 'authorization header'],
+    ['stack trace at line 42', 'stack trace text'],
+    ['at Object.run (/app/src/index.ts:42:10)', 'stack frame'],
+    ['SQLITE_ERROR: no such table', 'SQLITE_ERROR'],
+    ['ER_BAD_FIELD_ERROR: Unknown column', 'MySQL error code'],
+    ['syntax error near SQL statement', 'SQL syntax error'],
+    ["column 'password_hash' does not exist", 'missing column'],
+    ["relation 'users' does not exist", 'missing relation'],
+  ])('detects sensitive pattern: %s (%s)', (input) => {
+    expect(containsSensitiveData(input)).toBe(true);
+  });
+
+  it.each([
+    'Definition not found',
+    'Name is required',
+    'Invalid YAML format',
+    'Version 1.0.0 already exists',
+  ])('allows safe message: %s', (input) => {
+    expect(containsSensitiveData(input)).toBe(false);
   });
 });
 

@@ -56,6 +56,34 @@ vi.mock('@uluops/registry-sdk/errors', () => ({
   ForbiddenError: class extends Error {},
 }));
 
+// Mock resolveYamlInput for file_path tests.
+// The real resolveYamlInput calls readYamlFile internally; here we mock both
+// so that file_path resolution returns known test content.
+import { createErrorResponse } from '../types/mcp.js';
+
+const FILE_CONTENT = 'name: from-file\nversion: 1.0.0';
+const mockReadYamlFile = vi.fn().mockReturnValue(FILE_CONTENT);
+
+vi.mock('../utils/read-yaml-file.js', () => ({
+  readYamlFile: (...args: unknown[]) => mockReadYamlFile(...args),
+  resolveYamlInput: <T extends { yaml?: string; file_path?: string }>(
+    input: T,
+    options: { required: boolean }
+  ): T | { content: { type: string; text: string }[]; isError: boolean } => {
+    if (options.required && !input.yaml && !input.file_path) {
+      return createErrorResponse('Provide either yaml or file_path');
+    }
+    if (input.yaml && input.file_path) {
+      return createErrorResponse('Provide only one of yaml or file_path, not both');
+    }
+    if (input.file_path) {
+      const content = mockReadYamlFile(input.file_path) as string;
+      return { ...input, yaml: content };
+    }
+    return input;
+  },
+}));
+
 // --- Test helpers ---
 
 type ToolEntry = {
@@ -152,6 +180,7 @@ describe('Tool Registration & SDK Calls', () => {
   beforeEach(() => {
     server = createMockServer();
     client = createMockRegistryClient();
+    mockReadYamlFile.mockClear();
   });
 
   // ═══════════════════════════════════════════
@@ -315,9 +344,35 @@ describe('Tool Registration & SDK Calls', () => {
       );
     });
 
-    it('rejects missing yaml', async () => {
+    it('rejects when neither yaml nor file_path provided', async () => {
       registerCreateDefinitionTool(server, client);
       const result = await getHandler(server)({ type: 'agent', name: 'test' });
+      expect(result.isError).toBe(true);
+    });
+
+    it('reads yaml from file_path when provided', async () => {
+      registerCreateDefinitionTool(server, client);
+      await getHandler(server)({
+        type: 'agent',
+        name: 'my-agent',
+        file_path: '/home/user/def.yaml',
+      });
+      expect(mockReadYamlFile).toHaveBeenCalledWith('/home/user/def.yaml');
+      expect(client.definitions.create).toHaveBeenCalledWith(
+        'agent',
+        'my-agent',
+        expect.objectContaining({ yaml: 'name: from-file\nversion: 1.0.0' })
+      );
+    });
+
+    it('rejects when both yaml and file_path provided', async () => {
+      registerCreateDefinitionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        name: 'my-agent',
+        yaml: 'name: inline',
+        file_path: '/home/user/def.yaml',
+      });
       expect(result.isError).toBe(true);
     });
   });
@@ -369,6 +424,44 @@ describe('Tool Registration & SDK Calls', () => {
       expect(body).not.toHaveProperty('description');
       expect(body).not.toHaveProperty('tags');
       expect(body).not.toHaveProperty('changeType');
+    });
+
+    it('reads yaml from file_path when provided', async () => {
+      registerUpdateDefinitionTool(server, client);
+      await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+        file_path: '/home/user/def.yaml',
+      });
+      expect(mockReadYamlFile).toHaveBeenCalledWith('/home/user/def.yaml');
+      const body = (client.definitions.update as ReturnType<typeof vi.fn>).mock
+        .calls[0][3] as Record<string, unknown>;
+      expect(body).toHaveProperty('yaml', 'name: from-file\nversion: 1.0.0');
+    });
+
+    it('rejects when both yaml and file_path provided', async () => {
+      registerUpdateDefinitionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+        yaml: 'inline: yaml',
+        file_path: '/home/user/def.yaml',
+      });
+      expect(result.isError).toBe(true);
+    });
+
+    it('allows neither yaml nor file_path (update other fields only)', async () => {
+      registerUpdateDefinitionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+        visibility: 'private',
+      });
+      expect(result.isError).toBeUndefined();
+      expect(mockReadYamlFile).not.toHaveBeenCalled();
     });
   });
 
@@ -880,6 +973,38 @@ describe('Tool Registration & SDK Calls', () => {
         expect.objectContaining({ yaml: 'old: format' })
       );
     });
+
+    it('rejects when neither yaml nor file_path provided', async () => {
+      registerUpgradeDefinitionTool(server, client);
+      const result = await getHandler(server)({ type: 'agent', name: 'test' });
+      expect(result.isError).toBe(true);
+    });
+
+    it('reads yaml from file_path when provided', async () => {
+      registerUpgradeDefinitionTool(server, client);
+      await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        file_path: '/home/user/legacy.yaml',
+      });
+      expect(mockReadYamlFile).toHaveBeenCalledWith('/home/user/legacy.yaml');
+      expect(client.translation.upgrade).toHaveBeenCalledWith(
+        'agent',
+        'test',
+        expect.objectContaining({ yaml: 'name: from-file\nversion: 1.0.0' })
+      );
+    });
+
+    it('rejects when both yaml and file_path provided', async () => {
+      registerUpgradeDefinitionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        yaml: 'old: format',
+        file_path: '/home/user/legacy.yaml',
+      });
+      expect(result.isError).toBe(true);
+    });
   });
 
   // ═══════════════════════════════════════════
@@ -898,9 +1023,32 @@ describe('Tool Registration & SDK Calls', () => {
       expect(client.validation.validate).toHaveBeenCalledWith('agent', 'name: test');
     });
 
-    it('rejects empty yaml', async () => {
+    it('rejects when neither yaml nor file_path provided', async () => {
       registerValidateDefinitionTool(server, client);
-      const result = await getHandler(server)({ type: 'agent', yaml: '' });
+      const result = await getHandler(server)({ type: 'agent' });
+      expect(result.isError).toBe(true);
+    });
+
+    it('reads yaml from file_path when provided', async () => {
+      registerValidateDefinitionTool(server, client);
+      await getHandler(server)({
+        type: 'agent',
+        file_path: '/home/user/def.yaml',
+      });
+      expect(mockReadYamlFile).toHaveBeenCalledWith('/home/user/def.yaml');
+      expect(client.validation.validate).toHaveBeenCalledWith(
+        'agent',
+        'name: from-file\nversion: 1.0.0'
+      );
+    });
+
+    it('rejects when both yaml and file_path provided', async () => {
+      registerValidateDefinitionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        yaml: 'name: test',
+        file_path: '/home/user/def.yaml',
+      });
       expect(result.isError).toBe(true);
     });
   });

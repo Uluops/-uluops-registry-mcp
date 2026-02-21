@@ -57,7 +57,7 @@ All configuration is passed via environment variables in the `env` block of `.mc
 | `VERBOSE_LOGGING` | Verbose security decision logging | No | false |
 | `LOG_PERFORMANCE_METRICS` | Log performance metrics | No | false |
 
-A `.env.example` is included for reference if you prefer file-based config during development.
+A `.env.example` is included as a template showing available variables. This file is **not** auto-loaded — copy it to `.env` or set variables directly in `.mcp.json`.
 
 ## Quick Start Examples
 
@@ -79,6 +79,9 @@ resolve_alias({ alias: "sonnet" })
 // Validate YAML before publishing
 validate_definition({ type: "agent", yaml: "..." })
 
+// Or validate from a file path instead of inline YAML
+validate_definition({ type: "agent", file_path: "/path/to/agent.yaml" })
+
 // Create and publish a definition
 create_definition({ type: "agent", name: "my-agent", yaml: "name: my-agent\nversion: 1.0.0\n..." })
 publish_definition({ type: "agent", name: "my-agent", version: "1.0.0" })
@@ -94,14 +97,14 @@ publish_definition({ type: "agent", name: "my-agent", version: "1.0.0" })
 | `search_definitions` | Search definitions by keyword |
 | `list_models` | List AI models with optional filters |
 | `resolve_alias` | Resolve alias (e.g. "sonnet") to provider+modelId |
-| `validate_definition` | Validate YAML without storing |
+| `validate_definition` | Validate YAML without storing (accepts `yaml` or `file_path`) |
 | `render_definition` | Get rendered markdown for a definition |
 
 ### Definition Management Tools (P1)
 | Tool | Description |
 |------|-------------|
-| `create_definition` | Create a new draft definition with YAML content |
-| `update_definition` | Update a draft definition (YAML, visibility, description, tags) |
+| `create_definition` | Create a new draft definition (accepts `yaml` or `file_path`) |
+| `update_definition` | Update a draft definition (`yaml`/`file_path`, visibility, description, tags) |
 | `publish_definition` | Publish a draft definition |
 | `deprecate_definition` | Deprecate with reason and optional successor |
 | `delete_definition` | Delete a draft (published definitions cannot be deleted) |
@@ -127,7 +130,7 @@ publish_definition({ type: "agent", name: "my-agent", version: "1.0.0" })
 | Tool | Description |
 |------|-------------|
 | `retranslate_definition` | Retranslate with the latest translator version |
-| `upgrade_definition` | Upgrade a definition from legacy format |
+| `upgrade_definition` | Upgrade a definition from legacy format (accepts `yaml` or `file_path`) |
 | `get_translator_version` | Get current translator version |
 
 ### Model Tools (P2)

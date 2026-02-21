@@ -1,7 +1,8 @@
 /**
  * update_definition tool
  *
- * Update a draft definition.
+ * Update a draft definition version with new YAML, visibility, description, or tags.
+ * Accepts either inline `yaml` or a `file_path` to read from disk.
  */
 
 import { z } from 'zod';
@@ -13,12 +14,14 @@ import {
   type McpServerToolRegistration,
 } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
+import { resolveYamlInput } from '../utils/read-yaml-file.js';
 
 export const UpdateDefinitionInputSchema = z.object({
   type: DefinitionTypeSchema,
   name: z.string().min(1),
   version: z.string().min(1),
-  yaml: z.string().optional(),
+  yaml: z.string().max(500_000).optional(),
+  file_path: z.string().min(1).max(1000).optional(),
   visibility: VisibilitySchema.optional(),
   description: z.string().optional(),
   tags: z.array(z.string()).optional(),
@@ -41,6 +44,10 @@ export function registerUpdateDefinitionTool(
       if (n.tags !== undefined) body.tags = n.tags;
       if (n.changeType !== undefined) body.changeType = n.changeType;
       return registryClient.definitions.update(n.type, n.name, n.version, body);
-    })
+    },
+      {
+        preProcess: (input) => resolveYamlInput(input, { required: false }),
+      }
+    )
   );
 }

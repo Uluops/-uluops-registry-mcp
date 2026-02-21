@@ -4,10 +4,7 @@
 
 import type { RegistryClient } from '@uluops/registry-sdk';
 import type { McpServerResourceRegistration } from '../types/index.js';
-import { createResourceResponse, createErrorResourceResponse } from './response-helpers.js';
-import { sanitizeErrorMessage } from '../client/sdk-error-mapper.js';
-
-const RESOURCE_TIMEOUT_MS = 15_000;
+import { fetchResourceWithTimeout } from './response-helpers.js';
 
 export function registerModelsResource(
   server: McpServerResourceRegistration,
@@ -20,24 +17,8 @@ export function registerModelsResource(
       description: 'List available AI models',
       mimeType: 'application/json',
     },
-    async () => {
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      try {
-        const result = await Promise.race([
-          registryClient.models.list(),
-          new Promise<never>((_, reject) => {
-            timer = setTimeout(() => {
-              reject(new Error('Resource request timed out'));
-            }, RESOURCE_TIMEOUT_MS);
-          }),
-        ]);
-        return createResourceResponse('registry://models', result);
-      } catch (error) {
-        const raw = error instanceof Error ? error.message : 'Unknown error';
-        return createErrorResourceResponse('registry://models', sanitizeErrorMessage(raw));
-      } finally {
-        clearTimeout(timer);
-      }
-    }
+    () => fetchResourceWithTimeout('registry://models', () =>
+      registryClient.models.list()
+    )
   );
 }

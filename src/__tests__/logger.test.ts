@@ -142,4 +142,34 @@ describe('createLogger', () => {
     // Clean up
     rmSync(logDir, { recursive: true });
   });
+
+  it('suppresses repeated file logging errors after first failure', () => {
+    const logDir = '/tmp/registry-mcp-test-logs-fail';
+
+    // Clean up from any prior run
+    if (existsSync(logDir)) {
+      rmSync(logDir, { recursive: true });
+    }
+    mkdirSync(logDir, { recursive: true });
+
+    const logger = createLogger({
+      level: 'info',
+      enableFileLogging: true,
+      logDir,
+    });
+
+    // Remove the directory so appendFileSync fails with ENOENT
+    rmSync(logDir, { recursive: true });
+
+    // First log: should output the message + the suppression warning
+    logger.info('first message');
+    // consoleErrorSpy: call 0 = "first message", call 1 = suppression warning
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
+    const warningOutput = consoleErrorSpy.mock.calls[1]?.[0] as string;
+    expect(warningOutput).toContain('File logging failed');
+
+    // Second log: should NOT emit another warning (suppressed)
+    logger.info('second message');
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(3); // only the message, no extra warning
+  });
 });

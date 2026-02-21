@@ -37,7 +37,7 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
   // Each tool extracts positional args (n.type, n.name, etc.) which are guaranteed valid by Zod.
   sdkCall: (normalized: any) => Promise<unknown>,
   options?: {
-    /** Transform parsed input before normalization. Return McpToolResponse to short-circuit. */
+    /** Transform parsed input before normalization. Must be synchronous (MCP SDK constraint). Return McpToolResponse to short-circuit. */
     preProcess?: (input: TInput) => TInput | McpToolResponse;
   }
 ): (args: unknown) => Promise<McpToolResponse> {

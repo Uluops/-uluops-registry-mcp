@@ -51,28 +51,34 @@ export function sanitizeErrorMessage(message: string): string {
   return message;
 }
 
+/** Safely extract a message from an unknown error value. */
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return fallback;
+}
+
 export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
   let message: string;
 
   if (isNotFoundError(error)) {
-    message = sanitizeErrorMessage((error as Error).message || 'Resource not found');
+    message = sanitizeErrorMessage(getErrorMessage(error, 'Resource not found'));
   } else if (isRateLimitError(error)) {
     message = 'Rate limit exceeded, please retry later';
   } else if (isValidationError(error)) {
-    message = sanitizeErrorMessage((error as Error).message || 'Invalid request parameters');
+    message = sanitizeErrorMessage(getErrorMessage(error, 'Invalid request parameters'));
   } else if (error instanceof UnauthorizedError) {
     message = 'Authentication required';
   } else if (error instanceof ForbiddenError) {
     message = 'Access denied';
   } else if (isConflictError(error)) {
-    message = sanitizeErrorMessage((error as Error).message || 'Resource conflict');
+    message = sanitizeErrorMessage(getErrorMessage(error, 'Resource conflict'));
   } else if (isUnprocessableError(error)) {
-    message = sanitizeErrorMessage((error as Error).message || 'Unprocessable request');
+    message = sanitizeErrorMessage(getErrorMessage(error, 'Unprocessable request'));
   } else if (isRegistryApiError(error)) {
-    const rawMessage = (error as Error).message;
-    message = containsSensitiveData(rawMessage)
-      ? 'An error occurred while processing your request'
-      : sanitizeErrorMessage(rawMessage);
+    message = sanitizeErrorMessage(getErrorMessage(error, 'Internal server error'));
   } else if (error instanceof Error) {
     message = sanitizeErrorMessage(error.message);
   } else {

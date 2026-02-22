@@ -126,6 +126,25 @@ describe('createLogger', () => {
       if (existsSync(failLogDir)) rmSync(failLogDir, { recursive: true });
     });
 
+    it('auto-creates log directory when it does not exist', () => {
+      // Ensure logDir does NOT exist before createLogger
+      if (existsSync(logDir)) rmSync(logDir, { recursive: true });
+
+      const logger = createLogger({
+        level: 'info',
+        enableFileLogging: true,
+        logDir,
+      });
+
+      // ensureLogDir should have created it
+      expect(existsSync(logDir)).toBe(true);
+
+      // Verify logging works in the auto-created directory
+      logger.info('auto-created dir test');
+      const files = readdirSync(logDir).filter((f) => f.endsWith('.log'));
+      expect(files.length).toBeGreaterThan(0);
+    });
+
     it('writes log entries to file when file logging is enabled', () => {
       mkdirSync(logDir, { recursive: true });
 

@@ -44,6 +44,15 @@ import { registerRenderDefinitionTool } from '../tools/render-definition.js';
 import { registerGetUserTool } from '../tools/get-user.js';
 import { registerBatchUsersTool } from '../tools/batch-users.js';
 
+// Mock node:fs/promises for render_definition output_path write tests
+const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+const mockMkdir = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('node:fs/promises', () => ({
+  writeFile: (...args: unknown[]) => mockWriteFile(...args),
+  mkdir: (...args: unknown[]) => mockMkdir(...args),
+}));
+
 // Mock the registry SDK error module
 // Default: all type guards return false. Tests can override per-call via mockReturnValueOnce.
 const mockIsNotFoundError = vi.fn().mockReturnValue(false);
@@ -185,6 +194,8 @@ describe('Tool Registration & SDK Calls', () => {
     server = createMockServer();
     client = createMockRegistryClient();
     mockReadYamlFile.mockClear();
+    mockWriteFile.mockClear();
+    mockMkdir.mockClear();
     mockIsNotFoundError.mockReset().mockReturnValue(false);
     mockIsValidationError.mockReset().mockReturnValue(false);
   });
@@ -1249,6 +1260,37 @@ describe('Tool Registration & SDK Calls', () => {
       });
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('missing markdown field');
+    });
+
+    it('writes markdown to file when output_path is within base dir', async () => {
+      const origBase = process.env['OUTPUT_BASE_DIR'];
+      process.env['OUTPUT_BASE_DIR'] = '/tmp/test-output';
+      try {
+        registerRenderDefinitionTool(server, client);
+        const result = await getHandler(server)({
+          type: 'agent',
+          name: 'test',
+          version: '1.0.0',
+          output_path: '/tmp/test-output/rendered.md',
+        });
+        expect(result.isError).toBeUndefined();
+        expect(mockMkdir).toHaveBeenCalledWith('/tmp/test-output', { recursive: true });
+        expect(mockWriteFile).toHaveBeenCalledWith(
+          '/tmp/test-output/rendered.md',
+          '# Test',
+          'utf-8'
+        );
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.success).toBe(true);
+        expect(parsed.output_path).toBe('/tmp/test-output/rendered.md');
+        expect(parsed.bytes).toBe(Buffer.byteLength('# Test', 'utf-8'));
+      } finally {
+        if (origBase === undefined) {
+          delete process.env['OUTPUT_BASE_DIR'];
+        } else {
+          process.env['OUTPUT_BASE_DIR'] = origBase;
+        }
+      }
     });
 
     it('rejects missing required fields', async () => {

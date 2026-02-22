@@ -56,6 +56,8 @@ All configuration is passed via environment variables in the `env` block of `.mc
 | `LOG_DIR` | Log file directory | No | ./logs |
 | `VERBOSE_LOGGING` | Verbose security decision logging | No | false |
 | `LOG_PERFORMANCE_METRICS` | Log performance metrics | No | false |
+| `WORKSPACE_DIR` | Base directory for `file_path` containment (CWE-22 protection) | No | cwd |
+| `OUTPUT_BASE_DIR` | Base directory for `output_path` containment (CWE-22 protection) | No | cwd |
 
 A `.env.example` is included as a template showing available variables. This file is **not** auto-loaded — copy it to `.env` or set variables directly in `.mcp.json`.
 
@@ -100,7 +102,7 @@ publish_definition({ type: "agent", name: "my-agent", version: "1.0.0" })
 | `list_models` | List AI models with optional filters |
 | `resolve_alias` | Resolve alias (e.g. "sonnet") to provider+modelId |
 | `validate_definition` | Validate YAML without storing (accepts `yaml` or `file_path`) |
-| `render_definition` | Get rendered markdown for a definition |
+| `render_definition` | Get rendered markdown for a definition. Use `output_path` to write directly to a file |
 
 ### Definition Management Tools (P1)
 | Tool | Description |

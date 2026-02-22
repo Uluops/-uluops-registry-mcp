@@ -22,11 +22,16 @@ function isMcpToolResponse(value: unknown): value is McpToolResponse {
 
 /**
  * Normalized input after snake_case→camelCase key transformation.
- * Typed as Record<string, unknown> rather than `any` — callers access fields
- * by name (e.g. `n.type`, `n.name`) which Zod has already validated.
+ *
+ * Uses `any` deliberately — Zod validates structure before normalizeKeys() runs,
+ * but TypeScript cannot statically track the snake_case→camelCase key renaming.
+ * Callers access fields positionally (e.g. `n.type`, `n.name`) which are
+ * guaranteed valid by the preceding Zod parse. `Record<string, unknown>` was
+ * evaluated but rejected: it requires explicit casts in all 31 tool callbacks
+ * for SDK methods expecting specific types (string, number, enum literals).
+ *
+ * @see normalizeKeys in normalize-keys.ts
  */
-// SAFETY: `any` is allowed in this file (eslint config relaxes no-explicit-any for tool handlers).
-// Zod validates structure before normalizeKeys() runs; TS can't track snake→camel key renaming.
 type NormalizedInput = any;
 
 /**
@@ -46,9 +51,9 @@ type NormalizedInput = any;
 export function createToolHandler<TInput extends Record<string, unknown>>(
   schema: z.ZodSchema<TInput>,
   sdkCall: (
-    // SAFETY: Zod validates input structure before normalizeKeys() runs.
-    // TypeScript cannot statically track the snake_case→camelCase key renaming.
-    // Each tool extracts positional args (n.type, n.name, etc.) guaranteed valid by Zod.
+    // SAFETY: `any` is intentional — see NormalizedInput type alias above.
+    // Zod validates structure, normalizeKeys() renames keys. Each tool extracts
+    // positional args (n.type, n.name, etc.) guaranteed valid by the Zod parse.
     normalized: NormalizedInput
   ) => Promise<unknown>,
   options?: {

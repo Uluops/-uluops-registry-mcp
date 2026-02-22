@@ -71,13 +71,13 @@ export function resolveYamlInput<T extends { yaml?: string; file_path?: string }
   input: T,
   options: { required: boolean }
 ): T | McpToolResponse {
-  if (options.required && !input.yaml && !input.file_path) {
+  if (options.required && input.yaml === undefined && input.file_path === undefined) {
     return createErrorResponse('Provide either yaml or file_path');
   }
-  if (input.yaml && input.file_path) {
+  if (input.yaml !== undefined && input.file_path !== undefined) {
     return createErrorResponse('Provide only one of yaml or file_path, not both');
   }
-  if (input.file_path) {
+  if (input.file_path !== undefined) {
     return { ...input, yaml: readYamlFile(input.file_path) };
   }
   return input;

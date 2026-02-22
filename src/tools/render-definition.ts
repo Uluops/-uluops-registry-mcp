@@ -19,11 +19,14 @@ import { createToolHandler } from '../utils/tool-handler.js';
 import { mapSdkErrorToMcp, mapZodErrorToMcp } from '../client/sdk-error-mapper.js';
 
 /**
- * Base directory for output_path containment.
- * Resolved paths must start with this directory to prevent path traversal.
+ * Get the base directory for output_path containment.
+ * Resolved paths must start with this directory to prevent path traversal (CWE-22).
  * Defaults to cwd if OUTPUT_BASE_DIR is not set.
+ * Evaluated per-call so env var changes (e.g., in tests) take effect.
  */
-const OUTPUT_BASE_DIR = resolve(process.env['OUTPUT_BASE_DIR'] ?? process.cwd());
+function getOutputBaseDir(): string {
+  return resolve(process.env['OUTPUT_BASE_DIR'] ?? process.cwd());
+}
 
 export const RenderDefinitionInputSchema = z.object({
   type: DefinitionTypeSchema,
@@ -55,10 +58,11 @@ export function registerRenderDefinitionTool(
       }
 
       // Validate output_path stays within OUTPUT_BASE_DIR
+      const outputBaseDir = getOutputBaseDir();
       const absPath = resolve(parsed.data.output_path);
-      if (!absPath.startsWith(OUTPUT_BASE_DIR + '/') && absPath !== OUTPUT_BASE_DIR) {
+      if (!absPath.startsWith(outputBaseDir + '/') && absPath !== outputBaseDir) {
         return createErrorResponse(
-          `output_path must resolve within ${OUTPUT_BASE_DIR} — got ${absPath}`
+          `output_path must resolve within ${outputBaseDir} — got ${absPath}`
         );
       }
 

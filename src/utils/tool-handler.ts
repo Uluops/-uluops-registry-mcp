@@ -41,6 +41,8 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
   options?: {
     /** Transform parsed input before normalization. Must be synchronous (MCP SDK constraint). Return McpToolResponse to short-circuit. */
     preProcess?: (input: TInput) => TInput | McpToolResponse;
+    /** Transform SDK result before wrapping in success response. Use to trim large fields. */
+    postProcess?: (result: unknown) => unknown;
   }
 ): (args: unknown) => Promise<McpToolResponse> {
   return async (args: unknown): Promise<McpToolResponse> => {
@@ -56,7 +58,10 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
       }
 
       const normalized = normalizeKeys(input) as Record<string, unknown>;
-      const result = await sdkCall(normalized);
+      let result = await sdkCall(normalized);
+      if (options?.postProcess) {
+        result = options.postProcess(result);
+      }
       return createSuccessResponse(result);
     } catch (error) {
       if (error instanceof z.ZodError) {

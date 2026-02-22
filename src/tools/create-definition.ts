@@ -14,6 +14,7 @@ import {
 } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
 import { resolveYamlInput } from '../utils/read-yaml-file.js';
+import { trimDefinitionResponse } from '../utils/trim-definition.js';
 
 export const CreateDefinitionInputSchema = z.object({
   type: DefinitionTypeSchema,
@@ -38,6 +39,7 @@ export function registerCreateDefinitionTool(
       }),
       {
         preProcess: (input) => resolveYamlInput(input, { required: true }),
+        postProcess: trimDefinitionResponse,
       }
     )
   );

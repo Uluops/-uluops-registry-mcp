@@ -48,6 +48,8 @@ export async function fetchResourceWithTimeout<T>(
     return createResourceResponse(uri, result);
   } catch (error) {
     const raw = error instanceof Error ? error.message : 'Unknown error';
+    // Log for operator visibility — the sanitized response may hide root cause
+    console.error(`[resource:${uri}] fetch error: ${raw}`);
     return createErrorResourceResponse(uri, sanitizeErrorMessage(raw));
   } finally {
     clearTimeout(timer);

@@ -19,6 +19,8 @@ const MAX_DEPTH = 20;
  */
 export function normalizeKeys(input: unknown, depth = 0): unknown {
   if (depth > MAX_DEPTH) {
+    // Safety limit to prevent infinite recursion on circular references.
+    // MCP tool inputs are shallow objects (typically 1-3 levels deep).
     return input;
   }
   if (Array.isArray(input)) {

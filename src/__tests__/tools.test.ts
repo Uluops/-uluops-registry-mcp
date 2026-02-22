@@ -269,6 +269,15 @@ describe('Tool Registration & SDK Calls', () => {
       expect(call).not.toHaveProperty('search');
     });
 
+    it('computes offset=0 when page=1 (first page)', async () => {
+      registerListDefinitionsTool(server, client);
+      // Default limit is 20; page 1 should map to offset 0
+      await getHandler(server)({ page: 1, limit: 20 });
+      expect(client.definitions.list).toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 0, limit: 20 })
+      );
+    });
+
     it('rejects invalid enum values', async () => {
       registerListDefinitionsTool(server, client);
       const result = await getHandler(server)({ type: 'invalid_type' });
@@ -558,6 +567,26 @@ describe('Tool Registration & SDK Calls', () => {
 
       expect(result.isError).toBe(true);
       expect(client.definitions.create).not.toHaveBeenCalled();
+    });
+
+    it('trims yaml/runtimeMd in response via postProcess hook', async () => {
+      (client.definitions.update as ReturnType<typeof vi.fn>).mockResolvedValue({
+        name: 'test',
+        type: 'agent',
+        yaml: 'a'.repeat(200),
+        runtimeMd: 'b'.repeat(300),
+      });
+      registerUpdateDefinitionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+        yaml: 'updated: true',
+      });
+      expect(result.isError).toBeUndefined();
+      const parsed = parseResult(result) as { yaml: string; runtimeMd: string };
+      expect(parsed.yaml).toContain('(200 chars)');
+      expect(parsed.runtimeMd).toContain('(300 chars)');
     });
 
     it('propagates non-recoverable errors even with yaml', async () => {

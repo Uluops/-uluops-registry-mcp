@@ -59,10 +59,12 @@ export function registerUpdateDefinitionTool(
 
       try {
         return await registryClient.definitions.update(n.type, n.name, n.version, body);
-      } catch (error) {
+      } catch (error: unknown) {
         // Smart version-up: if version doesn't exist or is published, and YAML is
         // provided, auto-create a new draft version instead of failing.
-        if (n.yaml && (isNotFoundError(error) || isPublishedStatusError(error))) {
+        // This nested try/catch is intentional — the fallback path (create) can also
+        // throw, and we want those errors to propagate to the outer handler.
+        if (n.yaml !== undefined && n.yaml !== '' && (isNotFoundError(error) || isPublishedStatusError(error))) {
           const created = await registryClient.definitions.create(n.type, n.name, {
             yaml: n.yaml,
             ...(n.visibility !== undefined && { visibility: n.visibility }),

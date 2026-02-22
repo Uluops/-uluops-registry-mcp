@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { mapSdkErrorToMcp, mapZodErrorToMcp, containsSensitiveData } from '../client/sdk-error-mapper.js';
+import { mapSdkErrorToMcp, mapZodErrorToMcp, sanitizeErrorMessage } from '../client/sdk-error-mapper.js';
 import { ZodError, ZodIssueCode } from 'zod';
 
 // Mock the registry-sdk error type guards and classes
@@ -56,8 +56,8 @@ vi.mock('@uluops/registry-sdk/errors', () => {
         this.name = 'ForbiddenError';
       }
     },
-    isRegistryApiError: (e: unknown) => e instanceof RegistryApiError,
-    isNotFoundError: (e: unknown) => e instanceof NotFoundError,
+    isRegistryApiError: vi.fn((e: unknown) => e instanceof RegistryApiError),
+    isNotFoundError: vi.fn((e: unknown) => e instanceof NotFoundError),
     isRateLimitError: (e: unknown) => e instanceof RateLimitError,
     isValidationError: (e: unknown) => e instanceof ValidationError,
     isConflictError: (e: unknown) => e instanceof ConflictError,
@@ -175,6 +175,18 @@ describe('mapSdkErrorToMcp', () => {
     expect(parseErrorText(result)).toBe('An unexpected error occurred');
   });
 
+  it('extracts message from non-Error object with message property (via getErrorMessage)', async () => {
+    // getErrorMessage has a branch for `typeof error === 'object' && 'message' in error`.
+    // To exercise it, we override isNotFoundError to accept a plain object (not an Error).
+    const { isNotFoundError } = await import('@uluops/registry-sdk/errors');
+    vi.mocked(isNotFoundError).mockReturnValueOnce(true);
+
+    const plainObj = { message: 'object with message', statusCode: 404 };
+    const result = mapSdkErrorToMcp(plainObj);
+    expect(result.isError).toBe(true);
+    expect(parseErrorText(result)).toBe('object with message');
+  });
+
   it('sanitizes messages containing API keys', () => {
     const result = mapSdkErrorToMcp(new Error('Failed with apiKey=sk_123456'));
     expect(result.isError).toBe(true);
@@ -220,7 +232,7 @@ describe('mapSdkErrorToMcp', () => {
   });
 });
 
-describe('containsSensitiveData', () => {
+describe('sanitizeErrorMessage', () => {
   it.each([
     ['api_key=abc123', 'api_key'],
     ['apiKey: sk_live_xyz', 'apiKey'],
@@ -236,8 +248,8 @@ describe('containsSensitiveData', () => {
     ['syntax error near SQL statement', 'SQL syntax error'],
     ["column 'password_hash' does not exist", 'missing column'],
     ["relation 'users' does not exist", 'missing relation'],
-  ])('detects sensitive pattern: %s (%s)', (input) => {
-    expect(containsSensitiveData(input)).toBe(true);
+  ])('redacts sensitive pattern: %s (%s)', (input) => {
+    expect(sanitizeErrorMessage(input)).toBe('An error occurred while processing your request');
   });
 
   it.each([
@@ -245,8 +257,15 @@ describe('containsSensitiveData', () => {
     'Name is required',
     'Invalid YAML format',
     'Version 1.0.0 already exists',
-  ])('allows safe message: %s', (input) => {
-    expect(containsSensitiveData(input)).toBe(false);
+  ])('passes through safe message: %s', (input) => {
+    expect(sanitizeErrorMessage(input)).toBe(input);
+  });
+
+  it('truncates messages longer than 200 characters', () => {
+    const longMessage = 'a'.repeat(300);
+    const result = sanitizeErrorMessage(longMessage);
+    expect(result).toContain('... (truncated)');
+    expect(result.length).toBeLessThanOrEqual(216);
   });
 });
 

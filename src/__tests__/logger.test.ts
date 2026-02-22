@@ -116,60 +116,56 @@ describe('createLogger', () => {
     expect(logger).toHaveProperty('info');
   });
 
-  it('writes log entries to file when file logging is enabled', () => {
+  describe('file logging', () => {
     const logDir = '/tmp/registry-mcp-test-logs';
+    const failLogDir = '/tmp/registry-mcp-test-logs-fail';
 
-    // Clean up from any prior run
-    if (existsSync(logDir)) {
-      rmSync(logDir, { recursive: true });
-    }
-    mkdirSync(logDir, { recursive: true });
-
-    const logger = createLogger({
-      level: 'info',
-      enableFileLogging: true,
-      logDir,
+    afterEach(() => {
+      // Clean up test log directories
+      if (existsSync(logDir)) rmSync(logDir, { recursive: true });
+      if (existsSync(failLogDir)) rmSync(failLogDir, { recursive: true });
     });
 
-    logger.info('file logging test');
+    it('writes log entries to file when file logging is enabled', () => {
+      mkdirSync(logDir, { recursive: true });
 
-    const files = readdirSync(logDir).filter((f) => f.endsWith('.log'));
-    expect(files.length).toBeGreaterThan(0);
+      const logger = createLogger({
+        level: 'info',
+        enableFileLogging: true,
+        logDir,
+      });
 
-    const content = readFileSync(`${logDir}/${files[0] ?? ''}`, 'utf-8');
-    expect(content).toContain('file logging test');
+      logger.info('file logging test');
 
-    // Clean up
-    rmSync(logDir, { recursive: true });
-  });
+      const files = readdirSync(logDir).filter((f) => f.endsWith('.log'));
+      expect(files.length).toBeGreaterThan(0);
 
-  it('suppresses repeated file logging errors after first failure', () => {
-    const logDir = '/tmp/registry-mcp-test-logs-fail';
-
-    // Clean up from any prior run
-    if (existsSync(logDir)) {
-      rmSync(logDir, { recursive: true });
-    }
-    mkdirSync(logDir, { recursive: true });
-
-    const logger = createLogger({
-      level: 'info',
-      enableFileLogging: true,
-      logDir,
+      const content = readFileSync(`${logDir}/${files[0] ?? ''}`, 'utf-8');
+      expect(content).toContain('file logging test');
     });
 
-    // Remove the directory so appendFileSync fails with ENOENT
-    rmSync(logDir, { recursive: true });
+    it('suppresses repeated file logging errors after first failure', () => {
+      mkdirSync(failLogDir, { recursive: true });
 
-    // First log: should output the message + the suppression warning
-    logger.info('first message');
-    // consoleErrorSpy: call 0 = "first message", call 1 = suppression warning
-    expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
-    const warningOutput = consoleErrorSpy.mock.calls[1]?.[0] as string;
-    expect(warningOutput).toContain('File logging failed');
+      const logger = createLogger({
+        level: 'info',
+        enableFileLogging: true,
+        logDir: failLogDir,
+      });
 
-    // Second log: should NOT emit another warning (suppressed)
-    logger.info('second message');
-    expect(consoleErrorSpy).toHaveBeenCalledTimes(3); // only the message, no extra warning
+      // Remove the directory so appendFileSync fails with ENOENT
+      rmSync(failLogDir, { recursive: true });
+
+      // First log: should output the message + the suppression warning
+      logger.info('first message');
+      // consoleErrorSpy: call 0 = "first message", call 1 = suppression warning
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
+      const warningOutput = consoleErrorSpy.mock.calls[1]?.[0] as string;
+      expect(warningOutput).toContain('File logging failed');
+
+      // Second log: should NOT emit another warning (suppressed)
+      logger.info('second message');
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(3); // only the message, no extra warning
+    });
   });
 });

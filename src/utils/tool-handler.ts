@@ -21,6 +21,15 @@ function isMcpToolResponse(value: unknown): value is McpToolResponse {
 }
 
 /**
+ * Normalized input after snake_case→camelCase key transformation.
+ * Typed as Record<string, unknown> rather than `any` — callers access fields
+ * by name (e.g. `n.type`, `n.name`) which Zod has already validated.
+ */
+// SAFETY: `any` is allowed in this file (eslint config relaxes no-explicit-any for tool handlers).
+// Zod validates structure before normalizeKeys() runs; TS can't track snake→camel key renaming.
+type NormalizedInput = any;
+
+/**
  * Creates a standardized tool handler with Zod validation, key normalization,
  * and SDK error mapping.
  *
@@ -29,14 +38,18 @@ function isMcpToolResponse(value: unknown): value is McpToolResponse {
  * 2. Normalize keys from snake_case -> camelCase for SDK
  * 3. Call SDK method with normalized input
  * 4. Return success response or mapped error
+ *
+ * Timeout enforcement is handled by the RegistryClient SDK (configured via
+ * ULUOPS_REGISTRY_TIMEOUT env var, default 30s). No additional timeout is
+ * needed at this layer.
  */
 export function createToolHandler<TInput extends Record<string, unknown>>(
   schema: z.ZodSchema<TInput>,
   sdkCall: (
-    // SAFETY: Typed as `any` because Zod validates input structure before normalizeKeys()
-    // runs, and TypeScript cannot statically track the snake_case→camelCase key renaming.
+    // SAFETY: Zod validates input structure before normalizeKeys() runs.
+    // TypeScript cannot statically track the snake_case→camelCase key renaming.
     // Each tool extracts positional args (n.type, n.name, etc.) guaranteed valid by Zod.
-    normalized: any
+    normalized: NormalizedInput
   ) => Promise<unknown>,
   options?: {
     /** Transform parsed input before normalization. Must be synchronous (MCP SDK constraint). Return McpToolResponse to short-circuit. */

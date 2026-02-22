@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   createResourceResponse,
   createErrorResourceResponse,
@@ -35,6 +35,11 @@ describe('createErrorResourceResponse', () => {
 });
 
 describe('fetchResourceWithTimeout', () => {
+  const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  afterEach(() => {
+    consoleSpy.mockClear();
+  });
   it('returns resource response on successful fetch', async () => {
     const data = { items: ['a'] };
     const result = await fetchResourceWithTimeout('registry://test', () =>
@@ -69,6 +74,7 @@ describe('fetchResourceWithTimeout', () => {
 
   it('handles non-Error throws gracefully', async () => {
     const result = await fetchResourceWithTimeout('registry://test', () =>
+      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- intentionally testing non-Error rejection
       Promise.reject('string error')
     );
     const parsed = JSON.parse(result.contents[0].text ?? '');

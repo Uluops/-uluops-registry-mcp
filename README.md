@@ -1,4 +1,4 @@
-# UluOps Registry MCP Client v1.0.0
+# UluOps Registry MCP Client v1.1.0
 
 MCP (Model Context Protocol) client for the UluOps Registry API. Provides **31 tools** and **4 resources** that enable Claude Code to browse, create, validate, and manage AI workflow definitions (agents, commands, workflows, pipelines).
 
@@ -106,7 +106,7 @@ publish_definition({ type: "agent", name: "my-agent", version: "1.0.0" })
 | Tool | Description |
 |------|-------------|
 | `create_definition` | Create a new draft definition (accepts `yaml` or `file_path`) |
-| `update_definition` | Update a draft definition (`yaml`/`file_path`, visibility, description, tags) |
+| `update_definition` | Update a draft definition (`yaml`/`file_path`, visibility, description, tags). Smart version-up: if the target version is published or doesn't exist and YAML is provided, automatically creates a new draft instead of failing |
 | `publish_definition` | Publish a draft definition |
 | `deprecate_definition` | Deprecate with reason and optional successor |
 | `delete_definition` | Delete a draft (published definitions cannot be deleted) |

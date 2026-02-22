@@ -18,7 +18,8 @@ import { createLogger } from './utils/logger.js';
 
 async function main(): Promise<void> {
   if (process.argv.includes('--version') || process.argv.includes('-v')) {
-    console.log(VERSION);
+    // stdout for --version is conventional (not stderr which is for MCP protocol messages)
+    process.stdout.write(VERSION + '\n');
     process.exit(0);
   }
 
@@ -36,6 +37,9 @@ async function main(): Promise<void> {
     apiUrl: config.api.baseUrl,
   });
 
+  // Retry config applies to all requests including writes. This is safe because:
+  // - The SDK only retries on network errors and 5xx responses (not 4xx)
+  // - Registry API write operations are idempotent (create returns existing on conflict)
   const registryClient = new RegistryClient({
     baseUrl: config.api.baseUrl,
     apiKey: config.api.apiKey,
@@ -91,7 +95,6 @@ async function main(): Promise<void> {
   process.on('uncaughtException', (error) => {
     logger.error('Uncaught exception', {
       error: error.message,
-      stack: error.stack,
     });
     process.exit(1);
   });

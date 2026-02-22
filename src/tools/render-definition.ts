@@ -15,7 +15,15 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from '../types/index.js';
+import { createToolHandler } from '../utils/tool-handler.js';
+import { mapSdkErrorToMcp, mapZodErrorToMcp } from '../client/sdk-error-mapper.js';
 
+/**
+ * Base directory for output_path containment.
+ * Resolved paths must start with this directory to prevent path traversal.
+ * Defaults to cwd if OUTPUT_BASE_DIR is not set.
+ */
+const OUTPUT_BASE_DIR = resolve(process.env['OUTPUT_BASE_DIR'] ?? process.cwd());
 
 export const RenderDefinitionInputSchema = z.object({
   type: DefinitionTypeSchema,
@@ -32,25 +40,37 @@ export function registerRenderDefinitionTool(
   server: McpServerToolRegistration,
   registryClient: RegistryClient
 ): void {
+  const baseHandler = createToolHandler(RenderDefinitionInputSchema, (n) =>
+    registryClient.render.get(n.type, n.name, n.version)
+  );
+
   server.tool(
     'render_definition',
     'Get the rendered runtime markdown for a definition version. Use output_path to write directly to a file.',
     RenderDefinitionInputSchema.shape,
     async (args: unknown) => {
+      const parsed = RenderDefinitionInputSchema.safeParse(args);
+      if (!parsed.success || parsed.data.output_path === undefined) {
+        return baseHandler(args);
+      }
+
+      // Validate output_path stays within OUTPUT_BASE_DIR
+      const absPath = resolve(parsed.data.output_path);
+      if (!absPath.startsWith(OUTPUT_BASE_DIR + '/') && absPath !== OUTPUT_BASE_DIR) {
+        return createErrorResponse(
+          `output_path must resolve within ${OUTPUT_BASE_DIR} — got ${absPath}`
+        );
+      }
+
       try {
-        const input = RenderDefinitionInputSchema.parse(args);
         const result = await registryClient.render.get(
-          input.type,
-          input.name,
-          input.version
+          parsed.data.type,
+          parsed.data.name,
+          parsed.data.version
         );
 
-        if (!input.output_path) {
-          return createSuccessResponse(result);
-        }
-
-        const absPath = resolve(input.output_path);
-        const markdown = (result as unknown as Record<string, unknown>).markdown;
+        // SDK RenderResult guarantees markdown: string
+        const { markdown } = result;
         if (typeof markdown !== 'string') {
           return createErrorResponse(
             'Render result missing markdown field — cannot write to file.'
@@ -67,14 +87,8 @@ export function registerRenderDefinitionTool(
         });
       } catch (error) {
         if (error instanceof z.ZodError) {
-          const { mapZodErrorToMcp } = await import(
-            '../client/sdk-error-mapper.js'
-          );
           return mapZodErrorToMcp(error);
         }
-        const { mapSdkErrorToMcp } = await import(
-          '../client/sdk-error-mapper.js'
-        );
         return mapSdkErrorToMcp(error);
       }
     }

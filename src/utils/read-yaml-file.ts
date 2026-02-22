@@ -12,13 +12,30 @@ import { createErrorResponse, type McpToolResponse } from '../types/mcp.js';
 const ALLOWED_EXTENSIONS = new Set(['.yaml', '.yml']);
 
 /**
+ * Get the base directory for file_path containment.
+ * Resolved paths must start with this directory to prevent path traversal (CWE-22).
+ * Defaults to cwd if WORKSPACE_DIR is not set.
+ * Evaluated per-call so env var changes (e.g., in tests) take effect.
+ */
+function getWorkspaceDir(): string {
+  return resolve(process.env['WORKSPACE_DIR'] ?? process.cwd());
+}
+
+/**
  * Read a YAML file from disk synchronously.
  * @param filePath - Absolute or relative path to a .yaml/.yml file.
  * @returns The raw file contents as a UTF-8 string.
- * @throws If the file has an invalid extension, does not exist, or is unreadable.
+ * @throws If the path escapes WORKSPACE_DIR, has an invalid extension, does not exist, or is unreadable.
  */
 export function readYamlFile(filePath: string): string {
   const resolved = resolve(filePath);
+  const workspaceDir = getWorkspaceDir();
+
+  if (!resolved.startsWith(workspaceDir + '/') && resolved !== workspaceDir) {
+    throw new Error(
+      `file_path must resolve within ${workspaceDir} — got ${resolved}`
+    );
+  }
 
   const ext = extname(resolved).toLowerCase();
   if (!ALLOWED_EXTENSIONS.has(ext)) {
@@ -38,18 +55,12 @@ export function readYamlFile(filePath: string): string {
       if (fsError.code === 'EACCES') {
         throw new Error(`Permission denied: ${resolved}`);
       }
-      throw new Error(`Failed to read file: ${resolved} (${fsError.code})`);
+      throw new Error(`Failed to read file: ${resolved} (${fsError.code ?? 'unknown'})`);
     }
     throw new Error(`Failed to read file: ${resolved}`);
   }
 }
 
-/**
- * Resolve yaml/file_path mutual exclusion in preProcess hooks.
- *
- * When `required` is true, exactly one of yaml or file_path must be provided.
- * When `required` is false (e.g., update_definition), neither is required.
- */
 /**
  * Resolve yaml/file_path mutual exclusion for tool preProcess hooks.
  * @param input - Parsed tool input containing optional `yaml` and/or `file_path`.

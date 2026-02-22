@@ -1,10 +1,24 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { readYamlFile, resolveYamlInput } from '../utils/read-yaml-file.js';
 import * as fs from 'node:fs';
 
 vi.mock('node:fs');
 
 const mockedReadFileSync = vi.mocked(fs.readFileSync);
+
+// Set WORKSPACE_DIR to /home so test paths like /home/user/... pass containment check.
+// getWorkspaceDir() reads env per-call, so this takes effect immediately.
+const originalWorkspaceDir = process.env['WORKSPACE_DIR'];
+beforeAll(() => {
+  process.env['WORKSPACE_DIR'] = '/home';
+});
+afterAll(() => {
+  if (originalWorkspaceDir === undefined) {
+    delete process.env['WORKSPACE_DIR'];
+  } else {
+    process.env['WORKSPACE_DIR'] = originalWorkspaceDir;
+  }
+});
 
 describe('readYamlFile', () => {
   beforeEach(() => {
@@ -51,8 +65,18 @@ describe('readYamlFile', () => {
   });
 
   it('rejects files with no extension', () => {
-    expect(() => readYamlFile('/etc/passwd')).toThrow(
+    expect(() => readYamlFile('/home/user/passwd')).toThrow(
       'Invalid file extension ""'
+    );
+    expect(mockedReadFileSync).not.toHaveBeenCalled();
+  });
+
+  it('rejects paths outside WORKSPACE_DIR', () => {
+    expect(() => readYamlFile('/etc/secrets.yaml')).toThrow(
+      'file_path must resolve within'
+    );
+    expect(() => readYamlFile('/tmp/exploit.yaml')).toThrow(
+      'file_path must resolve within'
     );
     expect(mockedReadFileSync).not.toHaveBeenCalled();
   });

@@ -19,13 +19,13 @@ export function trimDefinitionResponse(data: unknown): unknown {
   const trimmed = { ...record };
 
   if (typeof trimmed.yaml === 'string') {
-    const len = (trimmed.yaml as string).length;
-    trimmed.yaml = `${(trimmed.yaml as string).slice(0, PREVIEW_LENGTH)}... (${len} chars)`;
+    const len = trimmed.yaml.length;
+    trimmed.yaml = `${trimmed.yaml.slice(0, PREVIEW_LENGTH)}... (${String(len)} chars)`;
   }
 
   if (typeof trimmed.runtimeMd === 'string') {
-    const len = (trimmed.runtimeMd as string).length;
-    trimmed.runtimeMd = `${(trimmed.runtimeMd as string).slice(0, PREVIEW_LENGTH)}... (${len} chars)`;
+    const len = trimmed.runtimeMd.length;
+    trimmed.runtimeMd = `${trimmed.runtimeMd.slice(0, PREVIEW_LENGTH)}... (${String(len)} chars)`;
   }
 
   return trimmed;

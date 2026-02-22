@@ -1171,10 +1171,61 @@ describe('Tool Registration & SDK Calls', () => {
       expect(server.tools[0].name).toBe('render_definition');
     });
 
-    it('passes type, name, version as positional args', async () => {
+    it('passes type, name, version as positional args (no output_path)', async () => {
       registerRenderDefinitionTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
       expect(client.render.get).toHaveBeenCalledWith('agent', 'test', '1.0.0');
+    });
+
+    it('returns rendered markdown when no output_path given', async () => {
+      registerRenderDefinitionTool(server, client);
+      const result = await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      expect(result.isError).toBeUndefined();
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.markdown).toBe('# Test');
+    });
+
+    it('rejects output_path that escapes base directory', async () => {
+      registerRenderDefinitionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+        output_path: '/etc/passwd',
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('output_path must resolve within');
+    });
+
+    it('rejects output_path with path traversal', async () => {
+      registerRenderDefinitionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+        output_path: '../../../etc/passwd',
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('output_path must resolve within');
+    });
+
+    it('returns error when render result has no markdown field', async () => {
+      (client.render.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ html: '<p>test</p>' });
+      registerRenderDefinitionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+        output_path: './output/test.md',
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('missing markdown field');
+    });
+
+    it('rejects missing required fields', async () => {
+      registerRenderDefinitionTool(server, client);
+      const result = await getHandler(server)({ type: 'agent', name: 'test' });
+      expect(result.isError).toBe(true);
     });
   });
 

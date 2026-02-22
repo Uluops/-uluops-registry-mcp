@@ -10,7 +10,9 @@ import { registerDefinitionTypesResource } from './definition-types.js';
 import { registerProvidersResource } from './providers.js';
 
 /**
- * Register all MCP resources
+ * Register all 4 MCP resources with the server.
+ * @param server - MCP server instance to register resources on.
+ * @param registryClient - Registry SDK client for API calls.
  */
 export function registerAllResources(
   server: McpServerResourceRegistration,

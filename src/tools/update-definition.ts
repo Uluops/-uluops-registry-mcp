@@ -62,6 +62,8 @@ export function registerUpdateDefinitionTool(
       } catch (error: unknown) {
         // Smart version-up: if version doesn't exist or is published, and YAML is
         // provided, auto-create a new draft version instead of failing.
+        // SAFETY: n.yaml is guaranteed non-empty by the guard above. The Zod schema
+        // validates yaml as optional string, so it's safe to pass to create().
         // This nested try/catch is intentional — the fallback path (create) can also
         // throw, and we want those errors to propagate to the outer handler.
         if (n.yaml !== undefined && n.yaml !== '' && (isNotFoundError(error) || isPublishedStatusError(error))) {

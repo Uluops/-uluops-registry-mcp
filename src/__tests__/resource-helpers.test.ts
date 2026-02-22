@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   createResourceResponse,
   createErrorResourceResponse,
@@ -35,10 +35,14 @@ describe('createErrorResourceResponse', () => {
 });
 
 describe('fetchResourceWithTimeout', () => {
-  const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
 
   afterEach(() => {
-    consoleSpy.mockClear();
+    consoleSpy.mockRestore();
   });
   it('returns resource response on successful fetch', async () => {
     const data = { items: ['a'] };

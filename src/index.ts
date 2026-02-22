@@ -105,8 +105,11 @@ async function main(): Promise<void> {
   });
 
   const transport = new StdioServerTransport();
-  // Cast: StdioServerTransport satisfies the MCP SDK's Transport interface but
-  // the types are imported from different packages, causing a structural mismatch.
+  // StdioServerTransport satisfies the MCP SDK's Transport interface structurally,
+  // but the types originate from different packages. Validate at runtime before casting.
+  if (typeof transport.start !== 'function' || typeof transport.close !== 'function') {
+    throw new Error('StdioServerTransport does not satisfy Transport interface');
+  }
   await server.connect(transport as Parameters<typeof server.connect>[0]);
 
   logger.info('MCP server connected and ready', {
@@ -162,6 +165,7 @@ export { main };
 
 if (process.env.NODE_ENV !== 'test') {
   main().catch((error: unknown) => {
+    // console.error is intentional here — logger may not be initialized yet at startup
     const message = error instanceof Error ? error.message : String(error);
     console.error('Failed to start MCP client:', message);
     process.exit(1);

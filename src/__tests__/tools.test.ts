@@ -49,8 +49,8 @@ const mockWriteFile = vi.fn().mockResolvedValue(undefined);
 const mockMkdir = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('node:fs/promises', () => ({
-  writeFile: (...args: unknown[]) => mockWriteFile(...args),
-  mkdir: (...args: unknown[]) => mockMkdir(...args),
+  writeFile: (...args: unknown[]): Promise<void> => mockWriteFile(...args) as Promise<void>,
+  mkdir: (...args: unknown[]): Promise<void> => mockMkdir(...args) as Promise<void>,
 }));
 
 // Mock the registry SDK error module
@@ -59,12 +59,12 @@ const mockIsNotFoundError = vi.fn().mockReturnValue(false);
 const mockIsValidationError = vi.fn().mockReturnValue(false);
 
 vi.mock('@uluops/registry-sdk/errors', () => ({
-  isRegistryApiError: () => false,
-  isNotFoundError: (...args: unknown[]) => mockIsNotFoundError(...args),
-  isRateLimitError: () => false,
-  isValidationError: (...args: unknown[]) => mockIsValidationError(...args),
-  isConflictError: () => false,
-  isUnprocessableError: () => false,
+  isRegistryApiError: (): boolean => false,
+  isNotFoundError: (...args: unknown[]): boolean => mockIsNotFoundError(...args) as boolean,
+  isRateLimitError: (): boolean => false,
+  isValidationError: (...args: unknown[]): boolean => mockIsValidationError(...args) as boolean,
+  isConflictError: (): boolean => false,
+  isUnprocessableError: (): boolean => false,
   UnauthorizedError: class extends Error {},
   ForbiddenError: class extends Error {},
 }));
@@ -78,18 +78,18 @@ const FILE_CONTENT = 'name: from-file\nversion: 1.0.0';
 const mockReadYamlFile = vi.fn().mockReturnValue(FILE_CONTENT);
 
 vi.mock('../utils/read-yaml-file.js', () => ({
-  readYamlFile: (...args: unknown[]) => mockReadYamlFile(...args),
+  readYamlFile: (...args: unknown[]): string => mockReadYamlFile(...args) as string,
   resolveYamlInput: <T extends { yaml?: string; file_path?: string }>(
     input: T,
     options: { required: boolean }
   ): T | { content: { type: string; text: string }[]; isError: boolean } => {
-    if (options.required && !input.yaml && !input.file_path) {
+    if (options.required && input.yaml === undefined && input.file_path === undefined) {
       return createErrorResponse('Provide either yaml or file_path');
     }
-    if (input.yaml && input.file_path) {
+    if (input.yaml !== undefined && input.file_path !== undefined) {
       return createErrorResponse('Provide only one of yaml or file_path, not both');
     }
-    if (input.file_path) {
+    if (input.file_path !== undefined) {
       const content = mockReadYamlFile(input.file_path) as string;
       return { ...input, yaml: content };
     }
@@ -112,7 +112,7 @@ function createMockServer(): McpServerToolRegistration & { tools: ToolEntry[] } 
   const tools: ToolEntry[] = [];
   return {
     tools,
-    tool(name: string, description: string, schema: unknown, handler: ToolEntry['handler']) {
+    tool(name: string, description: string, schema: unknown, handler: ToolEntry['handler']): void {
       tools.push({ name, description, schema, handler });
     },
   };

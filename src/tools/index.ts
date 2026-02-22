@@ -43,7 +43,9 @@ import { registerGetUserTool } from './get-user.js';
 import { registerBatchUsersTool } from './batch-users.js';
 
 /**
- * Register all MCP tools (P0 + P1 + P2)
+ * Register all 31 MCP tools with the server.
+ * @param server - MCP server instance to register tools on.
+ * @param registryClient - Registry SDK client for API calls.
  */
 export function registerAllTools(
   server: McpServerToolRegistration,

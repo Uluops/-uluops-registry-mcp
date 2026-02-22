@@ -28,7 +28,7 @@ function createMockServer(): McpServerResourceRegistration & { resources: Resour
       uri: string,
       metadataOrHandler: ResourceMetadata | ResourceHandler,
       handler?: ResourceHandler
-    ) {
+    ): void {
       resources.push({
         name,
         uri,

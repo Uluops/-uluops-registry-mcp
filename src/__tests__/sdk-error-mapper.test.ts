@@ -56,12 +56,12 @@ vi.mock('@uluops/registry-sdk/errors', () => {
         this.name = 'ForbiddenError';
       }
     },
-    isRegistryApiError: vi.fn((e: unknown) => e instanceof RegistryApiError),
-    isNotFoundError: vi.fn((e: unknown) => e instanceof NotFoundError),
-    isRateLimitError: (e: unknown) => e instanceof RateLimitError,
-    isValidationError: (e: unknown) => e instanceof ValidationError,
-    isConflictError: (e: unknown) => e instanceof ConflictError,
-    isUnprocessableError: (e: unknown) => e instanceof UnprocessableError,
+    isRegistryApiError: vi.fn((e: unknown): boolean => e instanceof RegistryApiError),
+    isNotFoundError: vi.fn((e: unknown): boolean => e instanceof NotFoundError),
+    isRateLimitError: (e: unknown): boolean => e instanceof RateLimitError,
+    isValidationError: (e: unknown): boolean => e instanceof ValidationError,
+    isConflictError: (e: unknown): boolean => e instanceof ConflictError,
+    isUnprocessableError: (e: unknown): boolean => e instanceof UnprocessableError,
     // Re-export classes for test construction
     RegistryApiError,
     NotFoundError,

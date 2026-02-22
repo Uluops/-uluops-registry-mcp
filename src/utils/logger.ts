@@ -98,11 +98,12 @@ export function createLogger(config: LoggerConfig | LogLevel): Logger {
       try {
         const filePath = getLogFilePath(resolvedLogDir);
         appendFileSync(filePath, formatted + '\n', 'utf-8');
-      } catch {
+      } catch (fileError: unknown) {
         if (!fileLoggingFailed) {
           fileLoggingFailed = true;
+          const detail = fileError instanceof Error ? fileError.message : String(fileError);
           console.error(
-            formatLogEntry('warn', 'File logging failed, further file log errors suppressed')
+            formatLogEntry('warn', `File logging failed: ${detail}. Further file log errors suppressed`)
           );
         }
       }

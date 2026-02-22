@@ -17,7 +17,7 @@ export function registerSyncModelsTool(
 ): void {
   server.tool(
     'sync_models',
-    'Sync the model catalog with upstream providers (admin operation).',
+    'Sync the model catalog with upstream providers. Requires admin privileges.',
     SyncModelsInputSchema.shape,
     createToolHandler(SyncModelsInputSchema, () => registryClient.models.sync())
   );

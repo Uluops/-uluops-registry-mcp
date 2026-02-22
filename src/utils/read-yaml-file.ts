@@ -5,11 +5,12 @@
  * Sync because `preProcess` callbacks are synchronous by contract.
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { resolve, extname } from 'node:path';
 import { createErrorResponse, type McpToolResponse } from '../types/mcp.js';
 
 const ALLOWED_EXTENSIONS = new Set(['.yaml', '.yml']);
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
 /**
  * Get the base directory for file_path containment.
@@ -41,6 +42,13 @@ export function readYamlFile(filePath: string): string {
   if (!ALLOWED_EXTENSIONS.has(ext)) {
     throw new Error(
       `Invalid file extension "${ext}". Only .yaml and .yml files are accepted.`
+    );
+  }
+
+  const stat = statSync(resolved, { throwIfNoEntry: false });
+  if (stat && stat.size > MAX_FILE_SIZE_BYTES) {
+    throw new Error(
+      `File too large: ${resolved} (${String(stat.size)} bytes, max ${String(MAX_FILE_SIZE_BYTES)})`
     );
   }
 

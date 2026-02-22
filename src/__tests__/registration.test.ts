@@ -7,12 +7,12 @@ import { toolRegistry } from '../config/tool-registry.js';
 
 // Mock the registry SDK error module (needed by tool handlers)
 vi.mock('@uluops/registry-sdk/errors', () => ({
-  isRegistryApiError: () => false,
-  isNotFoundError: () => false,
-  isRateLimitError: () => false,
-  isValidationError: () => false,
-  isConflictError: () => false,
-  isUnprocessableError: () => false,
+  isRegistryApiError: (): boolean => false,
+  isNotFoundError: (): boolean => false,
+  isRateLimitError: (): boolean => false,
+  isValidationError: (): boolean => false,
+  isConflictError: (): boolean => false,
+  isUnprocessableError: (): boolean => false,
   UnauthorizedError: class extends Error {},
   ForbiddenError: class extends Error {},
 }));
@@ -21,7 +21,7 @@ function createMockToolServer(): McpServerToolRegistration & { tools: string[] }
   const tools: string[] = [];
   return {
     tools,
-    tool(name: string) {
+    tool(name: string): void {
       tools.push(name);
     },
   } as unknown as McpServerToolRegistration & { tools: string[] };
@@ -31,7 +31,7 @@ function createMockResourceServer(): McpServerResourceRegistration & { resources
   const resources: string[] = [];
   return {
     resources,
-    resource(name: string) {
+    resource(name: string): void {
       resources.push(name);
     },
   } as unknown as McpServerResourceRegistration & { resources: string[] };

@@ -5,7 +5,7 @@
 import type { ResourceResponse } from '../types/index.js';
 import { sanitizeErrorMessage } from '../client/sdk-error-mapper.js';
 
-const RESOURCE_TIMEOUT_MS = 15_000;
+const RESOURCE_TIMEOUT_MS = parseInt(process.env['RESOURCE_TIMEOUT_MS'] ?? '15000', 10);
 
 export function createResourceResponse(uri: string, data: unknown): ResourceResponse {
   return {

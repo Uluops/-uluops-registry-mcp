@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import type { McpServerToolRegistration } from '../types/index.js';
 
-// --- Tool register imports (all 31) ---
+// Session management
+import { registerSetDefaultTypeTool } from '../tools/set-default-type.js';
+import { setDefaultType } from '../utils/session-state.js';
+
+// --- Tool register imports (all 31 + session) ---
 // Definitions
 import { registerListDefinitionsTool } from '../tools/list-definitions.js';
 import { registerGetDefinitionTool } from '../tools/get-definition.js';
@@ -354,6 +358,24 @@ describe('Tool Registration & SDK Calls', () => {
       registerSearchDefinitionsTool(server, client);
       const result = await getHandler(server)({ query: '' });
       expect(result.isError).toBe(true);
+    });
+
+    it('passes agent_type, visibility, and tags to SDK', async () => {
+      registerSearchDefinitionsTool(server, client);
+      await getHandler(server)({
+        query: 'validate',
+        agent_type: 'validator',
+        visibility: 'public',
+        tags: ['security', 'code'],
+      });
+      expect(client.definitions.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          search: 'validate',
+          agentType: 'validator',
+          visibility: 'public',
+          tag: ['security', 'code'],
+        })
+      );
     });
   });
 
@@ -1364,6 +1386,116 @@ describe('Tool Registration & SDK Calls', () => {
       const result = await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
       expect(result.isError).toBeUndefined();
       expect(parseResult(result)).toEqual({ success: true });
+    });
+  });
+
+  describe('set_default_type', () => {
+    beforeEach(() => {
+      setDefaultType(undefined);
+    });
+
+    it('registers with correct name', () => {
+      registerSetDefaultTypeTool(server);
+      expect(server.tools[0].name).toBe('set_default_type');
+    });
+
+    it('sets a default type and returns session state', async () => {
+      registerSetDefaultTypeTool(server);
+      const result = await getHandler(server)({ type: 'agent' });
+      expect(result.isError).toBeUndefined();
+      expect(parseResult(result)).toEqual({ defaultType: 'agent' });
+    });
+
+    it('clears default type when type is omitted', async () => {
+      registerSetDefaultTypeTool(server);
+      await getHandler(server)({ type: 'agent' });
+      const result = await getHandler(server)({});
+      expect(result.isError).toBeUndefined();
+      expect(parseResult(result)).toEqual({ defaultType: undefined });
+    });
+
+    it('rejects invalid type values', async () => {
+      registerSetDefaultTypeTool(server);
+      const result = await getHandler(server)({ type: 'invalid' });
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe('session type injection', () => {
+    beforeEach(() => {
+      setDefaultType(undefined);
+    });
+
+    it('injects session type when args.type is not provided', async () => {
+      setDefaultType('agent');
+      registerListDefinitionsTool(server, client);
+      await getHandler(server)({});
+      expect(client.definitions.list).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'agent' })
+      );
+    });
+
+    it('does not override explicit type in args', async () => {
+      setDefaultType('agent');
+      registerListDefinitionsTool(server, client);
+      await getHandler(server)({ type: 'workflow' });
+      expect(client.definitions.list).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'workflow' })
+      );
+    });
+
+    it('does not inject when session type is not set', async () => {
+      registerSearchDefinitionsTool(server, client);
+      await getHandler(server)({ query: 'test' });
+      expect(client.definitions.list).toHaveBeenCalledWith(
+        expect.not.objectContaining({ type: expect.any(String) })
+      );
+    });
+  });
+
+  describe('fields parameter', () => {
+    it('filters response to requested fields only', async () => {
+      (client.definitions.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+        items: [
+          { name: 'test', type: 'agent', version: '1.0.0', status: 'published', description: 'A test' },
+        ],
+        total: 1,
+        limit: 20,
+        offset: 0,
+      });
+      registerListDefinitionsTool(server, client);
+      const result = await getHandler(server)({ fields: ['name', 'version'] });
+      const parsed = parseResult(result) as { items: Record<string, unknown>[]; total: number };
+      expect(parsed.items[0]).toEqual({ name: 'test', version: '1.0.0' });
+      expect(parsed.items[0]).not.toHaveProperty('status');
+      expect(parsed.items[0]).not.toHaveProperty('description');
+    });
+
+    it('preserves pagination metadata even when not in fields', async () => {
+      (client.definitions.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+        items: [{ name: 'test', type: 'agent' }],
+        total: 1,
+        limit: 20,
+        offset: 0,
+      });
+      registerListDefinitionsTool(server, client);
+      const result = await getHandler(server)({ fields: ['name'] });
+      const parsed = parseResult(result) as Record<string, unknown>;
+      expect(parsed.total).toBe(1);
+      expect(parsed.limit).toBe(20);
+      expect(parsed.offset).toBe(0);
+    });
+
+    it('does not filter when fields is not provided', async () => {
+      (client.definitions.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+        items: [{ name: 'test', type: 'agent', status: 'published' }],
+        total: 1,
+      });
+      registerListDefinitionsTool(server, client);
+      const result = await getHandler(server)({});
+      const parsed = parseResult(result) as { items: Record<string, unknown>[] };
+      expect(parsed.items[0]).toHaveProperty('status');
+      expect(parsed.items[0]).toHaveProperty('type');
     });
   });
 });

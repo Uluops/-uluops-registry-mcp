@@ -10,6 +10,8 @@ import {
   DefinitionTypeSchema,
   DefinitionStatusSchema,
   DomainSchema,
+  AgentTypeSchema,
+  VisibilitySchema,
   type McpServerToolRegistration,
 } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
@@ -19,6 +21,9 @@ export const SearchDefinitionsInputSchema = z.object({
   type: DefinitionTypeSchema.optional(),
   status: DefinitionStatusSchema.optional(),
   domain: DomainSchema.optional(),
+  agent_type: AgentTypeSchema.optional(),
+  visibility: VisibilitySchema.optional(),
+  tags: z.array(z.string()).optional(),
   limit: z.number().int().positive().max(100).default(20),
 });
 
@@ -28,7 +33,7 @@ export function registerSearchDefinitionsTool(
 ): void {
   server.tool(
     'search_definitions',
-    'Search definitions by keyword with optional type, status, and domain filters.',
+    'Search definitions by keyword with optional type, status, domain, agent_type, visibility, and tags filters.',
     SearchDefinitionsInputSchema.shape,
     createToolHandler(SearchDefinitionsInputSchema, (n) =>
       registryClient.definitions.list({
@@ -36,6 +41,9 @@ export function registerSearchDefinitionsTool(
         type: n.type,
         status: n.status,
         domain: n.domain,
+        agentType: n.agentType,
+        visibility: n.visibility,
+        tag: n.tags,
         limit: n.limit,
       })
     )

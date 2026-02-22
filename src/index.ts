@@ -114,6 +114,7 @@ async function main(): Promise<void> {
 
   logger.info('MCP server connected and ready', {
     tools: {
+      session: ['set_default_type'],
       p0_core: [
         'list_definitions',
         'get_definition',

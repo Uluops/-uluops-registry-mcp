@@ -5,6 +5,9 @@
 import type { RegistryClient } from '@uluops/registry-sdk';
 import type { McpServerToolRegistration } from '../types/index.js';
 
+// Session management
+import { registerSetDefaultTypeTool } from './set-default-type.js';
+
 // P0 Core Tools
 import { registerListDefinitionsTool } from './list-definitions.js';
 import { registerGetDefinitionTool } from './get-definition.js';
@@ -43,7 +46,7 @@ import { registerGetUserTool } from './get-user.js';
 import { registerBatchUsersTool } from './batch-users.js';
 
 /**
- * Register all 31 MCP tools with the server.
+ * Register all 32 MCP tools with the server.
  * @param server - MCP server instance to register tools on.
  * @param registryClient - Registry SDK client for API calls.
  */
@@ -51,6 +54,9 @@ export function registerAllTools(
   server: McpServerToolRegistration,
   registryClient: RegistryClient
 ): void {
+  // Session management (no registryClient needed)
+  registerSetDefaultTypeTool(server);
+
   // P0 Core tools
   registerListDefinitionsTool(server, registryClient);
   registerGetDefinitionTool(server, registryClient);

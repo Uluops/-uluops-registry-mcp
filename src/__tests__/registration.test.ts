@@ -17,14 +17,19 @@ vi.mock('@uluops/registry-sdk/errors', () => ({
   ForbiddenError: class extends Error {},
 }));
 
-function createMockToolServer(): McpServerToolRegistration & { tools: string[] } {
+type ToolRegistration = { name: string; schema: Record<string, unknown> };
+
+function createMockToolServer(): McpServerToolRegistration & { tools: string[]; registrations: ToolRegistration[] } {
   const tools: string[] = [];
+  const registrations: ToolRegistration[] = [];
   return {
     tools,
-    tool(name: string): void {
+    registrations,
+    tool(name: string, _description: string, schema: Record<string, unknown>): void {
       tools.push(name);
+      registrations.push({ name, schema });
     },
-  } as unknown as McpServerToolRegistration & { tools: string[] };
+  } as unknown as McpServerToolRegistration & { tools: string[]; registrations: ToolRegistration[] };
 }
 
 function createMockResourceServer(): McpServerResourceRegistration & { resources: string[] } {
@@ -43,7 +48,7 @@ function createMinimalClient(): RegistryClient {
 }
 
 describe('registerAllTools', () => {
-  it('registers exactly 31 tools', () => {
+  it('registers exactly 32 tools', () => {
     const server = createMockToolServer();
     registerAllTools(server, createMinimalClient());
     expect(server.tools).toHaveLength(32);
@@ -97,6 +102,14 @@ describe('registerAllTools', () => {
     const unique = new Set(server.tools);
     expect(unique.size).toBe(server.tools.length);
   });
+
+  it('injects fields param into every tool schema', () => {
+    const server = createMockToolServer();
+    registerAllTools(server, createMinimalClient());
+    for (const reg of server.registrations) {
+      expect(reg.schema).toHaveProperty('fields');
+    }
+  });
 });
 
 describe('registerAllResources', () => {
@@ -117,7 +130,7 @@ describe('registerAllResources', () => {
 });
 
 describe('toolRegistry configuration', () => {
-  it('has exactly 31 tool specs', () => {
+  it('has exactly 32 tool specs', () => {
     expect(toolRegistry).toHaveLength(32);
   });
 

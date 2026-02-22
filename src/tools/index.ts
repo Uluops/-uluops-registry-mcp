@@ -2,8 +2,36 @@
  * Tool registry - registers all MCP tools
  */
 
+import { z } from 'zod';
+import type { ZodRawShape } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
-import type { McpServerToolRegistration } from '../types/index.js';
+import type { McpServerToolRegistration, ToolHandler } from '../types/index.js';
+
+/**
+ * Zod schema for the `fields` meta-parameter.
+ * Added to every tool's MCP schema so clients can discover and send it.
+ * Actual extraction/filtering is handled centrally in createToolHandler.
+ */
+const FIELDS_PARAM = z
+  .array(z.string())
+  .optional()
+  .describe(
+    'Response fields to include. Filters each response item to only these fields. Pagination metadata (total, limit, offset, hasMore) is always preserved.'
+  );
+
+/**
+ * Wraps a server to inject the `fields` meta-parameter into every tool's schema.
+ * This makes `fields` visible to MCP clients (JSON schema) without modifying
+ * individual tool files. The handler-level extraction in createToolHandler
+ * removes `fields` before Zod validation, so tool schemas remain unaware.
+ */
+function withFieldsParam(server: McpServerToolRegistration): McpServerToolRegistration {
+  return {
+    tool(name: string, description: string, schema: ZodRawShape, handler: ToolHandler): void {
+      server.tool(name, description, { ...schema, fields: FIELDS_PARAM }, handler);
+    },
+  };
+}
 
 // Session management
 import { registerSetDefaultTypeTool } from './set-default-type.js';
@@ -54,43 +82,46 @@ export function registerAllTools(
   server: McpServerToolRegistration,
   registryClient: RegistryClient
 ): void {
+  // Wrap server to inject `fields` meta-parameter into every tool's schema
+  const s = withFieldsParam(server);
+
   // Session management (no registryClient needed)
-  registerSetDefaultTypeTool(server);
+  registerSetDefaultTypeTool(s);
 
   // P0 Core tools
-  registerListDefinitionsTool(server, registryClient);
-  registerGetDefinitionTool(server, registryClient);
-  registerSearchDefinitionsTool(server, registryClient);
-  registerListModelsTool(server, registryClient);
-  registerResolveAliasTool(server, registryClient);
-  registerValidateDefinitionTool(server, registryClient);
-  registerRenderDefinitionTool(server, registryClient);
+  registerListDefinitionsTool(s, registryClient);
+  registerGetDefinitionTool(s, registryClient);
+  registerSearchDefinitionsTool(s, registryClient);
+  registerListModelsTool(s, registryClient);
+  registerResolveAliasTool(s, registryClient);
+  registerValidateDefinitionTool(s, registryClient);
+  registerRenderDefinitionTool(s, registryClient);
 
   // P1 Extended tools
-  registerCreateDefinitionTool(server, registryClient);
-  registerUpdateDefinitionTool(server, registryClient);
-  registerPublishDefinitionTool(server, registryClient);
-  registerDeprecateDefinitionTool(server, registryClient);
-  registerDeleteDefinitionTool(server, registryClient);
-  registerListVersionsTool(server, registryClient);
-  registerDiffVersionsTool(server, registryClient);
-  registerGetDependenciesTool(server, registryClient);
-  registerGetDependentsTool(server, registryClient);
-  registerGetExecutionStatsTool(server, registryClient);
-  registerListForksTool(server, registryClient);
+  registerCreateDefinitionTool(s, registryClient);
+  registerUpdateDefinitionTool(s, registryClient);
+  registerPublishDefinitionTool(s, registryClient);
+  registerDeprecateDefinitionTool(s, registryClient);
+  registerDeleteDefinitionTool(s, registryClient);
+  registerListVersionsTool(s, registryClient);
+  registerDiffVersionsTool(s, registryClient);
+  registerGetDependenciesTool(s, registryClient);
+  registerGetDependentsTool(s, registryClient);
+  registerGetExecutionStatsTool(s, registryClient);
+  registerListForksTool(s, registryClient);
 
   // P2 Admin/Specialized tools
-  registerForkDefinitionTool(server, registryClient);
-  registerCheckForkableTool(server, registryClient);
-  registerGetForkLineageTool(server, registryClient);
-  registerRecordExecutionTool(server, registryClient);
-  registerRetranslateDefinitionTool(server, registryClient);
-  registerUpgradeDefinitionTool(server, registryClient);
-  registerGetModelTool(server, registryClient);
-  registerListProvidersTool(server, registryClient);
-  registerListAliasesTool(server, registryClient);
-  registerGetTranslatorVersionTool(server, registryClient);
-  registerSyncModelsTool(server, registryClient);
-  registerGetUserTool(server, registryClient);
-  registerBatchUsersTool(server, registryClient);
+  registerForkDefinitionTool(s, registryClient);
+  registerCheckForkableTool(s, registryClient);
+  registerGetForkLineageTool(s, registryClient);
+  registerRecordExecutionTool(s, registryClient);
+  registerRetranslateDefinitionTool(s, registryClient);
+  registerUpgradeDefinitionTool(s, registryClient);
+  registerGetModelTool(s, registryClient);
+  registerListProvidersTool(s, registryClient);
+  registerListAliasesTool(s, registryClient);
+  registerGetTranslatorVersionTool(s, registryClient);
+  registerSyncModelsTool(s, registryClient);
+  registerGetUserTool(s, registryClient);
+  registerBatchUsersTool(s, registryClient);
 }

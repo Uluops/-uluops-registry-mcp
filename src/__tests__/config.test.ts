@@ -22,14 +22,16 @@ describe('loadConfig', () => {
     expect(config.api.apiKey).toBe('test-key');
   });
 
-  it('throws when ULUOPS_REGISTRY_URL is missing', () => {
+  it('uses production default when ULUOPS_REGISTRY_URL is missing', () => {
     delete process.env['ULUOPS_REGISTRY_URL'];
-    expect(() => loadConfig()).toThrow('Registry API URL is required');
+    const config = loadConfig();
+    expect(config.api.baseUrl).toBe('https://api.uluops.ai/api/v1/registry');
   });
 
-  it('throws when ULUOPS_REGISTRY_URL is empty string', () => {
+  it('uses production default when ULUOPS_REGISTRY_URL is empty string', () => {
     process.env['ULUOPS_REGISTRY_URL'] = '';
-    expect(() => loadConfig()).toThrow('Registry API URL is required');
+    const config = loadConfig();
+    expect(config.api.baseUrl).toBe('https://api.uluops.ai/api/v1/registry');
   });
 
   it('uses default timeout when not specified', () => {

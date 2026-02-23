@@ -13,6 +13,7 @@ const { version: pkgVersion } = require('../../package.json') as { version: stri
 /** Package version read from package.json at module load time. */
 export const VERSION = pkgVersion;
 
+const DEFAULT_BASE_URL = 'https://api.uluops.ai/api/v1/registry';
 const DEFAULT_TIMEOUT = 30000;
 const DEFAULT_RETRIES = 3;
 const DEFAULT_LOG_LEVEL: LogLevel = 'info';
@@ -40,15 +41,8 @@ function parseInteger(value: string | undefined, defaultValue: number): number {
  * Load configuration from environment variables.
  */
 export function loadConfig(): RegistryMcpConfig {
-  const apiUrl = process.env['ULUOPS_REGISTRY_URL'];
+  const apiUrl = process.env['ULUOPS_REGISTRY_URL'] || DEFAULT_BASE_URL;
   const apiKey = process.env['ULUOPS_API_KEY'];
-
-  if (apiUrl === undefined || apiUrl === '') {
-    throw new Error(
-      'Registry API URL is required. Set ULUOPS_REGISTRY_URL ' +
-        '(e.g., http://localhost:3001/api/v1)'
-    );
-  }
 
   return {
     api: {

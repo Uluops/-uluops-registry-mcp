@@ -36,6 +36,16 @@
       "relaxedFields": ["new_name", "description"],
       "description": "Fork definition with user-provided names"
     },
+    "update_and_publish": {
+      "level": "STORAGE",
+      "relaxedFields": ["yaml", "description", "tags"],
+      "description": "Composite update+publish with YAML content that may contain code patterns"
+    },
+    "batch_publish": {
+      "level": "QUERY",
+      "relaxedFields": [],
+      "description": "Batch publish multiple definitions by reference"
+    },
     "record_execution": {
       "level": "STORAGE",
       "relaxedFields": ["idempotency_key"],

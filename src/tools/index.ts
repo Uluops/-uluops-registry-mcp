@@ -51,6 +51,8 @@ import { registerUpdateDefinitionTool } from './update-definition.js';
 import { registerPublishDefinitionTool } from './publish-definition.js';
 import { registerDeprecateDefinitionTool } from './deprecate-definition.js';
 import { registerDeleteDefinitionTool } from './delete-definition.js';
+import { registerUpdateAndPublishTool } from './update-and-publish.js';
+import { registerBatchPublishTool } from './batch-publish.js';
 import { registerListVersionsTool } from './list-versions.js';
 import { registerDiffVersionsTool } from './diff-versions.js';
 import { registerGetDependenciesTool } from './get-dependencies.js';
@@ -74,7 +76,7 @@ import { registerGetUserTool } from './get-user.js';
 import { registerBatchUsersTool } from './batch-users.js';
 
 /**
- * Register all 32 MCP tools with the server.
+ * Register all 34 MCP tools with the server.
  * @param server - MCP server instance to register tools on.
  * @param registryClient - Registry SDK client for API calls.
  */
@@ -103,6 +105,8 @@ export function registerAllTools(
   registerPublishDefinitionTool(s, registryClient);
   registerDeprecateDefinitionTool(s, registryClient);
   registerDeleteDefinitionTool(s, registryClient);
+  registerUpdateAndPublishTool(s, registryClient);
+  registerBatchPublishTool(s, registryClient);
   registerListVersionsTool(s, registryClient);
   registerDiffVersionsTool(s, registryClient);
   registerGetDependenciesTool(s, registryClient);

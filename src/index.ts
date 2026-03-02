@@ -130,6 +130,8 @@ async function main(): Promise<void> {
         'publish_definition',
         'deprecate_definition',
         'delete_definition',
+        'update_and_publish',
+        'batch_publish',
         'list_versions',
         'diff_versions',
         'get_dependencies',

@@ -27,7 +27,7 @@ export const DomainSchema = z.enum([
 ]);
 
 /** Agent behavioral subtypes. */
-export const AgentTypeSchema = z.enum(['validator', 'executor', 'analyst', 'generator', 'explorer']);
+export const AgentTypeSchema = z.enum(['validator', 'executor', 'analyst', 'generator', 'explorer', 'forecaster']);
 
 /** Access control levels for definitions. */
 export const VisibilitySchema = z.enum(['private', 'unlisted', 'public']);

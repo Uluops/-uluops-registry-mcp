@@ -51,7 +51,7 @@ describe('registerAllTools', () => {
   it('registers exactly 32 tools', () => {
     const server = createMockToolServer();
     registerAllTools(server, createMinimalClient());
-    expect(server.tools).toHaveLength(32);
+    expect(server.tools).toHaveLength(34);
   });
 
   it('registers all expected tool names', () => {
@@ -71,6 +71,8 @@ describe('registerAllTools', () => {
       'publish_definition',
       'deprecate_definition',
       'delete_definition',
+      'update_and_publish',
+      'batch_publish',
       'list_versions',
       'diff_versions',
       'get_dependencies',
@@ -131,7 +133,7 @@ describe('registerAllResources', () => {
 
 describe('toolRegistry configuration', () => {
   it('has exactly 32 tool specs', () => {
-    expect(toolRegistry).toHaveLength(32);
+    expect(toolRegistry).toHaveLength(34);
   });
 
   it('every registered tool has a matching toolRegistry entry', () => {

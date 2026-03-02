@@ -107,7 +107,7 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
  * Inject session-level default type into args if not explicitly provided.
  * Safe for blanket injection — Zod strips unknown keys from tools that don't declare `type`.
  */
-function injectSessionType(args: unknown): unknown {
+export function injectSessionType(args: unknown): unknown {
   const sessionType = getDefaultType();
   if (!sessionType) return args;
 

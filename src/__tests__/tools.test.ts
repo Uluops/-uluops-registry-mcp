@@ -16,6 +16,8 @@ import { registerUpdateDefinitionTool } from '../tools/update-definition.js';
 import { registerPublishDefinitionTool } from '../tools/publish-definition.js';
 import { registerDeprecateDefinitionTool } from '../tools/deprecate-definition.js';
 import { registerDeleteDefinitionTool } from '../tools/delete-definition.js';
+import { registerUpdateAndPublishTool } from '../tools/update-and-publish.js';
+import { registerBatchPublishTool } from '../tools/batch-publish.js';
 // Models
 import { registerListModelsTool } from '../tools/list-models.js';
 import { registerGetModelTool } from '../tools/get-model.js';
@@ -715,6 +717,170 @@ describe('Tool Registration & SDK Calls', () => {
     it('rejects missing version', async () => {
       registerDeleteDefinitionTool(server, client);
       const result = await getHandler(server)({ type: 'agent', name: 'test' });
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  // ═══════════════════════════════════════════
+  // COMPOSITE WORKFLOW TOOLS
+  // ═══════════════════════════════════════════
+
+  describe('update_and_publish', () => {
+    it('registers with correct name', () => {
+      registerUpdateAndPublishTool(server, client);
+      expect(server.tools[0].name).toBe('update_and_publish');
+    });
+
+    it('updates then publishes in one step', async () => {
+      registerUpdateAndPublishTool(server, client);
+      (client.definitions.update as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        name: 'my-agent', version: '1.0.0', type: 'agent', status: 'draft',
+      });
+      (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        name: 'my-agent', version: '1.0.0', type: 'agent', status: 'published',
+      });
+
+      const result = await getHandler(server)({
+        type: 'agent', name: 'my-agent', version: '1.0.0',
+        yaml: 'name: my-agent\nversion: 1.0.0',
+      });
+
+      expect(result.isError).toBeUndefined();
+      expect(client.definitions.update).toHaveBeenCalledWith(
+        'agent', 'my-agent', '1.0.0',
+        expect.objectContaining({ yaml: 'name: my-agent\nversion: 1.0.0' })
+      );
+      expect(client.definitions.publish).toHaveBeenCalledWith('agent', 'my-agent', '1.0.0');
+      const parsed = parseResult(result) as Record<string, unknown>;
+      expect(parsed._note).toBe('Updated and published in one step');
+    });
+
+    it('falls back to create when version not found', async () => {
+      registerUpdateAndPublishTool(server, client);
+      const notFoundError = new Error('Not found');
+      (client.definitions.update as ReturnType<typeof vi.fn>).mockRejectedValueOnce(notFoundError);
+      // isNotFoundError is called twice: once in isPublishedStatusError guard (returns false
+      // because isValidationError is false), then in the if-condition itself.
+      mockIsNotFoundError.mockReturnValue(true);
+      (client.definitions.create as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        name: 'my-agent', version: '2.0.0', type: 'agent',
+      });
+      (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        name: 'my-agent', version: '2.0.0', type: 'agent', status: 'published',
+      });
+
+      const result = await getHandler(server)({
+        type: 'agent', name: 'my-agent', version: '1.0.0',
+        yaml: 'name: my-agent\nversion: 2.0.0',
+      });
+
+      mockIsNotFoundError.mockReturnValue(false);
+
+      expect(result.isError).toBeUndefined();
+      expect(client.definitions.create).toHaveBeenCalled();
+      expect(client.definitions.publish).toHaveBeenCalledWith('agent', 'my-agent', '2.0.0');
+      const parsed = parseResult(result) as Record<string, unknown>;
+      expect(parsed._note).toContain('not found');
+    });
+
+    it('returns error when publish fails after update', async () => {
+      registerUpdateAndPublishTool(server, client);
+      (client.definitions.update as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        name: 'my-agent', version: '1.0.0', type: 'agent',
+      });
+      (client.definitions.publish as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('Cannot publish')
+      );
+
+      const result = await getHandler(server)({
+        type: 'agent', name: 'my-agent', version: '1.0.0',
+      });
+
+      expect(result.isError).toBe(true);
+    });
+
+    it('resolves file_path input', async () => {
+      registerUpdateAndPublishTool(server, client);
+      (client.definitions.update as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        name: 'my-agent', version: '1.0.0', type: 'agent',
+      });
+      (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        name: 'my-agent', version: '1.0.0', type: 'agent', status: 'published',
+      });
+
+      const result = await getHandler(server)({
+        type: 'agent', name: 'my-agent', version: '1.0.0',
+        file_path: '/workspace/agent.yaml',
+      });
+
+      expect(result.isError).toBeUndefined();
+      expect(client.definitions.update).toHaveBeenCalledWith(
+        'agent', 'my-agent', '1.0.0',
+        expect.objectContaining({ yaml: expect.any(String) })
+      );
+    });
+  });
+
+  describe('batch_publish', () => {
+    it('registers with correct name', () => {
+      registerBatchPublishTool(server, client);
+      expect(server.tools[0].name).toBe('batch_publish');
+    });
+
+    it('publishes all definitions successfully', async () => {
+      registerBatchPublishTool(server, client);
+      (client.definitions.publish as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({ name: 'a', version: '1.0.0', status: 'published' })
+        .mockResolvedValueOnce({ name: 'b', version: '1.0.0', status: 'published' });
+
+      const result = await getHandler(server)({
+        definitions: [
+          { type: 'agent', name: 'a', version: '1.0.0' },
+          { type: 'agent', name: 'b', version: '1.0.0' },
+        ],
+      });
+
+      expect(result.isError).toBeUndefined();
+      const parsed = parseResult(result) as Record<string, unknown>;
+      expect(parsed.summary).toBe('Published 2 of 2 definitions');
+      expect((parsed.published as unknown[]).length).toBe(2);
+      expect((parsed.failed as unknown[]).length).toBe(0);
+    });
+
+    it('handles partial failures', async () => {
+      registerBatchPublishTool(server, client);
+      (client.definitions.publish as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({ name: 'a', version: '1.0.0', status: 'published' })
+        .mockRejectedValueOnce(new Error('Not found'));
+
+      const result = await getHandler(server)({
+        definitions: [
+          { type: 'agent', name: 'a', version: '1.0.0' },
+          { type: 'agent', name: 'b', version: '2.0.0' },
+        ],
+      });
+
+      expect(result.isError).toBeUndefined();
+      const parsed = parseResult(result) as Record<string, unknown>;
+      expect(parsed.summary).toBe('Published 1 of 2 definitions');
+      expect((parsed.published as unknown[]).length).toBe(1);
+      const failed = parsed.failed as Record<string, unknown>[];
+      expect(failed.length).toBe(1);
+      expect(failed[0].name).toBe('b');
+    });
+
+    it('rejects empty definitions array', async () => {
+      registerBatchPublishTool(server, client);
+      const result = await getHandler(server)({ definitions: [] });
+      expect(result.isError).toBe(true);
+    });
+
+    it('rejects more than 20 definitions', async () => {
+      registerBatchPublishTool(server, client);
+      const definitions = Array.from({ length: 21 }, (_, i) => ({
+        type: 'agent', name: `agent-${String(i)}`, version: '1.0.0',
+      }));
+      const result = await getHandler(server)({ definitions });
       expect(result.isError).toBe(true);
     });
   });

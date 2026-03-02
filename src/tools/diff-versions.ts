@@ -14,6 +14,7 @@ export const DiffVersionsInputSchema = z.object({
   name: z.string().min(1),
   from: z.string().min(1),
   to: z.string().min(1),
+  full: z.boolean().default(false),
 });
 
 export function registerDiffVersionsTool(
@@ -22,10 +23,10 @@ export function registerDiffVersionsTool(
 ): void {
   server.tool(
     'diff_versions',
-    'Compare two versions of a definition, showing YAML differences.',
+    'Compare two versions of a definition. Returns a section-level summary by default. Pass full=true for raw YAML content.',
     DiffVersionsInputSchema.shape,
     createToolHandler(DiffVersionsInputSchema, (n) =>
-      registryClient.versions.diff(n.type, n.name, n.from, n.to)
+      registryClient.versions.diff(n.type, n.name, n.from, n.to, { full: n.full })
     )
   );
 }

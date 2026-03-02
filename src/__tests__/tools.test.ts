@@ -51,10 +51,12 @@ import { registerBatchUsersTool } from '../tools/batch-users.js';
 // Mock node:fs/promises for render_definition output_path write tests
 const mockWriteFile = vi.fn().mockResolvedValue(undefined);
 const mockMkdir = vi.fn().mockResolvedValue(undefined);
+const mockLstat = vi.fn().mockRejectedValue(new Error('ENOENT'));
 
 vi.mock('node:fs/promises', () => ({
   writeFile: (...args: unknown[]): Promise<void> => mockWriteFile(...args) as Promise<void>,
   mkdir: (...args: unknown[]): Promise<void> => mockMkdir(...args) as Promise<void>,
+  lstat: (...args: unknown[]): Promise<unknown> => mockLstat(...args) as Promise<unknown>,
 }));
 
 // Mock the registry SDK error module

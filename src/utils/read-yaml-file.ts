@@ -5,7 +5,7 @@
  * Sync because `preProcess` callbacks are synchronous by contract.
  */
 
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { resolve, extname } from 'node:path';
 import { createErrorResponse, type McpToolResponse } from '../types/mcp.js';
 
@@ -30,11 +30,26 @@ function getWorkspaceDir(): string {
  */
 export function readYamlFile(filePath: string): string {
   const resolved = resolve(filePath);
-  const workspaceDir = getWorkspaceDir();
+  const workspaceDir = realpathSync(getWorkspaceDir());
 
+  // First check: catch obvious traversal before touching the filesystem
   if (!resolved.startsWith(workspaceDir + '/') && resolved !== workspaceDir) {
     throw new Error(
       `file_path must resolve within ${workspaceDir} — got ${resolved}`
+    );
+  }
+
+  // Second check: dereference symlinks to prevent symlink traversal (CWE-59)
+  let real: string;
+  try {
+    real = realpathSync(resolved);
+  } catch {
+    // File doesn't exist — let readFileSync below produce the ENOENT error
+    real = resolved;
+  }
+  if (!real.startsWith(workspaceDir + '/') && real !== workspaceDir) {
+    throw new Error(
+      `file_path resolves outside workspace via symlink — got ${real}`
     );
   }
 

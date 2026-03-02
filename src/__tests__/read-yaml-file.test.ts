@@ -2,7 +2,16 @@ import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } 
 import { readYamlFile, resolveYamlInput } from '../utils/read-yaml-file.js';
 import * as fs from 'node:fs';
 
-vi.mock('node:fs');
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof fs>();
+  return {
+    ...actual,
+    readFileSync: vi.fn(),
+    statSync: vi.fn().mockReturnValue(null),
+    // realpathSync: pass through to identity so containment checks work with test paths
+    realpathSync: vi.fn((p: string) => p),
+  };
+});
 
 const mockedReadFileSync = vi.mocked(fs.readFileSync);
 

@@ -5,8 +5,8 @@
  * Optionally write the markdown directly to a file via output_path.
  */
 
-import { writeFile, mkdir } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { writeFile, mkdir, lstat } from 'node:fs/promises';
+import { dirname, resolve, relative } from 'node:path';
 import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import {
@@ -64,6 +64,24 @@ export function registerRenderDefinitionTool(
         return createErrorResponse(
           `output_path must resolve within ${outputBaseDir} — got ${absPath}`
         );
+      }
+
+      // Reject symlinks in output path to prevent symlink-following writes (CWE-59)
+      const pathStat = await lstat(absPath).catch(() => null);
+      if (pathStat?.isSymbolicLink() === true) {
+        return createErrorResponse('output_path must not be a symbolic link');
+      }
+
+      // Verify no symlink in ancestor directories resolves outside the base dir
+      const rel = relative(outputBaseDir, absPath);
+      const segments = rel.split('/');
+      let walkPath = outputBaseDir;
+      for (const seg of segments.slice(0, -1)) {
+        walkPath = resolve(walkPath, seg);
+        const segStat = await lstat(walkPath).catch(() => null);
+        if (segStat?.isSymbolicLink() === true) {
+          return createErrorResponse('output_path contains a symbolic link in its directory path');
+        }
       }
 
       try {

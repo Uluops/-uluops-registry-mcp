@@ -24,6 +24,7 @@ export const DomainSchema = z.enum([
   'scientific',
   'content',
   'general',
+  'cognitive-lens',
 ]);
 
 /** Agent behavioral subtypes. */

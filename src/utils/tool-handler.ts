@@ -11,6 +11,40 @@ import { normalizeKeys } from './normalize-keys.js';
 import { createSuccessResponse, type McpToolResponse } from '../types/index.js';
 import { getDefaultType } from './session-state.js';
 
+/**
+ * Coerce string values to numbers for fields that the Zod schema expects as numeric.
+ * MCP JSON-RPC sometimes serializes numeric parameters as strings (e.g., "50" instead of 50).
+ * This runs before Zod validation to prevent spurious type errors at the boundary.
+ */
+function coerceNumericFields(args: unknown, schema: z.ZodSchema): unknown {
+  if (typeof args !== 'object' || args === null) return args;
+  if (!(schema instanceof z.ZodObject)) return args;
+
+  const shape = schema.shape as Record<string, z.ZodTypeAny>;
+  const obj = { ...(args as Record<string, unknown>) };
+
+  for (const [key, fieldSchema] of Object.entries(shape)) {
+    if (key in obj && typeof obj[key] === 'string') {
+      if (isNumericSchema(fieldSchema)) {
+        const num = Number(obj[key]);
+        if (!isNaN(num)) {
+          obj[key] = num;
+        }
+      }
+    }
+  }
+  return obj;
+}
+
+/** Check if a Zod schema (possibly wrapped in optional/nullable/default) expects a number. */
+function isNumericSchema(schema: z.ZodTypeAny): boolean {
+  if (schema instanceof z.ZodNumber) return true;
+  if (schema instanceof z.ZodOptional || schema instanceof z.ZodNullable || schema instanceof z.ZodDefault) {
+    return isNumericSchema((schema as any)._def.innerType);
+  }
+  return false;
+}
+
 /** Type guard: checks if a value is a complete MCP tool response (has content array). */
 function isMcpToolResponse(value: unknown): value is McpToolResponse {
   return (
@@ -72,7 +106,7 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
       // Inject session-level default type if not explicitly provided
       const injectedArgs = injectSessionType(cleanArgs);
 
-      let input = schema.parse(injectedArgs);
+      let input = schema.parse(coerceNumericFields(injectedArgs, schema));
 
       if (options?.preProcess) {
         const preResult = options.preProcess(input);

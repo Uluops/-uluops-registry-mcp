@@ -47,6 +47,21 @@ function isPublishedStatusError(error: unknown): boolean {
     error.message.includes("'published' status");
 }
 
+/**
+ * Patch the version field in definition YAML to match the requested version.
+ * When update_and_publish falls back to create (because the target version is
+ * published or doesn't exist), the YAML on disk may still contain the old
+ * version. The API extracts version from YAML metadata, so we must ensure
+ * the YAML version matches the requested version before calling create.
+ */
+function patchYamlVersion(yaml: string, newVersion: string): string {
+  // Replace the first indented `version:` field value (the interface version)
+  return yaml.replace(
+    /^(\s+version:\s+)["']?\d+\.\d+\.\d+["']?/m,
+    `$1"${newVersion}"`
+  );
+}
+
 export function registerUpdateAndPublishTool(
   server: McpServerToolRegistration,
   registryClient: RegistryClient
@@ -83,8 +98,11 @@ export function registerUpdateAndPublishTool(
           await registryClient.definitions.update(type, name, version, body);
         } catch (error: unknown) {
           if (yaml !== undefined && yaml !== '' && (isNotFoundError(error) || isPublishedStatusError(error))) {
+            // Patch YAML version to match requested version — the file on disk
+            // may still contain the old (published) version string.
+            const patchedYaml = patchYamlVersion(yaml, version);
             const created = await registryClient.definitions.create(type, name, {
-              yaml,
+              yaml: patchedYaml,
               ...(visibility !== undefined && { visibility }),
             });
             publishVersion = created.version;

@@ -43,11 +43,13 @@ function parseInteger(value: string | undefined, defaultValue: number): number {
 export function loadConfig(): RegistryMcpConfig {
   const apiUrl = process.env['ULUOPS_REGISTRY_URL'] || DEFAULT_BASE_URL;
   const apiKey = process.env['ULUOPS_API_KEY'];
+  const orgSlug = process.env['ULUOPS_ORG_SLUG'];
 
   return {
     api: {
       baseUrl: apiUrl,
       apiKey,
+      orgSlug,
       timeout: parseInteger(process.env['ULUOPS_REGISTRY_TIMEOUT'], DEFAULT_TIMEOUT),
       retries: parseInteger(process.env['ULUOPS_REGISTRY_RETRIES'], DEFAULT_RETRIES),
     },

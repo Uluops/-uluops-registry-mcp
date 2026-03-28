@@ -9,6 +9,8 @@ export interface ApiClientConfig {
   baseUrl: string;
   /** API key for authentication */
   apiKey?: string;
+  /** Org slug for multi-tenancy — sets X-Org-Slug header on all requests */
+  orgSlug?: string;
   /** Request timeout in milliseconds (default: 30000) */
   timeout: number;
   /** Number of retry attempts (default: 3) */

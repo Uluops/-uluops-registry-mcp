@@ -43,6 +43,7 @@ async function main(): Promise<void> {
   const registryClient = new RegistryClient({
     baseUrl: config.api.baseUrl,
     apiKey: config.api.apiKey,
+    orgSlug: config.api.orgSlug,
     timeout: config.api.timeout,
     retries: config.api.retries,
   });

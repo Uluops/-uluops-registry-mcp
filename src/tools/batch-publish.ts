@@ -45,11 +45,15 @@ export function registerBatchPublishTool(
             const message = error instanceof Error
               ? sanitizeErrorMessage(error.message)
               : 'Unknown error';
+            const statusCode = error && typeof error === 'object' && 'statusCode' in error
+              ? (error as { statusCode: number }).statusCode
+              : undefined;
             failed.push({
               type: def.type,
               name: def.name,
               version: def.version,
               error: message,
+              ...(statusCode ? { status: statusCode } : {}),
             });
           }
         }

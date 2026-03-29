@@ -129,6 +129,14 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
 
       return createSuccessResponse(result);
     } catch (error) {
+      // Log errors to stderr for debugging (MCP transport uses stdout)
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorType = error instanceof z.ZodError ? 'validation' :
+        error instanceof Error ? error.constructor.name : 'unknown';
+      process.stderr.write(
+        `[mcp-tool-error] type=${errorType} message=${errorMsg.slice(0, 200)}\n`
+      );
+
       if (error instanceof z.ZodError) {
         return mapZodErrorToMcp(error);
       }

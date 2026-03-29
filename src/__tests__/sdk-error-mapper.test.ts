@@ -19,9 +19,11 @@ vi.mock('@uluops/registry-sdk/errors', () => {
     }
   }
   class RateLimitError extends RegistryApiError {
-    constructor(message: string) {
+    retryAfter?: number;
+    constructor(message: string, retryAfter?: number) {
       super(message, 429);
       this.name = 'RateLimitError';
+      this.retryAfter = retryAfter;
     }
   }
   class ValidationError extends RegistryApiError {
@@ -62,7 +64,6 @@ vi.mock('@uluops/registry-sdk/errors', () => {
     isValidationError: (e: unknown): boolean => e instanceof ValidationError,
     isConflictError: (e: unknown): boolean => e instanceof ConflictError,
     isUnprocessableError: (e: unknown): boolean => e instanceof UnprocessableError,
-    // Re-export classes for test construction
     RegistryApiError,
     NotFoundError,
     RateLimitError,
@@ -72,7 +73,6 @@ vi.mock('@uluops/registry-sdk/errors', () => {
   };
 });
 
-// Import the mocked classes for constructing test errors
 const {
   NotFoundError,
   RateLimitError,
@@ -90,80 +90,96 @@ function parseErrorText(response: { content: { text: string }[] }): string {
   return JSON.parse(first.text).error as string;
 }
 
+function parseErrorPayload(response: { content: { text: string }[] }): Record<string, unknown> {
+  const first = response.content[0];
+  if (!first) throw new Error('Expected at least one content entry');
+  return JSON.parse(first.text) as Record<string, unknown>;
+}
+
 describe('mapSdkErrorToMcp', () => {
-  it('maps NotFoundError to resource not found message', () => {
+  it('maps NotFoundError preserving message', () => {
     const result = mapSdkErrorToMcp(new NotFoundError('Definition not found'));
     expect(result.isError).toBe(true);
     expect(parseErrorText(result)).toBe('Definition not found');
   });
 
-  it('sanitizes NotFoundError messages containing sensitive data', () => {
+  it('redacts actual credential values in NotFoundError', () => {
     const result = mapSdkErrorToMcp(
-      new NotFoundError('Definition not found at /app/src/index.ts apiKey=sk_live_123')
+      new NotFoundError('Definition not found with apiKey=sk_live_123')
     );
     expect(result.isError).toBe(true);
-    expect(parseErrorText(result)).toBe('An error occurred while processing your request');
+    expect(parseErrorText(result)).toContain('[REDACTED]');
+    expect(parseErrorText(result)).not.toContain('sk_live_123');
   });
 
-  it('maps RateLimitError to rate limit message', () => {
+  it('maps RateLimitError with retry info', () => {
     const result = mapSdkErrorToMcp(new RateLimitError('Too many requests'));
     expect(result.isError).toBe(true);
-    expect(parseErrorText(result)).toBe('Rate limit exceeded, please retry later');
+    expect(parseErrorText(result)).toContain('Rate limit exceeded');
+    expect(parseErrorPayload(result).status).toBe(429);
   });
 
-  it('maps ValidationError with sanitized message', () => {
+  it('maps RateLimitError with retryAfter seconds', () => {
+    const error = new RateLimitError('Too many', 60);
+    const result = mapSdkErrorToMcp(error);
+    expect(parseErrorText(result)).toContain('60 seconds');
+    expect(parseErrorPayload(result).retry_after_seconds).toBe(60);
+  });
+
+  it('maps ValidationError preserving message', () => {
     const result = mapSdkErrorToMcp(new ValidationError('Name is required'));
     expect(result.isError).toBe(true);
     expect(parseErrorText(result)).toBe('Name is required');
   });
 
-  it('maps UnauthorizedError to authentication required', () => {
+  it('maps UnauthorizedError to actionable auth message', () => {
     const result = mapSdkErrorToMcp(new UnauthorizedError());
     expect(result.isError).toBe(true);
-    expect(parseErrorText(result)).toBe('Authentication required');
+    expect(parseErrorText(result)).toContain('ULUOPS_API_KEY');
+    expect(parseErrorPayload(result).status).toBe(401);
   });
 
-  it('maps ForbiddenError to access denied', () => {
-    const result = mapSdkErrorToMcp(new ForbiddenError());
+  it('maps ForbiddenError preserving original message', () => {
+    const result = mapSdkErrorToMcp(new ForbiddenError('Insufficient permissions'));
     expect(result.isError).toBe(true);
-    expect(parseErrorText(result)).toBe('Access denied');
+    expect(parseErrorText(result)).toBe('Insufficient permissions');
+    expect(parseErrorPayload(result).status).toBe(403);
   });
 
-  it('maps ConflictError with sanitized message', () => {
+  it('maps ConflictError preserving message', () => {
     const result = mapSdkErrorToMcp(new ConflictError('Already exists'));
     expect(result.isError).toBe(true);
     expect(parseErrorText(result)).toBe('Already exists');
   });
 
-  it('maps UnprocessableError with sanitized message', () => {
+  it('maps UnprocessableError preserving message', () => {
     const result = mapSdkErrorToMcp(new UnprocessableError('Invalid YAML'));
     expect(result.isError).toBe(true);
     expect(parseErrorText(result)).toBe('Invalid YAML');
   });
 
-  it('maps generic RegistryApiError with sanitized message', () => {
+  it('maps generic RegistryApiError preserving safe message', () => {
     const result = mapSdkErrorToMcp(new RegistryApiError('Server error'));
     expect(result.isError).toBe(true);
     expect(parseErrorText(result)).toBe('Server error');
   });
 
-  it('sanitizes RegistryApiError messages containing sensitive data', () => {
+  it('redacts credentials in RegistryApiError messages', () => {
     const result = mapSdkErrorToMcp(
-      new RegistryApiError('ER_DUP_ENTRY: duplicate key in users table')
+      new RegistryApiError('Failed with apiKey=sk_live_secret')
     );
     expect(result.isError).toBe(true);
-    expect(parseErrorText(result)).toBe('An error occurred while processing your request');
+    expect(parseErrorText(result)).toContain('[REDACTED]');
+    expect(parseErrorText(result)).not.toContain('sk_live_secret');
   });
 
-  it('sanitizes RegistryApiError messages containing SQL errors', () => {
-    const result = mapSdkErrorToMcp(
-      new RegistryApiError('syntax error near SQL SELECT * FROM secrets')
-    );
-    expect(result.isError).toBe(true);
-    expect(parseErrorText(result)).toBe('An error occurred while processing your request');
+  it('preserves error messages that merely mention field names', () => {
+    // "password" as a field name reference, not a credential value
+    const result = mapSdkErrorToMcp(new Error('password field is required'));
+    expect(parseErrorText(result)).toBe('password field is required');
   });
 
-  it('maps generic Error with sanitized message', () => {
+  it('maps generic Error preserving message', () => {
     const result = mapSdkErrorToMcp(new Error('Something broke'));
     expect(result.isError).toBe(true);
     expect(parseErrorText(result)).toBe('Something broke');
@@ -175,9 +191,7 @@ describe('mapSdkErrorToMcp', () => {
     expect(parseErrorText(result)).toBe('An unexpected error occurred');
   });
 
-  it('extracts message from non-Error object with message property (via getErrorMessage)', async () => {
-    // getErrorMessage has a branch for `typeof error === 'object' && 'message' in error`.
-    // To exercise it, we override isNotFoundError to accept a plain object (not an Error).
+  it('extracts message from non-Error object with message property', async () => {
     const { isNotFoundError } = await import('@uluops/registry-sdk/errors');
     vi.mocked(isNotFoundError).mockReturnValueOnce(true);
 
@@ -187,39 +201,34 @@ describe('mapSdkErrorToMcp', () => {
     expect(parseErrorText(result)).toBe('object with message');
   });
 
-  it('sanitizes messages containing API keys', () => {
+  it('redacts actual API key values', () => {
     const result = mapSdkErrorToMcp(new Error('Failed with apiKey=sk_123456'));
-    expect(result.isError).toBe(true);
-    expect(parseErrorText(result)).toBe('An error occurred while processing your request');
+    expect(parseErrorText(result)).toContain('[REDACTED]');
+    expect(parseErrorText(result)).not.toContain('sk_123456');
   });
 
-  it('sanitizes messages containing bearer tokens', () => {
-    const result = mapSdkErrorToMcp(new Error('Bearer abc123def456'));
-    expect(result.isError).toBe(true);
-    expect(parseErrorText(result)).toBe('An error occurred while processing your request');
+  it('redacts bearer tokens', () => {
+    const result = mapSdkErrorToMcp(new Error('Auth: Bearer abc123def456'));
+    expect(parseErrorText(result)).toContain('[REDACTED]');
+    expect(parseErrorText(result)).not.toContain('abc123def');
   });
 
-  it('sanitizes messages containing SQL errors', () => {
-    const result = mapSdkErrorToMcp(new Error('ER_DUP_ENTRY: duplicate key'));
-    expect(result.isError).toBe(true);
-    expect(parseErrorText(result)).toBe('An error occurred while processing your request');
-  });
-
-  it('sanitizes messages containing stack traces', () => {
+  it('redacts stack traces', () => {
     const result = mapSdkErrorToMcp(new Error('at Object.run (/app/src/index.ts:42:10)'));
-    expect(result.isError).toBe(true);
-    expect(parseErrorText(result)).toBe('An error occurred while processing your request');
+    expect(parseErrorText(result)).toContain('[REDACTED]');
   });
 
-  it('truncates long error messages', () => {
-    const longMessage = 'a'.repeat(300);
+  it('truncates long error messages at 1000 chars', () => {
+    const longMessage = 'a'.repeat(1200);
     const result = mapSdkErrorToMcp(new Error(longMessage));
-    expect(result.isError).toBe(true);
     const text = parseErrorText(result);
-    const TRUNCATION_SUFFIX = '... (truncated)';
-    const MAX_TRUNCATED_LENGTH = 200 + TRUNCATION_SUFFIX.length; // 216
-    expect(text.length).toBeLessThanOrEqual(MAX_TRUNCATED_LENGTH);
+    expect(text.length).toBeLessThan(1100);
     expect(text).toContain('... (truncated)');
+  });
+
+  it('includes status codes in error payload', () => {
+    const result = mapSdkErrorToMcp(new RegistryApiError('Server error', 500));
+    expect(parseErrorPayload(result).status).toBe(500);
   });
 
   it('returns valid MCP response structure', () => {
@@ -234,22 +243,15 @@ describe('mapSdkErrorToMcp', () => {
 
 describe('sanitizeErrorMessage', () => {
   it.each([
-    ['api_key=abc123', 'api_key'],
-    ['apiKey: sk_live_xyz', 'apiKey'],
-    ['password=hunter2', 'password'],
-    ['secret: my-secret-value', 'secret'],
-    ['token: abc123def', 'token assignment'],
+    ['api_key=abc123', 'actual key assignment'],
+    ['apiKey: sk_live_xyz', 'actual key assignment'],
+    ['token = abc123def', 'token assignment'],
     ['Bearer eyJhbGciOiJIUzI1NiJ9', 'bearer token'],
     ['authorization: Basic dXNlcjpwYXNz', 'authorization header'],
-    ['stack trace at line 42', 'stack trace text'],
     ['at Object.run (/app/src/index.ts:42:10)', 'stack frame'],
-    ['SQLITE_ERROR: no such table', 'SQLITE_ERROR'],
-    ['ER_BAD_FIELD_ERROR: Unknown column', 'MySQL error code'],
-    ['syntax error near SQL statement', 'SQL syntax error'],
-    ["column 'password_hash' does not exist", 'missing column'],
-    ["relation 'users' does not exist", 'missing relation'],
-  ])('redacts sensitive pattern: %s (%s)', (input) => {
-    expect(sanitizeErrorMessage(input)).toBe('An error occurred while processing your request');
+  ])('redacts credential pattern: %s (%s)', (input) => {
+    const result = sanitizeErrorMessage(input);
+    expect(result).toContain('[REDACTED]');
   });
 
   it.each([
@@ -257,15 +259,18 @@ describe('sanitizeErrorMessage', () => {
     'Name is required',
     'Invalid YAML format',
     'Version 1.0.0 already exists',
-  ])('passes through safe message: %s', (input) => {
+    'password field is required',
+    'Client secret is invalid',
+    'Invalid apiKey format',
+  ])('preserves safe message: %s', (input) => {
     expect(sanitizeErrorMessage(input)).toBe(input);
   });
 
-  it('truncates messages longer than 200 characters', () => {
-    const longMessage = 'a'.repeat(300);
+  it('truncates messages longer than 1000 characters', () => {
+    const longMessage = 'a'.repeat(1200);
     const result = sanitizeErrorMessage(longMessage);
     expect(result).toContain('... (truncated)');
-    expect(result.length).toBeLessThanOrEqual(216);
+    expect(result.length).toBeLessThan(1100);
   });
 });
 
@@ -283,9 +288,10 @@ describe('mapZodErrorToMcp', () => {
     const result = mapZodErrorToMcp(zodError);
     expect(result.isError).toBe(true);
     expect(parseErrorText(result)).toContain('name: Expected string');
+    expect(parseErrorText(result)).toContain('1 error');
   });
 
-  it('limits Zod errors to 3 entries', () => {
+  it('shows ALL Zod errors, not just first 3', () => {
     const zodError = new ZodError(
       Array.from({ length: 5 }, (_, i) => ({
         code: ZodIssueCode.invalid_type as const,
@@ -297,10 +303,17 @@ describe('mapZodErrorToMcp', () => {
     );
     const result = mapZodErrorToMcp(zodError);
     const text = parseErrorText(result);
-    // Should contain 3 field references but not field_3 or field_4
+    expect(text).toContain('5 errors');
     expect(text).toContain('field_0');
-    expect(text).toContain('field_2');
-    expect(text).not.toContain('field_3');
+    expect(text).toContain('field_4');
+  });
+
+  it('includes status 400 in Zod error payload', () => {
+    const zodError = new ZodError([
+      { code: ZodIssueCode.invalid_type, expected: 'string', received: 'number', path: ['x'], message: 'bad' },
+    ]);
+    const result = mapZodErrorToMcp(zodError);
+    expect(parseErrorPayload(result).status).toBe(400);
   });
 
   it('handles non-Error objects gracefully', () => {

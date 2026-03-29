@@ -2,7 +2,8 @@
  * Error mapper for converting Registry SDK errors to MCP-safe responses
  *
  * Maps @uluops/registry-sdk error hierarchy to sanitized MCP tool responses.
- * Strips sensitive information (API keys, tokens, stack traces) before exposure.
+ * Redacts actual credential values while preserving field names, validation
+ * details, and actionable context.
  */
 
 import {
@@ -18,42 +19,51 @@ import {
 import type { ZodError } from 'zod';
 import type { McpToolResponse } from '../types/index.js';
 
-const MAX_ERROR_MESSAGE_LENGTH = 200;
+const MAX_ERROR_MESSAGE_LENGTH = 1000;
 
-const SENSITIVE_PATTERNS: RegExp[] = [
-  /api[_-]?key/i,
-  /apiKey/i,
-  /password/i,
-  /secret/i,
-  /token\s*[:=]\s*\S+/i,
-  /bearer\s+\S+/i,
+/**
+ * Patterns that indicate actual credential values in error messages.
+ * Only matches credential values, not field names that mention credentials.
+ */
+const CREDENTIAL_PATTERNS: RegExp[] = [
+  // Actual key/token values (not field names)
+  /(?:api[_-]?key|apiKey)\s*[:=]\s*\S+/i,
+  /bearer\s+[a-zA-Z0-9_\-.]+/i,
   /authorization:\s*\S+/i,
-  /stack\s*trace/i,
+  /ulr_[a-zA-Z0-9]{20,}/,
+  // Token/secret assignments with actual values
+  /(?:token|secret)\s*[:=]\s*\S+/i,
+  // Stack traces (internal implementation details)
   /at\s+\S+\s+\(\S+:\d+:\d+\)/,
-  /SQLITE_ERROR/i,
-  /ER_\w+/,
-  /syntax error.*SQL/i,
-  /column\s+['"`]\w+['"`]\s+(?:does not exist|not found)/i,
-  /relation\s+['"`]\w+['"`]\s+does not exist/i,
 ];
 
-/** Check if a message contains sensitive patterns (API keys, tokens, stack traces, SQL errors). */
-function containsSensitiveData(message: string): boolean {
-  return SENSITIVE_PATTERNS.some((pattern) => pattern.test(message));
+/** Check if a message contains actual credential values */
+function containsCredentials(message: string): boolean {
+  return CREDENTIAL_PATTERNS.some((pattern) => pattern.test(message));
 }
 
-/** Sanitize an error message by redacting sensitive content and truncating long messages. */
+/** Redact credential values from a message while preserving the rest */
+function redactCredentials(message: string): string {
+  let redacted = message;
+  for (const pattern of CREDENTIAL_PATTERNS) {
+    redacted = redacted.replace(pattern, '[REDACTED]');
+  }
+  return redacted;
+}
+
+/**
+ * Sanitize an error message for safe client exposure.
+ * Redacts credentials and truncates if needed, but preserves all other context.
+ */
 export function sanitizeErrorMessage(message: string): string {
-  if (containsSensitiveData(message)) {
-    return 'An error occurred while processing your request';
+  let safe = containsCredentials(message) ? redactCredentials(message) : message;
+  if (safe.length > MAX_ERROR_MESSAGE_LENGTH) {
+    safe = safe.slice(0, MAX_ERROR_MESSAGE_LENGTH) + '... (truncated)';
   }
-  if (message.length > MAX_ERROR_MESSAGE_LENGTH) {
-    return message.slice(0, MAX_ERROR_MESSAGE_LENGTH) + '... (truncated)';
-  }
-  return message;
+  return safe;
 }
 
-/** Safely extract a message from an unknown error value. */
+/** Safely extract a message from an unknown error value */
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error) return error.message;
   if (typeof error === 'object' && error !== null && 'message' in error) {
@@ -62,61 +72,122 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
-  let message: string;
-
-  if (isNotFoundError(error)) {
-    message = sanitizeErrorMessage(getErrorMessage(error, 'Resource not found'));
-  } else if (isRateLimitError(error)) {
-    message = 'Rate limit exceeded, please retry later';
-  } else if (isValidationError(error)) {
-    message = sanitizeErrorMessage(getErrorMessage(error, 'Invalid request parameters'));
-  } else if (error instanceof UnauthorizedError) {
-    message = 'Authentication required';
-  } else if (error instanceof ForbiddenError) {
-    message = 'Access denied';
-  } else if (isConflictError(error)) {
-    message = sanitizeErrorMessage(getErrorMessage(error, 'Resource conflict'));
-  } else if (isUnprocessableError(error)) {
-    message = sanitizeErrorMessage(getErrorMessage(error, 'Unprocessable request'));
-  } else if (isRegistryApiError(error)) {
-    message = sanitizeErrorMessage(getErrorMessage(error, 'Internal server error'));
-  } else if (error instanceof Error) {
-    message = sanitizeErrorMessage(error.message);
-  } else {
-    message = 'An unexpected error occurred';
+/** Extract HTTP status code from SDK errors when available */
+function getStatusCode(error: unknown): number | undefined {
+  if (error && typeof error === 'object' && 'statusCode' in error) {
+    return (error as { statusCode: number }).statusCode;
   }
+  return undefined;
+}
 
+/** Build a structured error response with optional metadata */
+function buildErrorResponse(
+  message: string,
+  metadata?: Record<string, unknown>,
+): McpToolResponse {
+  const payload: Record<string, unknown> = { error: message };
+  if (metadata) {
+    Object.assign(payload, metadata);
+  }
   return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify({ error: message }),
-      },
-    ],
+    content: [{ type: 'text', text: JSON.stringify(payload) }],
     isError: true,
   };
 }
 
+/**
+ * Map an SDK error to an MCP tool response.
+ *
+ * Preserves error context including:
+ * - Original error messages (with credential redaction only)
+ * - HTTP status codes when available
+ * - Retry-after information for rate limits
+ * - Field-level validation details
+ */
+export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
+  const statusCode = getStatusCode(error);
+
+  if (isNotFoundError(error)) {
+    return buildErrorResponse(
+      sanitizeErrorMessage(getErrorMessage(error, 'Resource not found')),
+      statusCode ? { status: statusCode } : undefined,
+    );
+  }
+
+  if (isRateLimitError(error)) {
+    const retryAfter = (error as { retryAfter?: number }).retryAfter;
+    return buildErrorResponse(
+      retryAfter
+        ? `Rate limit exceeded. Retry after ${retryAfter} seconds.`
+        : 'Rate limit exceeded, please retry later.',
+      { status: 429, ...(retryAfter ? { retry_after_seconds: retryAfter } : {}) },
+    );
+  }
+
+  if (isValidationError(error)) {
+    return buildErrorResponse(
+      sanitizeErrorMessage(getErrorMessage(error, 'Invalid request parameters')),
+      statusCode ? { status: statusCode } : undefined,
+    );
+  }
+
+  if (error instanceof UnauthorizedError) {
+    return buildErrorResponse(
+      'Authentication required. Verify ULUOPS_API_KEY is set to a valid ulr_* key.',
+      { status: 401 },
+    );
+  }
+
+  if (error instanceof ForbiddenError) {
+    return buildErrorResponse(
+      sanitizeErrorMessage(getErrorMessage(error, 'Access denied')),
+      { status: 403 },
+    );
+  }
+
+  if (isConflictError(error)) {
+    return buildErrorResponse(
+      sanitizeErrorMessage(getErrorMessage(error, 'Resource conflict')),
+      statusCode ? { status: statusCode } : undefined,
+    );
+  }
+
+  if (isUnprocessableError(error)) {
+    return buildErrorResponse(
+      sanitizeErrorMessage(getErrorMessage(error, 'Unprocessable request')),
+      statusCode ? { status: statusCode } : undefined,
+    );
+  }
+
+  if (isRegistryApiError(error)) {
+    return buildErrorResponse(
+      sanitizeErrorMessage(getErrorMessage(error, 'Internal server error')),
+      statusCode ? { status: statusCode } : undefined,
+    );
+  }
+
+  if (error instanceof Error) {
+    return buildErrorResponse(sanitizeErrorMessage(error.message));
+  }
+
+  return buildErrorResponse('An unexpected error occurred');
+}
+
+/**
+ * Map a Zod validation error to an MCP tool response.
+ * Shows all validation errors with field paths and expected values.
+ */
 export function mapZodErrorToMcp(error: unknown): McpToolResponse {
   let message = 'Invalid input parameters';
 
   if (error instanceof Error && 'issues' in error) {
     const zodError = error as ZodError<unknown>;
     const details = zodError.issues
-      .slice(0, 3)
       .map((e) => `${e.path.join('.')}: ${e.message}`)
       .join('; ');
-    message = `Validation failed: ${details}`;
+    const count = zodError.issues.length;
+    message = `Validation failed (${count} error${count > 1 ? 's' : ''}): ${details}`;
   }
 
-  return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify({ error: message }),
-      },
-    ],
-    isError: true,
-  };
+  return buildErrorResponse(message, { status: 400 });
 }

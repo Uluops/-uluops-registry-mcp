@@ -298,4 +298,72 @@ export const toolRegistry: ToolSpec[] = [
     quotaPerMinute: 60,
     quotaPerHour: 1000,
   },
+
+  // ============================================================================
+  // P3 Analytics
+  // ============================================================================
+  {
+    name: 'get_effectiveness',
+    sideEffects: 'read',
+    maxArgsSize: 1 * KB,
+    maxEgressBytes: 50 * KB,
+    quotaPerMinute: 60,
+    quotaPerHour: 1000,
+  },
+  {
+    name: 'get_health',
+    sideEffects: 'read',
+    maxArgsSize: 1 * KB,
+    maxEgressBytes: 50 * KB,
+    quotaPerMinute: 60,
+    quotaPerHour: 1000,
+  },
+  {
+    name: 'get_ecosystem_overview',
+    sideEffects: 'read',
+    maxArgsSize: 256,
+    maxEgressBytes: 100 * KB,
+    quotaPerMinute: 30,
+    quotaPerHour: 500,
+  },
+  {
+    name: 'get_lineage',
+    sideEffects: 'read',
+    maxArgsSize: 1 * KB,
+    maxEgressBytes: 100 * KB,
+    quotaPerMinute: 60,
+    quotaPerHour: 1000,
+  },
+  {
+    name: 'get_evolution',
+    sideEffects: 'read',
+    maxArgsSize: 1 * KB,
+    maxEgressBytes: 50 * KB,
+    quotaPerMinute: 60,
+    quotaPerHour: 1000,
+  },
+  {
+    name: 'get_translation_analytics',
+    sideEffects: 'read',
+    maxArgsSize: 1 * KB,
+    maxEgressBytes: 50 * KB,
+    quotaPerMinute: 60,
+    quotaPerHour: 1000,
+  },
+  {
+    name: 'compare_effectiveness',
+    sideEffects: 'read',
+    maxArgsSize: 2 * KB,
+    maxEgressBytes: 50 * KB,
+    quotaPerMinute: 30,
+    quotaPerHour: 500,
+  },
+  {
+    name: 'get_diff_impact',
+    sideEffects: 'read',
+    maxArgsSize: 1 * KB,
+    maxEgressBytes: 50 * KB,
+    quotaPerMinute: 30,
+    quotaPerHour: 500,
+  },
 ];

@@ -75,8 +75,18 @@ import { registerSyncModelsTool } from './sync-models.js';
 import { registerGetUserTool } from './get-user.js';
 import { registerBatchUsersTool } from './batch-users.js';
 
+// P3 Analytics Tools
+import { registerGetEffectivenessTool } from './get-effectiveness.js';
+import { registerGetHealthTool } from './get-health.js';
+import { registerGetEcosystemOverviewTool } from './get-ecosystem-overview.js';
+import { registerGetLineageTool } from './get-lineage.js';
+import { registerGetEvolutionTool } from './get-evolution.js';
+import { registerGetTranslationAnalyticsTool } from './get-translation-analytics.js';
+import { registerCompareEffectivenessTool } from './compare-effectiveness.js';
+import { registerGetDiffImpactTool } from './get-diff-impact.js';
+
 /**
- * Register all 34 MCP tools with the server.
+ * Register all 42 MCP tools with the server.
  * @param server - MCP server instance to register tools on.
  * @param registryClient - Registry SDK client for API calls.
  */
@@ -128,4 +138,14 @@ export function registerAllTools(
   registerSyncModelsTool(s, registryClient);
   registerGetUserTool(s, registryClient);
   registerBatchUsersTool(s, registryClient);
+
+  // P3 Analytics tools
+  registerGetEffectivenessTool(s, registryClient);
+  registerGetHealthTool(s, registryClient);
+  registerGetEcosystemOverviewTool(s, registryClient);
+  registerGetLineageTool(s, registryClient);
+  registerGetEvolutionTool(s, registryClient);
+  registerGetTranslationAnalyticsTool(s, registryClient);
+  registerCompareEffectivenessTool(s, registryClient);
+  registerGetDiffImpactTool(s, registryClient);
 }

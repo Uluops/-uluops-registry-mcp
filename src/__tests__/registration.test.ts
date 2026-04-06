@@ -48,10 +48,10 @@ function createMinimalClient(): RegistryClient {
 }
 
 describe('registerAllTools', () => {
-  it('registers exactly 32 tools', () => {
+  it('registers exactly 42 tools', () => {
     const server = createMockToolServer();
     registerAllTools(server, createMinimalClient());
-    expect(server.tools).toHaveLength(34);
+    expect(server.tools).toHaveLength(42);
   });
 
   it('registers all expected tool names', () => {
@@ -92,6 +92,14 @@ describe('registerAllTools', () => {
       'sync_models',
       'get_user',
       'batch_users',
+      'get_effectiveness',
+      'get_health',
+      'get_ecosystem_overview',
+      'get_lineage',
+      'get_evolution',
+      'get_translation_analytics',
+      'compare_effectiveness',
+      'get_diff_impact',
     ];
     for (const name of expectedTools) {
       expect(server.tools).toContain(name);
@@ -132,8 +140,8 @@ describe('registerAllResources', () => {
 });
 
 describe('toolRegistry configuration', () => {
-  it('has exactly 32 tool specs', () => {
-    expect(toolRegistry).toHaveLength(34);
+  it('has exactly 42 tool specs', () => {
+    expect(toolRegistry).toHaveLength(42);
   });
 
   it('every registered tool has a matching toolRegistry entry', () => {

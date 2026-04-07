@@ -119,6 +119,14 @@ export const toolRegistry: ToolSpec[] = [
     quotaPerHour: 500,
   },
   {
+    name: 'archive_definition',
+    sideEffects: 'write',
+    maxArgsSize: 10 * KB,
+    maxEgressBytes: 200 * KB,
+    quotaPerMinute: 30,
+    quotaPerHour: 500,
+  },
+  {
     name: 'delete_definition',
     sideEffects: 'write',
     maxArgsSize: 10 * KB,

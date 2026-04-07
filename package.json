@@ -1,6 +1,6 @@
 {
   "name": "uluops-registry-mcp-client",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "MCP client for UluOps Registry API - thin protocol adapter for Claude Code",
   "type": "module",
   "main": "dist/index.js",
@@ -52,7 +52,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.24.0",
-    "@uluops/registry-sdk": "^0.8.0",
+    "@uluops/registry-sdk": "^0.8.1",
     "mcp-secure-server": "^0.0.8-security",
     "zod": "^3.23.0"
   },

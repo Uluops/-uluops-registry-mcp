@@ -11,7 +11,7 @@ import { z } from 'zod';
 export const DefinitionTypeSchema = z.enum(['agent', 'command', 'workflow', 'pipeline']);
 
 /** Lifecycle statuses for definitions. */
-export const DefinitionStatusSchema = z.enum(['draft', 'published', 'deprecated']);
+export const DefinitionStatusSchema = z.enum(['draft', 'published', 'deprecated', 'archived']);
 
 /** Knowledge domain categories for definitions. */
 export const DomainSchema = z.enum([

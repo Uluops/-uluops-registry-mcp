@@ -50,6 +50,7 @@ import { registerCreateDefinitionTool } from './create-definition.js';
 import { registerUpdateDefinitionTool } from './update-definition.js';
 import { registerPublishDefinitionTool } from './publish-definition.js';
 import { registerDeprecateDefinitionTool } from './deprecate-definition.js';
+import { registerArchiveDefinitionTool } from './archive-definition.js';
 import { registerDeleteDefinitionTool } from './delete-definition.js';
 import { registerUpdateAndPublishTool } from './update-and-publish.js';
 import { registerBatchPublishTool } from './batch-publish.js';
@@ -114,6 +115,7 @@ export function registerAllTools(
   registerUpdateDefinitionTool(s, registryClient);
   registerPublishDefinitionTool(s, registryClient);
   registerDeprecateDefinitionTool(s, registryClient);
+  registerArchiveDefinitionTool(s, registryClient);
   registerDeleteDefinitionTool(s, registryClient);
   registerUpdateAndPublishTool(s, registryClient);
   registerBatchPublishTool(s, registryClient);

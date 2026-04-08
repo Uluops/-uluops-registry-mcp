@@ -45,7 +45,7 @@ export function registerSearchDefinitionsTool(
         agentType: n.agentType,
         visibility: n.visibility,
         tag: n.tags,
-        isFork: n.is_fork,
+        isFork: n.isFork,
         limit: n.limit,
       })
     )

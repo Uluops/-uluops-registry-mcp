@@ -50,7 +50,7 @@ export function registerListDefinitionsTool(
       if (n.visibility !== undefined) query.visibility = n.visibility;
       if (n.search !== undefined) query.search = n.search;
       if (n.tags !== undefined) query.tag = n.tags;
-      if (n.is_fork !== undefined) query.isFork = n.is_fork;
+      if (n.isFork !== undefined) query.isFork = n.isFork;
       if (n.sort !== undefined) query.sortBy = n.sort;
       if (n.order !== undefined) query.sortOrder = n.order;
       if (n.page !== undefined) query.offset = (n.page - 1) * (n.limit ?? 20);

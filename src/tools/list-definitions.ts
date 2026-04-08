@@ -26,6 +26,7 @@ export const ListDefinitionsInputSchema = z.object({
   visibility: VisibilitySchema.optional(),
   search: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  is_fork: z.boolean().optional().describe('Filter by fork status: true = only forks, false = only originals'),
   sort: SortFieldSchema.optional(),
   order: SortOrderSchema.optional(),
   page: z.number().int().positive().optional(),
@@ -49,6 +50,7 @@ export function registerListDefinitionsTool(
       if (n.visibility !== undefined) query.visibility = n.visibility;
       if (n.search !== undefined) query.search = n.search;
       if (n.tags !== undefined) query.tag = n.tags;
+      if (n.is_fork !== undefined) query.isFork = n.is_fork;
       if (n.sort !== undefined) query.sortBy = n.sort;
       if (n.order !== undefined) query.sortOrder = n.order;
       if (n.page !== undefined) query.offset = (n.page - 1) * (n.limit ?? 20);

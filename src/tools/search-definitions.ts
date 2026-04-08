@@ -24,6 +24,7 @@ export const SearchDefinitionsInputSchema = z.object({
   agent_type: AgentTypeSchema.optional(),
   visibility: VisibilitySchema.optional(),
   tags: z.array(z.string()).optional(),
+  is_fork: z.boolean().optional().describe('Filter by fork status: true = only forks, false = only originals'),
   limit: z.number().int().positive().max(100).default(20),
 });
 
@@ -44,6 +45,7 @@ export function registerSearchDefinitionsTool(
         agentType: n.agentType,
         visibility: n.visibility,
         tag: n.tags,
+        isFork: n.is_fork,
         limit: n.limit,
       })
     )

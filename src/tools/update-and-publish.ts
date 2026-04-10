@@ -74,12 +74,12 @@ export function registerUpdateAndPublishTool(
       try {
         // Inject session-level default type
         const injected = injectSessionType(args);
-        let input = UpdateAndPublishInputSchema.parse(injected);
 
-        // Resolve file_path → yaml
-        const resolved = resolveYamlInput(input, { required: false });
+        // Resolve file_path → yaml BEFORE Zod validation
+        const resolved = resolveYamlInput(injected as Record<string, unknown>, { required: false });
         if (isMcpResponse(resolved)) return resolved;
-        input = resolved;
+
+        let input = UpdateAndPublishInputSchema.parse(resolved);
 
         const { type, name, version, yaml, visibility, description, tags, change_type } = input;
 

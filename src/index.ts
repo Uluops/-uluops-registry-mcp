@@ -40,9 +40,11 @@ async function main(): Promise<void> {
   // Retry config applies to all requests including writes. This is safe because:
   // - The SDK only retries on network errors and 5xx responses (not 4xx)
   // - Registry API write operations are idempotent (create returns existing on conflict)
+  // Detect auth type: ulr_ prefix = API key, otherwise = session token
+  const isApiKey = config.api.apiKey?.startsWith('ulr_');
   const registryClient = new RegistryClient({
     baseUrl: config.api.baseUrl,
-    apiKey: config.api.apiKey,
+    ...(isApiKey ? { apiKey: config.api.apiKey } : { sessionToken: config.api.apiKey }),
     orgSlug: config.api.orgSlug,
     timeout: config.api.timeout,
     retries: config.api.retries,

@@ -1037,13 +1037,13 @@ describe('Tool Registration & SDK Calls', () => {
     it('passes type, name, from, to and full option as args', async () => {
       registerDiffVersionsTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', from: '1.0.0', to: '2.0.0' });
-      expect(client.versions.diff).toHaveBeenCalledWith('agent', 'test', '1.0.0', '2.0.0', { full: false });
+      expect(client.versions.diff).toHaveBeenCalledWith('agent', 'test', '1.0.0', '2.0.0', { full: false, format: 'sections' });
     });
 
     it('passes full=true when requested', async () => {
       registerDiffVersionsTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', from: '1.0.0', to: '2.0.0', full: true });
-      expect(client.versions.diff).toHaveBeenCalledWith('agent', 'test', '1.0.0', '2.0.0', { full: true });
+      expect(client.versions.diff).toHaveBeenCalledWith('agent', 'test', '1.0.0', '2.0.0', { full: true, format: 'sections' });
     });
 
     it('rejects missing from/to', async () => {

@@ -89,6 +89,17 @@ validate_definition({ type: "agent", file_path: "/path/to/agent.yaml" })
 // Create and publish a definition
 create_definition({ type: "agent", name: "my-agent", yaml: "name: my-agent\nversion: 1.0.0\n..." })
 publish_definition({ type: "agent", name: "my-agent", version: "1.0.0" })
+
+// Compare versions — section summary (default)
+diff_versions({ type: "agent", name: "code-validator", from: "1.0.0", to: "1.1.0" })
+
+// Compare versions — structural diff with classification
+diff_versions({ type: "agent", name: "code-validator", from: "1.0.0", to: "1.1.0", format: "fields" })
+// Returns: fields[], classified[], suggestedBump, summary, sections
+
+// Compare versions — unified line diff
+diff_versions({ type: "agent", name: "code-validator", from: "1.0.0", to: "1.1.0", format: "unified" })
+// Returns: unified (git-style diff string)
 ```
 
 ## Available Tools
@@ -117,7 +128,7 @@ publish_definition({ type: "agent", name: "my-agent", version: "1.0.0" })
 | Tool | Description |
 |------|-------------|
 | `list_versions` | List all versions of a definition |
-| `diff_versions` | Compare two versions (YAML diff) |
+| `diff_versions` | Compare two versions. Supports `format`: `sections` (default summary), `fields` (structural diff with classification + suggested bump), `unified` (git-style line diff) |
 | `get_dependencies` | Forward dependency graph |
 | `get_dependents` | Reverse dependency graph |
 | `get_execution_stats` | Execution statistics for a definition version |

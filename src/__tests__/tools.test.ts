@@ -1021,10 +1021,16 @@ describe('Tool Registration & SDK Calls', () => {
       expect(server.tools[0].name).toBe('list_versions');
     });
 
-    it('passes type and name as positional args', async () => {
+    it('passes type and name with empty options', async () => {
       registerListVersionsTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'code-validator' });
-      expect(client.versions.list).toHaveBeenCalledWith('agent', 'code-validator');
+      expect(client.versions.list).toHaveBeenCalledWith('agent', 'code-validator', {});
+    });
+
+    it('passes pagination params when provided', async () => {
+      registerListVersionsTool(server, client);
+      await getHandler(server)({ type: 'agent', name: 'code-validator', limit: 5, offset: 10 });
+      expect(client.versions.list).toHaveBeenCalledWith('agent', 'code-validator', { limit: 5, offset: 10 });
     });
   });
 

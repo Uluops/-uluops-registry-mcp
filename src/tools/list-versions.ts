@@ -12,6 +12,8 @@ import { createToolHandler } from '../utils/tool-handler.js';
 export const ListVersionsInputSchema = z.object({
   type: DefinitionTypeSchema,
   name: z.string().min(1),
+  limit: z.number().int().min(1).max(200).optional(),
+  offset: z.number().int().min(0).optional(),
 });
 
 export function registerListVersionsTool(
@@ -22,6 +24,11 @@ export function registerListVersionsTool(
     'list_versions',
     'List all versions of a definition with their status and metadata.',
     ListVersionsInputSchema.shape,
-    createToolHandler(ListVersionsInputSchema, (n) => registryClient.versions.list(n.type, n.name))
+    createToolHandler(ListVersionsInputSchema, (n) =>
+      registryClient.versions.list(n.type, n.name, {
+        ...(n.limit !== undefined && { limit: n.limit }),
+        ...(n.offset !== undefined && { offset: n.offset }),
+      })
+    )
   );
 }

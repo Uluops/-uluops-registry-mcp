@@ -25,7 +25,7 @@ export function registerGetDiffImpactTool(
     'Get structural diff combined with metric deltas between two definition versions. Deltas are observational, not causal — caveats are always included.',
     GetDiffImpactInputSchema.shape,
     createToolHandler(GetDiffImpactInputSchema, (n) =>
-      registryClient.analytics.getDiffImpact(n.type, n.name, n.from_version, n.to_version)
+      registryClient.analytics.getDiffImpact(n.type, n.name, n.fromVersion, n.toVersion)
     )
   );
 }

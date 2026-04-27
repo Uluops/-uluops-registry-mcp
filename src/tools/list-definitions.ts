@@ -14,6 +14,7 @@ import {
   VisibilitySchema,
   SortFieldSchema,
   SortOrderSchema,
+  AuthorshipTypeSchema,
   type McpServerToolRegistration,
 } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
@@ -27,6 +28,7 @@ export const ListDefinitionsInputSchema = z.object({
   search: z.string().optional(),
   tags: z.array(z.string()).optional(),
   is_fork: z.boolean().optional().describe('Filter by fork status: true = only forks, false = only originals'),
+  authorship_type: AuthorshipTypeSchema.optional().describe('Filter by authorship type: human, agent, collaborative, or automated'),
   sort: SortFieldSchema.optional(),
   order: SortOrderSchema.optional(),
   page: z.number().int().positive().optional(),
@@ -51,6 +53,7 @@ export function registerListDefinitionsTool(
       if (n.search !== undefined) query.search = n.search;
       if (n.tags !== undefined) query.tag = n.tags;
       if (n.isFork !== undefined) query.isFork = n.isFork;
+      if (n.authorshipType !== undefined) query.authorshipType = n.authorshipType;
       if (n.sort !== undefined) query.sortBy = n.sort;
       if (n.order !== undefined) query.sortOrder = n.order;
       if (n.page !== undefined) query.offset = (n.page - 1) * (n.limit ?? 20);

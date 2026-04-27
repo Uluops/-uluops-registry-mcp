@@ -12,6 +12,7 @@ import {
   DomainSchema,
   AgentTypeSchema,
   VisibilitySchema,
+  AuthorshipTypeSchema,
   type McpServerToolRegistration,
 } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
@@ -25,6 +26,7 @@ export const SearchDefinitionsInputSchema = z.object({
   visibility: VisibilitySchema.optional(),
   tags: z.array(z.string()).optional(),
   is_fork: z.boolean().optional().describe('Filter by fork status: true = only forks, false = only originals'),
+  authorship_type: AuthorshipTypeSchema.optional().describe('Filter by authorship type: human, agent, collaborative, or automated'),
   limit: z.number().int().positive().max(100).default(20),
 });
 
@@ -46,6 +48,7 @@ export function registerSearchDefinitionsTool(
         visibility: n.visibility,
         tag: n.tags,
         isFork: n.isFork,
+        authorshipType: n.authorshipType,
         limit: n.limit,
       })
     )

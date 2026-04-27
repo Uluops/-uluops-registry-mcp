@@ -47,3 +47,6 @@ export const ModelStatusSchema = z.enum(['available', 'preview', 'deprecated']);
 
 /** Semantic version change types for definition updates. */
 export const ChangeTypeSchema = z.enum(['major', 'minor', 'patch']);
+
+/** Authorship provenance classification. */
+export const AuthorshipTypeSchema = z.enum(['human', 'agent', 'collaborative', 'automated']);

@@ -39,4 +39,5 @@ export {
   ModelTierSchema,
   ModelStatusSchema,
   ChangeTypeSchema,
+  AuthorshipTypeSchema,
 } from './schemas.js';

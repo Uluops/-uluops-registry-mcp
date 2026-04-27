@@ -10,6 +10,7 @@ import type { RegistryClient } from '@uluops/registry-sdk';
 import {
   DefinitionTypeSchema,
   VisibilitySchema,
+  ProvenanceInputSchema,
   type McpServerToolRegistration,
 } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
@@ -22,6 +23,7 @@ export const CreateDefinitionInputSchema = z.object({
   yaml: z.string().min(1).max(500_000).optional(),
   file_path: z.string().min(1).max(1000).optional(),
   visibility: VisibilitySchema.optional(),
+  provenance: ProvenanceInputSchema.optional().describe('Authorship provenance. Auto-inferred from authenticated user if omitted.'),
 });
 
 export function registerCreateDefinitionTool(
@@ -36,6 +38,7 @@ export function registerCreateDefinitionTool(
       registryClient.definitions.create(n.type, n.name, {
         yaml: n.yaml,
         ...(n.visibility !== undefined && { visibility: n.visibility }),
+        ...(n.provenance !== undefined && { provenance: n.provenance }),
       }),
       {
         preProcess: (input) => resolveYamlInput(input, { required: true }),

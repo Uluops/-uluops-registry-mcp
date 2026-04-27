@@ -50,3 +50,27 @@ export const ChangeTypeSchema = z.enum(['major', 'minor', 'patch']);
 
 /** Authorship provenance classification. */
 export const AuthorshipTypeSchema = z.enum(['human', 'agent', 'collaborative', 'automated']);
+
+/** Contributor role in definition authorship. */
+export const ContributorRoleSchema = z.enum(['author', 'optimizer', 'reviewer', 'editor', 'publisher']);
+
+/** Actor type — human or agent. */
+export const ActorTypeSchema = z.enum(['human', 'agent']);
+
+/** A single contributor to a definition's authorship. */
+export const ContributorSchema = z.object({
+  id: z.string().min(1).max(100),
+  role: ContributorRoleSchema,
+  type: ActorTypeSchema,
+  name: z.string().max(200).optional(),
+  agent_name: z.string().max(200).optional(),
+  contributed_at: z.string().optional(),
+});
+
+/** Full provenance record for a definition. */
+export const ProvenanceInputSchema = z.object({
+  authorship_type: AuthorshipTypeSchema,
+  contributors: z.array(ContributorSchema).min(1).max(50),
+  dialectic_rounds: z.number().int().nonnegative().optional(),
+  optimization_run_id: z.string().max(100).optional(),
+});

@@ -16,6 +16,7 @@ import {
   DefinitionTypeSchema,
   VisibilitySchema,
   ChangeTypeSchema,
+  ProvenanceInputSchema,
   type McpServerToolRegistration,
 } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
@@ -32,6 +33,7 @@ export const UpdateDefinitionInputSchema = z.object({
   description: z.string().optional(),
   tags: z.array(z.string()).optional(),
   change_type: ChangeTypeSchema.optional(),
+  provenance: ProvenanceInputSchema.optional().describe('Authorship provenance. Merges with existing provenance if present.'),
 });
 
 /** Check if an error is a "published status" validation error from the API. */
@@ -56,6 +58,7 @@ export function registerUpdateDefinitionTool(
       if (n.description !== undefined) body.description = n.description;
       if (n.tags !== undefined) body.tags = n.tags;
       if (n.changeType !== undefined) body.changeType = n.changeType;
+      if (n.provenance !== undefined) body.provenance = n.provenance;
 
       try {
         return await registryClient.definitions.update(n.type, n.name, n.version, body);

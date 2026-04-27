@@ -40,4 +40,5 @@ export {
   ModelStatusSchema,
   ChangeTypeSchema,
   AuthorshipTypeSchema,
+  ProvenanceInputSchema,
 } from './schemas.js';

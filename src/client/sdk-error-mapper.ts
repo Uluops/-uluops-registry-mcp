@@ -145,6 +145,33 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
     );
   }
 
+  // 402 Subscription Required — content gating (spec Section 9.2)
+  if (statusCode === 402) {
+    const details = (error as { details?: Record<string, unknown> }).details ?? {};
+    const requiredTier = details.requiredTier as string | undefined;
+    const currentTier = details.currentTier as string | undefined;
+    const def = details.definition as { type?: string; name?: string } | undefined;
+    const upgradeUrl = details.upgradeUrl as string | undefined;
+    const sep = upgradeUrl?.includes('?') ? '&' : '?';
+    const trackedUrl = upgradeUrl ? `${upgradeUrl}${sep}source=mcp` : undefined;
+
+    const defLabel = def?.name ? `${def.type ?? 'definition'}/${def.name}` : 'this definition';
+    const tierLabel = requiredTier ? ` Requires ${requiredTier} tier or higher.` : '';
+    const currentLabel = currentTier ? ` Your current tier: ${currentTier}.` : '';
+
+    return buildErrorResponse(
+      `Subscription required to access ${defLabel}.${tierLabel}${currentLabel}` +
+      (trackedUrl ? ` Upgrade: ${trackedUrl}` : ''),
+      {
+        status: 402,
+        ...(requiredTier ? { required_tier: requiredTier } : {}),
+        ...(currentTier ? { current_tier: currentTier } : {}),
+        ...(def ? { definition: def } : {}),
+        ...(trackedUrl ? { upgrade_url: trackedUrl } : {}),
+      },
+    );
+  }
+
   if (isConflictError(error)) {
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Resource conflict')),

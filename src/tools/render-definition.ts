@@ -32,10 +32,20 @@ export const RenderDefinitionInputSchema = z.object({
   type: DefinitionTypeSchema,
   name: z.string().min(1),
   version: z.string().min(1),
+  target: z
+    .string()
+    .min(1)
+    .describe('Target harness format (e.g., opencode, codex, gemini). Omit for canonical Claude Code output.')
+    .optional(),
+  model: z
+    .string()
+    .min(1)
+    .describe('Model override for target envelope (e.g., gpt-5.3, gemini-3-preview).')
+    .optional(),
   output_path: z
     .string()
     .min(1)
-    .describe('Write rendered markdown to this file path instead of returning it in the response.')
+    .describe('Write rendered output to this file path instead of returning it in the response.')
     .optional(),
 });
 
@@ -44,12 +54,15 @@ export function registerRenderDefinitionTool(
   registryClient: RegistryClient
 ): void {
   const baseHandler = createToolHandler(RenderDefinitionInputSchema, (n) =>
-    registryClient.render.get(n.type, n.name, n.version)
+    registryClient.render.get(n.type, n.name, n.version, {
+      target: n.target,
+      model: n.model,
+    })
   );
 
   server.tool(
     'render_definition',
-    'Get the rendered runtime markdown for a definition version. Use output_path to write directly to a file.',
+    'Get the rendered runtime output for a definition version. Use target to render for a specific harness (opencode, codex, gemini). Use output_path to write directly to a file.',
     RenderDefinitionInputSchema.shape,
     async (args: unknown) => {
       const parsed = RenderDefinitionInputSchema.safeParse(args);
@@ -88,7 +101,8 @@ export function registerRenderDefinitionTool(
         const result = await registryClient.render.get(
           parsed.data.type,
           parsed.data.name,
-          parsed.data.version
+          parsed.data.version,
+          { target: parsed.data.target, model: parsed.data.model },
         );
 
         // SDK RenderResult guarantees markdown: string

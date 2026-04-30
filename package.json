@@ -52,9 +52,9 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@uluops/definition-factory": "^0.30.0",
-    "@uluops/registry-sdk": "^0.14.2",
-    "mcp-secure-server": "^0.0.13-security",
+    "@uluops/definition-factory": "^0.33.0",
+    "@uluops/registry-sdk": "^0.15.0",
+    "mcp-secure-server": "^0.0.14-security",
     "zod": "^3.23.0"
   },
   "overrides": {

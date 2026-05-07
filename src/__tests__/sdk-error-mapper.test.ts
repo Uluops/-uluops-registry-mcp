@@ -33,9 +33,11 @@ vi.mock('@uluops/registry-sdk/errors', () => {
     }
   }
   class ConflictError extends RegistryApiError {
-    constructor(message: string) {
+    details?: Record<string, unknown>;
+    constructor(message: string, details?: Record<string, unknown>) {
       super(message, 409);
       this.name = 'ConflictError';
+      this.details = details;
     }
   }
   class UnprocessableError extends RegistryApiError {
@@ -150,6 +152,13 @@ describe('mapSdkErrorToMcp', () => {
     const result = mapSdkErrorToMcp(new ConflictError('Already exists'));
     expect(result.isError).toBe(true);
     expect(parseErrorText(result)).toBe('Already exists');
+  });
+
+  it('forwards nextAvailable from ConflictError details', () => {
+    const result = mapSdkErrorToMcp(new ConflictError('Already exists', { nextAvailable: '1.0.3' }));
+    const payload = parseErrorPayload(result);
+    expect(payload.nextAvailable).toBe('1.0.3');
+    expect(payload.status).toBe(409);
   });
 
   it('maps UnprocessableError preserving message', () => {

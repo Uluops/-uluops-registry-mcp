@@ -173,9 +173,16 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
   }
 
   if (isConflictError(error)) {
+    // Extract details (e.g. nextAvailable version) from SDK ConflictError
+    const details = error && typeof error === 'object' && 'details' in error
+      ? (error as { details?: Record<string, unknown> }).details
+      : undefined;
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Resource conflict')),
-      statusCode ? { status: statusCode } : undefined,
+      {
+        ...(statusCode ? { status: statusCode } : {}),
+        ...(details?.nextAvailable ? { nextAvailable: details.nextAvailable } : {}),
+      },
     );
   }
 

@@ -15,6 +15,8 @@ import { isNotFoundError, isValidationError } from '@uluops/registry-sdk/errors'
 import {
   DefinitionTypeSchema,
   VisibilitySchema,
+  TierSchema,
+  SubscriptionTierSchema,
   ChangeTypeSchema,
   ProvenanceInputSchema,
   type McpServerToolRegistration,
@@ -30,6 +32,8 @@ export const UpdateDefinitionInputSchema = z.object({
   yaml: z.string().max(500_000).optional(),
   file_path: z.string().min(1).max(1000).optional(),
   visibility: VisibilitySchema.optional(),
+  tier: TierSchema.optional(),
+  min_subscription: SubscriptionTierSchema.optional(),
   description: z.string().optional(),
   tags: z.array(z.string()).optional(),
   change_type: ChangeTypeSchema.optional(),
@@ -55,6 +59,8 @@ export function registerUpdateDefinitionTool(
       const body: UpdateDefinitionBody = {};
       if (n.yaml !== undefined) body.yaml = n.yaml;
       if (n.visibility !== undefined) body.visibility = n.visibility;
+      if (n.tier !== undefined) body.tier = n.tier;
+      if (n.minSubscription !== undefined) body.minSubscription = n.minSubscription;
       if (n.description !== undefined) body.description = n.description;
       if (n.tags !== undefined) body.tags = n.tags;
       if (n.changeType !== undefined) body.changeType = n.changeType;

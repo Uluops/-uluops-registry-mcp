@@ -24,7 +24,7 @@ export function registerGetForkLineageTool(
     'Get the fork ancestry chain for a definition version.',
     GetForkLineageInputSchema.shape,
     createToolHandler(GetForkLineageInputSchema, (n) =>
-      registryClient.forks.getLineage(n.type, n.name, n.version)
+      registryClient.forks.getAncestry(n.type, n.name, n.version)
     )
   );
 }

@@ -45,6 +45,12 @@ export const ModelTierSchema = z.enum(['budget', 'standard', 'premium', 'reasoni
 /** AI model availability statuses. */
 export const ModelStatusSchema = z.enum(['available', 'preview', 'deprecated']);
 
+/** Quality/provenance tiers for definitions. */
+export const TierSchema = z.enum(['user', 'org', 'pro']);
+
+/** Subscription tiers for content gating. */
+export const SubscriptionTierSchema = z.enum(['free', 'hobbyist', 'plus', 'pro', 'enterprise']);
+
 /** Semantic version change types for definition updates. */
 export const ChangeTypeSchema = z.enum(['major', 'minor', 'patch']);
 

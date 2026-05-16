@@ -38,6 +38,8 @@ export {
   SortOrderSchema,
   ModelTierSchema,
   ModelStatusSchema,
+  TierSchema,
+  SubscriptionTierSchema,
   ChangeTypeSchema,
   AuthorshipTypeSchema,
   ProvenanceInputSchema,

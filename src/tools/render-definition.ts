@@ -31,7 +31,7 @@ function getOutputBaseDir(): string {
 export const RenderDefinitionInputSchema = z.object({
   type: DefinitionTypeSchema,
   name: z.string().min(1),
-  version: z.string().min(1),
+  version: z.string().min(1).default('latest'),
   target: z
     .string()
     .min(1)

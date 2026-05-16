@@ -1151,7 +1151,7 @@ describe('Tool Registration & SDK Calls', () => {
     it('passes type, name, version as positional args', async () => {
       registerGetForkLineageTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
-      expect(client.forks.getLineage).toHaveBeenCalledWith('agent', 'test', '1.0.0');
+      expect(client.forks.getAncestry).toHaveBeenCalledWith('agent', 'test', '1.0.0');
     });
   });
 

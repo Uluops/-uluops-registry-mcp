@@ -211,7 +211,7 @@ export const toolRegistry: ToolSpec[] = [
     quotaPerHour: 500,
   },
   {
-    name: 'check_forkable',
+    name: 'is_forkable',
     sideEffects: 'read',
     maxArgsSize: 10 * KB,
     maxEgressBytes: 10 * KB,

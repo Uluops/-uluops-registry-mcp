@@ -63,7 +63,7 @@ import { registerListForksTool } from './list-forks.js';
 
 // P2 Admin/Specialized Tools
 import { registerForkDefinitionTool } from './fork-definition.js';
-import { registerCheckForkableTool } from './check-forkable.js';
+import { registerIsForkableTool } from './check-forkable.js';
 import { registerGetForkLineageTool } from './get-fork-lineage.js';
 import { registerRecordExecutionTool } from './record-execution.js';
 import { registerRetranslateDefinitionTool } from './retranslate-definition.js';
@@ -128,7 +128,7 @@ export function registerAllTools(
 
   // P2 Admin/Specialized tools
   registerForkDefinitionTool(s, registryClient);
-  registerCheckForkableTool(s, registryClient);
+  registerIsForkableTool(s, registryClient);
   registerGetForkLineageTool(s, registryClient);
   registerRecordExecutionTool(s, registryClient);
   registerRetranslateDefinitionTool(s, registryClient);

@@ -80,7 +80,7 @@ describe('registerAllTools', () => {
       'get_execution_stats',
       'list_forks',
       'fork_definition',
-      'check_forkable',
+      'is_forkable',
       'get_fork_lineage',
       'record_execution',
       'retranslate_definition',

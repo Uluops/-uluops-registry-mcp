@@ -138,7 +138,7 @@ diff_versions({ type: "agent", name: "code-validator", from: "1.0.0", to: "1.1.0
 | Tool | Description |
 |------|-------------|
 | `fork_definition` | Fork a definition |
-| `check_forkable` | Check if a definition version can be forked |
+| `is_forkable` | Check if a definition version can be forked |
 | `get_fork_lineage` | Fork ancestry chain |
 
 ### Translation Tools (P2)

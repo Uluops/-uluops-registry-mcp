@@ -33,7 +33,7 @@ import { registerGetDependenciesTool } from '../tools/get-dependencies.js';
 import { registerGetDependentsTool } from '../tools/get-dependents.js';
 // Forks
 import { registerListForksTool } from '../tools/list-forks.js';
-import { registerCheckForkableTool } from '../tools/check-forkable.js';
+import { registerIsForkableTool } from '../tools/check-forkable.js';
 import { registerGetForkLineageTool } from '../tools/get-fork-lineage.js';
 import { registerForkDefinitionTool } from '../tools/fork-definition.js';
 // Executions
@@ -1129,14 +1129,14 @@ describe('Tool Registration & SDK Calls', () => {
     });
   });
 
-  describe('check_forkable', () => {
+  describe('is_forkable', () => {
     it('registers with correct name', () => {
-      registerCheckForkableTool(server, client);
-      expect(server.tools[0].name).toBe('check_forkable');
+      registerIsForkableTool(server, client);
+      expect(server.tools[0].name).toBe('is_forkable');
     });
 
     it('passes type, name, version as positional args', async () => {
-      registerCheckForkableTool(server, client);
+      registerIsForkableTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
       expect(client.forks.isForkable).toHaveBeenCalledWith('agent', 'test', '1.0.0');
     });

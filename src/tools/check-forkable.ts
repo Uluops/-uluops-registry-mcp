@@ -24,7 +24,7 @@ export function registerCheckForkableTool(
     'Check if a definition version can be forked.',
     CheckForkableInputSchema.shape,
     createToolHandler(CheckForkableInputSchema, (n) =>
-      registryClient.forks.checkForkable(n.type, n.name, n.version)
+      registryClient.forks.isForkable(n.type, n.name, n.version)
     )
   );
 }

@@ -158,8 +158,8 @@ function createMockRegistryClient(): RegistryClient {
     },
     forks: {
       list: vi.fn().mockResolvedValue({ forks: [], totalForks: 0 }),
-      checkForkable: vi.fn().mockResolvedValue({ forkable: true }),
-      getLineage: vi.fn().mockResolvedValue({ isFork: false }),
+      isForkable: vi.fn().mockResolvedValue({ forkable: true }),
+      getAncestry: vi.fn().mockResolvedValue({ isFork: false }),
       create: vi.fn().mockResolvedValue({ name: 'forked-def', type: 'agent' }),
     },
     executions: {
@@ -169,7 +169,7 @@ function createMockRegistryClient(): RegistryClient {
     translation: {
       retranslate: vi.fn().mockResolvedValue({ retranslated: true }),
       getVersion: vi.fn().mockResolvedValue({ version: '2.0.0' }),
-      upgrade: vi.fn().mockResolvedValue({ upgraded: true }),
+      upgradeDefinition: vi.fn().mockResolvedValue({ upgraded: true }),
     },
     validation: {
       validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }),
@@ -1138,7 +1138,7 @@ describe('Tool Registration & SDK Calls', () => {
     it('passes type, name, version as positional args', async () => {
       registerCheckForkableTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
-      expect(client.forks.checkForkable).toHaveBeenCalledWith('agent', 'test', '1.0.0');
+      expect(client.forks.isForkable).toHaveBeenCalledWith('agent', 'test', '1.0.0');
     });
   });
 
@@ -1317,7 +1317,7 @@ describe('Tool Registration & SDK Calls', () => {
     it('passes type, name, and yaml object to SDK', async () => {
       registerUpgradeDefinitionTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', yaml: 'old: format' });
-      expect(client.translation.upgrade).toHaveBeenCalledWith(
+      expect(client.translation.upgradeDefinition).toHaveBeenCalledWith(
         'agent',
         'test',
         expect.objectContaining({ yaml: 'old: format' })
@@ -1338,7 +1338,7 @@ describe('Tool Registration & SDK Calls', () => {
         file_path: '/home/user/legacy.yaml',
       });
       expect(mockReadYamlFile).toHaveBeenCalledWith('/home/user/legacy.yaml');
-      expect(client.translation.upgrade).toHaveBeenCalledWith(
+      expect(client.translation.upgradeDefinition).toHaveBeenCalledWith(
         'agent',
         'test',
         expect.objectContaining({ yaml: 'name: from-file\nversion: 1.0.0' })

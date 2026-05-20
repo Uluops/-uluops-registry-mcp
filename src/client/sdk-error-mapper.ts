@@ -2,8 +2,7 @@
  * Error mapper for converting Registry SDK errors to MCP-safe responses
  *
  * Maps @uluops/registry-sdk error hierarchy to sanitized MCP tool responses.
- * Redacts actual credential values while preserving field names, validation
- * details, and actionable context.
+ * Credential redaction delegated to @uluops/sdk-core's sanitizeString().
  */
 
 import {
@@ -16,52 +15,16 @@ import {
   isConflictError,
   isUnprocessableError,
 } from '@uluops/registry-sdk/errors';
+import { sanitizeString } from '@uluops/sdk-core';
 import type { ZodError } from 'zod';
 import type { McpToolResponse } from '../types/index.js';
 
-const MAX_ERROR_MESSAGE_LENGTH = 1000;
-
-/**
- * Patterns that indicate actual credential values in error messages.
- * Only matches credential values, not field names that mention credentials.
- */
-const CREDENTIAL_PATTERNS: RegExp[] = [
-  // Actual key/token values (not field names)
-  /(?:api[_-]?key|apiKey)\s*[:=]\s*\S+/i,
-  /bearer\s+[a-zA-Z0-9_\-.]+/i,
-  /authorization:\s*\S+/i,
-  /ulr_[a-zA-Z0-9]{20,}/,
-  // Token/secret assignments with actual values
-  /(?:token|secret)\s*[:=]\s*\S+/i,
-  // Stack traces (internal implementation details)
-  /at\s+\S+\s+\(\S+:\d+:\d+\)/,
-];
-
-/** Check if a message contains actual credential values */
-function containsCredentials(message: string): boolean {
-  return CREDENTIAL_PATTERNS.some((pattern) => pattern.test(message));
-}
-
-/** Redact credential values from a message while preserving the rest */
-function redactCredentials(message: string): string {
-  let redacted = message;
-  for (const pattern of CREDENTIAL_PATTERNS) {
-    redacted = redacted.replace(pattern, '[REDACTED]');
-  }
-  return redacted;
-}
-
 /**
  * Sanitize an error message for safe client exposure.
- * Redacts credentials and truncates if needed, but preserves all other context.
+ * Delegates to @uluops/sdk-core's sanitizeString() for credential redaction
+ * and truncation.
  */
-export function sanitizeErrorMessage(message: string): string {
-  let safe = containsCredentials(message) ? redactCredentials(message) : message;
-  if (safe.length > MAX_ERROR_MESSAGE_LENGTH) {
-    safe = safe.slice(0, MAX_ERROR_MESSAGE_LENGTH) + '... (truncated)';
-  }
-  return safe;
-}
+export const sanitizeErrorMessage = sanitizeString;
 
 /** Safely extract a message from an unknown error value */
 function getErrorMessage(error: unknown, fallback: string): string {

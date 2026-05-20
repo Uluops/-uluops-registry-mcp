@@ -54,6 +54,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@uluops/definition-factory": "^0.33.0",
     "@uluops/registry-sdk": "file:../packages/-uluops-registry-sdk",
+    "@uluops/sdk-core": "^0.6.0",
     "mcp-secure-server": "^0.0.14-security",
     "zod": "^3.23.0"
   },

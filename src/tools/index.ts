@@ -75,6 +75,8 @@ import { registerGetTranslatorVersionTool } from './get-translator-version.js';
 import { registerSyncModelsTool } from './sync-models.js';
 import { registerGetUserTool } from './get-user.js';
 import { registerBatchUsersTool } from './batch-users.js';
+import { registerListLanguagesTool } from './list-languages.js';
+import { registerGetLanguageTool } from './get-language.js';
 
 // P3 Analytics Tools
 import { registerGetEffectivenessTool } from './get-effectiveness.js';
@@ -87,7 +89,7 @@ import { registerCompareEffectivenessTool } from './compare-effectiveness.js';
 import { registerGetDiffImpactTool } from './get-diff-impact.js';
 
 /**
- * Register all 42 MCP tools with the server.
+ * Register all 45 MCP tools with the server.
  * @param server - MCP server instance to register tools on.
  * @param registryClient - Registry SDK client for API calls.
  */
@@ -137,9 +139,11 @@ export function registerAllTools(
   registerListProvidersTool(s, registryClient);
   registerListAliasesTool(s, registryClient);
   registerGetTranslatorVersionTool(s, registryClient);
-  registerSyncModelsTool(s, registryClient);
+  registerSyncModelsTool(s);
   registerGetUserTool(s, registryClient);
   registerBatchUsersTool(s, registryClient);
+  registerListLanguagesTool(s, registryClient);
+  registerGetLanguageTool(s, registryClient);
 
   // P3 Analytics tools
   registerGetEffectivenessTool(s, registryClient);

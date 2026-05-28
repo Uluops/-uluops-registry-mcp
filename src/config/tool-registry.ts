@@ -307,6 +307,23 @@ export const toolRegistry: ToolSpec[] = [
     quotaPerHour: 1000,
   },
 
+  {
+    name: 'list_languages',
+    sideEffects: 'read',
+    maxArgsSize: 256,
+    maxEgressBytes: 10 * KB,
+    quotaPerMinute: 240,
+    quotaPerHour: 5000,
+  },
+  {
+    name: 'get_language',
+    sideEffects: 'read',
+    maxArgsSize: 1 * KB,
+    maxEgressBytes: 500 * KB,
+    quotaPerMinute: 120,
+    quotaPerHour: 2000,
+  },
+
   // ============================================================================
   // P3 Analytics
   // ============================================================================

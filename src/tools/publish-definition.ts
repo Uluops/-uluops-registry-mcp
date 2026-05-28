@@ -22,11 +22,16 @@ export function registerPublishDefinitionTool(
 ): void {
   server.tool(
     'publish_definition',
-    'Publish a draft definition version, making it available for use.',
+    'Publish a draft definition version, making it available for use. The response surfaces non-fatal warnings (e.g. translation failure) under a top-level `warnings` array — callers should inspect it before assuming the definition is renderable.',
     PublishDefinitionInputSchema.shape,
-    createToolHandler(PublishDefinitionInputSchema, (n) =>
-      registryClient.definitions.publish(n.type, n.name, n.version),
-      { postProcess: trimDefinitionResponse }
-    )
+    createToolHandler(PublishDefinitionInputSchema, async (n) => {
+      const result = await registryClient.definitions.publish(n.type, n.name, n.version);
+      // Trim the definition's large fields but preserve warnings at the top level
+      // so the publisher sees `TRANSLATION_FAILED` etc. without scrolling through YAML.
+      return {
+        definition: trimDefinitionResponse(result.definition),
+        warnings: result.warnings,
+      };
+    })
   );
 }

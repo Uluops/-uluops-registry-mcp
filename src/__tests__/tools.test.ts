@@ -134,7 +134,7 @@ function createMockRegistryClient(): RegistryClient {
       search: vi.fn().mockResolvedValue({ items: [], total: 0 }),
       create: vi.fn().mockResolvedValue({ name: 'new-def', type: 'agent' }),
       update: vi.fn().mockResolvedValue({ name: 'test', type: 'agent' }),
-      publish: vi.fn().mockResolvedValue({ name: 'test', status: 'published' }),
+      publish: vi.fn().mockResolvedValue({ definition: { name: 'test', status: 'published' }, warnings: [] }),
       deprecate: vi.fn().mockResolvedValue({ name: 'test', status: 'deprecated' }),
       delete: vi.fn().mockResolvedValue(undefined),
     },
@@ -737,7 +737,8 @@ describe('Tool Registration & SDK Calls', () => {
         name: 'my-agent', version: '1.0.0', type: 'agent', status: 'draft',
       });
       (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        name: 'my-agent', version: '1.0.0', type: 'agent', status: 'published',
+        definition: { name: 'my-agent', version: '1.0.0', type: 'agent', status: 'published' },
+        warnings: [],
       });
 
       const result = await getHandler(server)({
@@ -766,7 +767,8 @@ describe('Tool Registration & SDK Calls', () => {
         name: 'my-agent', version: '2.0.0', type: 'agent',
       });
       (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        name: 'my-agent', version: '2.0.0', type: 'agent', status: 'published',
+        definition: { name: 'my-agent', version: '2.0.0', type: 'agent', status: 'published' },
+        warnings: [],
       });
 
       const result = await getHandler(server)({
@@ -1560,12 +1562,36 @@ describe('Tool Registration & SDK Calls', () => {
       expect(parsed.error).toBe('Connection refused');
     });
 
-    it('handles void SDK responses as success: true', async () => {
-      (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    it('returns the trimmed definition plus warnings on a clean publish', async () => {
+      // registry-sdk@0.29.0 publish() always returns { definition, warnings: [] }.
+      // (Previously this test mocked undefined; that contract no longer holds —
+      // the SDK schema validates the response envelope.)
+      (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValue({
+        definition: { name: 'test', type: 'agent', version: '1.0.0', status: 'published', yaml: 'agent: {}' },
+        warnings: [],
+      });
       registerPublishDefinitionTool(server, client);
       const result = await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
       expect(result.isError).toBeUndefined();
-      expect(parseResult(result)).toEqual({ success: true });
+      const parsed = parseResult(result) as { definition: { status: string }; warnings: unknown[] };
+      expect(parsed.definition.status).toBe('published');
+      expect(parsed.warnings).toEqual([]);
+    });
+
+    it('surfaces TRANSLATION_FAILED warnings alongside the trimmed definition', async () => {
+      (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValue({
+        definition: { name: 'test', type: 'agent', version: '1.0.0', status: 'published' },
+        warnings: [{
+          code: 'TRANSLATION_FAILED',
+          message: 'Definition published, but translation failed — `runtimeMd` was not stamped and rendering will not work until the YAML is fixed.',
+          details: { type: 'agent', name: 'test', version: '1.0.0', error: 'Missing required "agent" key at root level' },
+        }],
+      });
+      registerPublishDefinitionTool(server, client);
+      const result = await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      const parsed = parseResult(result) as { warnings: Array<{ code: string }> };
+      expect(parsed.warnings).toHaveLength(1);
+      expect(parsed.warnings[0]?.code).toBe('TRANSLATION_FAILED');
     });
   });
 

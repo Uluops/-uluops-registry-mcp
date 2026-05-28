@@ -115,10 +115,13 @@ export function registerUpdateAndPublishTool(
         }
 
         // Step 2: Publish
-        const published = await registryClient.definitions.publish(type, name, publishVersion);
+        const { definition: published, warnings } = await registryClient.definitions.publish(type, name, publishVersion);
 
         const trimmed = trimDefinitionResponse(published) as Record<string, unknown>;
-        return createSuccessResponse({ ...trimmed, _note: note });
+        // Surface non-fatal publish warnings (TRANSLATION_FAILED etc.) alongside the
+        // trimmed definition. Empty array is fine — distinguishes "no warnings" from
+        // "this tool predates the warnings contract".
+        return createSuccessResponse({ ...trimmed, _note: note, warnings });
       } catch (error) {
         if (error instanceof z.ZodError) {
           return mapZodErrorToMcp(error);

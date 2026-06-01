@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bumps `@uluops/sdk-core` from `^0.9.0` to `0.11.0` (exact pin) and `@uluops/registry-sdk`
+  to `0.30.0` (exact pin). Aligns with the sdk-core schema-removal cascade. The MCP server's
+  own Zod-based tool input parsing is unaffected — it never used sdk-core's `options.schema`.
+
 ## [1.14.0] - 2026-05-20
 
 ### Changed

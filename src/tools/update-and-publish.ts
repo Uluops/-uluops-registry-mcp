@@ -79,7 +79,7 @@ export function registerUpdateAndPublishTool(
         const resolved = resolveYamlInput(injected as Record<string, unknown>, { required: false });
         if (isMcpResponse(resolved)) return resolved;
 
-        let input = UpdateAndPublishInputSchema.parse(resolved);
+        const input = UpdateAndPublishInputSchema.parse(resolved);
 
         const { type, name, version, yaml, visibility, description, tags, change_type } = input;
 

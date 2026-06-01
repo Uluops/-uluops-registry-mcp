@@ -81,7 +81,7 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
     const retryAfter = (error as { retryAfter?: number }).retryAfter;
     return buildErrorResponse(
       retryAfter
-        ? `Rate limit exceeded. Retry after ${retryAfter} seconds.`
+        ? `Rate limit exceeded. Retry after ${String(retryAfter)} seconds.`
         : 'Rate limit exceeded, please retry later.',
       { status: 429, ...(retryAfter ? { retry_after_seconds: retryAfter } : {}) },
     );
@@ -137,7 +137,7 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
 
   if (isConflictError(error)) {
     // Extract details (e.g. nextAvailable version) from SDK ConflictError
-    const details = error && typeof error === 'object' && 'details' in error
+    const details = 'details' in error
       ? (error as { details?: Record<string, unknown> }).details
       : undefined;
     return buildErrorResponse(
@@ -183,7 +183,7 @@ export function mapZodErrorToMcp(error: unknown): McpToolResponse {
       .map((e) => `${e.path.join('.')}: ${e.message}`)
       .join('; ');
     const count = zodError.issues.length;
-    message = `Validation failed (${count} error${count > 1 ? 's' : ''}): ${details}`;
+    message = `Validation failed (${String(count)} error${count > 1 ? 's' : ''}): ${details}`;
   }
 
   return buildErrorResponse(message, { status: 400 });

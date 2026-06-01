@@ -33,7 +33,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run lint && npm test && npm audit --audit-level=high --omit=dev && npm run build"
   },
   "keywords": [
     "mcp",
@@ -61,8 +62,8 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@uluops/definition-factory": "^0.36.0",
-    "@uluops/registry-sdk": "^0.29.0",
-    "@uluops/sdk-core": "^0.9.0",
+    "@uluops/registry-sdk": "0.30.1",
+    "@uluops/sdk-core": "0.11.0",
     "mcp-secure-server": "^0.0.14-security",
     "zod": "^3.23.0"
   },
@@ -71,12 +72,12 @@
     "@types/node": "^22.10.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
-    "@vitest/coverage-v8": "^2.1.0",
+    "@vitest/coverage-v8": "^4.1.8",
     "eslint": "^9.0.0",
     "prettier": "^3.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.52.0",
-    "vitest": "^2.1.0"
+    "vitest": "^4.1.8"
   }
 }

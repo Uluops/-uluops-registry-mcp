@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-01
+
+### Security
+
+- **Bump `@uluops/sdk-core` to `0.11.1` and `@uluops/registry-sdk` to `0.30.2`.** Pulls in today's sdk-core security hardening: `redirect: 'error'` on all fetch sites (CRLF/credential-replay on auth redirects), control-character stripping in error messages (`stripControlChars` + `SdkApiError` constructor), widened `SENSITIVE_KEYS` (x-api-key, set-cookie, proxy-authorization, x-auth-token), added `column` to `REDACTED_DETAIL_KEYS`, and `sanitizeString` coverage for URL userinfo + bare JWT shapes. See `@uluops/sdk-core` CHANGELOG 0.11.1.
+
 ### Changed
 
-- Bumps `@uluops/sdk-core` from `^0.9.0` to `0.11.0` (exact pin) and `@uluops/registry-sdk`
-  to `0.30.0` (exact pin). Aligns with the sdk-core schema-removal cascade. The MCP server's
-  own Zod-based tool input parsing is unaffected — it never used sdk-core's `options.schema`.
+- Consolidates the pre-release `@uluops/sdk-core` `^0.9.0` → `0.11.0` → `0.11.1` and `@uluops/registry-sdk` → `0.30.2` bumps from the sdk-core schema-removal cascade. The MCP server's own Zod-based tool input parsing is unaffected — it never used sdk-core's removed `options.schema`.
+
+### Supply chain
+
+- **Pin all dependencies and devDependencies to exact versions.** Per the new UluOps-wide exact-pinning policy adopted 2026-06-01 in response to the RedHat-class supply-chain attack pattern. `@modelcontextprotocol/sdk`, `@uluops/definition-factory`, `mcp-secure-server`, `zod`, and all devDeps stripped of caret ranges. Lockfile re-aligned.
 
 ## [1.14.0] - 2026-05-20
 

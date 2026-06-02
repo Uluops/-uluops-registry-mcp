@@ -1003,13 +1003,35 @@ describe('Tool Registration & SDK Calls', () => {
       expect(server.tools[0].name).toBe('sync_models');
     });
 
-    it('calls SDK and returns sync result in response', async () => {
-      registerSyncModelsTool(server, client);
-      const result = await getHandler(server)({});
-      expect(client.models.sync).toHaveBeenCalled();
-      expect(result.isError).toBeUndefined();
-      const parsed = parseResult(result) as { synced: number };
-      expect(parsed.synced).toBe(5);
+    it('calls registry admin endpoint and returns sync result in response', async () => {
+      // sync_models was refactored to use raw fetch against an admin-only endpoint
+      // (not exposed through the SDK). Mock global fetch instead of client.models.sync.
+      const originalFetch = globalThis.fetch;
+      const originalApiKey = process.env['ULUOPS_API_KEY'];
+      process.env['ULUOPS_API_KEY'] = 'test-key';
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ synced: 5 }),
+      });
+      globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
+      try {
+        registerSyncModelsTool(server, client);
+        const result = await getHandler(server)({});
+        expect(fetchMock).toHaveBeenCalledWith(
+          expect.stringContaining('/models/sync'),
+          expect.objectContaining({ method: 'POST' }),
+        );
+        expect(result.isError).toBeUndefined();
+        const parsed = parseResult(result) as { synced: number };
+        expect(parsed.synced).toBe(5);
+      } finally {
+        globalThis.fetch = originalFetch;
+        if (originalApiKey === undefined) {
+          delete process.env['ULUOPS_API_KEY'];
+        } else {
+          process.env['ULUOPS_API_KEY'] = originalApiKey;
+        }
+      }
     });
   });
 
@@ -1418,7 +1440,10 @@ describe('Tool Registration & SDK Calls', () => {
     it('passes type, name, version as positional args (no output_path)', async () => {
       registerRenderDefinitionTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
-      expect(client.render.get).toHaveBeenCalledWith('agent', 'test', '1.0.0');
+      expect(client.render.get).toHaveBeenCalledWith('agent', 'test', '1.0.0', {
+        target: undefined,
+        model: undefined,
+      });
     });
 
     it('returns rendered markdown when no output_path given', async () => {
@@ -1499,7 +1524,8 @@ describe('Tool Registration & SDK Calls', () => {
 
     it('rejects missing required fields', async () => {
       registerRenderDefinitionTool(server, client);
-      const result = await getHandler(server)({ type: 'agent', name: 'test' });
+      // version has default('latest') so omitting it is OK; omit name (required, no default).
+      const result = await getHandler(server)({ type: 'agent' });
       expect(result.isError).toBe(true);
     });
   });

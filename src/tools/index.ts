@@ -63,7 +63,7 @@ import { registerListForksTool } from './list-forks.js';
 
 // P2 Admin/Specialized Tools
 import { registerForkDefinitionTool } from './fork-definition.js';
-import { registerIsForkableTool } from './check-forkable.js';
+import { registerIsForkableTool } from './is-forkable.js';
 import { registerGetForkLineageTool } from './get-fork-lineage.js';
 import { registerRecordExecutionTool } from './record-execution.js';
 import { registerRetranslateDefinitionTool } from './retranslate-definition.js';

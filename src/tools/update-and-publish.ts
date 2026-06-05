@@ -104,15 +104,21 @@ export function registerUpdateAndPublishTool(
               yaml: patchedYaml,
               ...(visibility !== undefined && { visibility }),
             });
-            // Defensive guard against malformed SDK response — passing
-            // undefined to publish(...) would build /versions/undefined and
-            // return a confusing 404 for a draft that was just created.
-            if (created?.version === undefined || created.version === '') {
+            // Defensive guard against malformed SDK response — the SDK
+            // types declare `created.version` as a non-nullable string, but
+            // a runtime contract violation (network proxy mangling, SDK
+            // regression) would silently pass `undefined` through to the
+            // publish URL builder, producing /versions/undefined and a
+            // confusing 404 for a draft that was just successfully created.
+            // The `as unknown` cast intentionally bypasses the declared
+            // type so the runtime check has somewhere to live.
+            const runtimeVersion = (created as unknown as { version?: string }).version;
+            if (runtimeVersion === undefined || runtimeVersion === '') {
               throw new Error(
                 `Definitions create() returned no version field for ${type}/${name}. Cannot continue to publish step.`,
               );
             }
-            publishVersion = created.version;
+            publishVersion = runtimeVersion;
             note = isNotFoundError(error)
               ? `Version '${version}' not found. Created new draft '${created.version}' and published.`
               : `Version '${version}' is published. Created new draft '${created.version}' and published.`;

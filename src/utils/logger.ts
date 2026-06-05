@@ -4,7 +4,7 @@
  * Logs to stderr (for MCP compatibility) and optionally to files.
  */
 
-import { appendFileSync, mkdirSync, existsSync } from 'node:fs';
+import { appendFileSync, mkdirSync, existsSync, realpathSync } from 'node:fs';
 import { join, resolve, isAbsolute } from 'node:path';
 import type { LogLevel } from '../types/index.js';
 
@@ -50,21 +50,48 @@ function getLogFilePath(logDir: string): string {
 /**
  * Validate that a log directory path is safe to write to.
  * Rejects paths containing traversal sequences or pointing outside the working tree.
+ * Dereferences symlinks before the containment check (CWE-59) so a symlink
+ * named e.g. './logs' pointing to /etc cannot escape the cwd/tmp constraint.
  */
 function validateLogDir(logDir: string): string {
   const resolved = resolve(logDir);
-  const cwd = process.cwd();
   // Reject path traversal patterns
   if (logDir.includes('..')) {
     throw new Error(`LOG_DIR must not contain path traversal sequences: ${logDir}`);
   }
+
+  // If the path already exists, dereference symlinks before the containment
+  // check (CWE-59). If it doesn't exist yet, mkdir below will create a real
+  // directory and the literal resolved path is the right comparison.
+  let real = resolved;
+  try {
+    real = realpathSync(resolved);
+  } catch {
+    // Path doesn't exist; ensureLogDir() will create a regular directory.
+  }
+
+  // Dereference the comparison anchors too — on macOS /tmp is a symlink to
+  // /private/tmp, so a realpathSync'd `real` of /tmp/foo becomes
+  // /private/tmp/foo and would otherwise fail a literal startsWith('/tmp/')
+  // check.
+  const cwd = safeRealpath(process.cwd());
+  const tmpPrefixes = ['/tmp/', safeRealpath('/tmp') + '/'];
+
   // Absolute paths must be under cwd or a well-known logs location
-  if (isAbsolute(logDir) && !resolved.startsWith(cwd) && !resolved.startsWith('/tmp/')) {
+  if (isAbsolute(logDir) && !real.startsWith(cwd) && !tmpPrefixes.some((p) => real.startsWith(p))) {
     throw new Error(
       `LOG_DIR absolute path must be under the working directory or /tmp/: ${logDir}`
     );
   }
   return resolved;
+}
+
+function safeRealpath(p: string): string {
+  try {
+    return realpathSync(p);
+  } catch {
+    return p;
+  }
 }
 
 function ensureLogDir(logDir: string): void {

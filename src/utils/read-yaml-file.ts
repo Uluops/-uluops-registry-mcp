@@ -30,7 +30,23 @@ function getWorkspaceDir(): string {
  */
 export function readYamlFile(filePath: string): string {
   const resolved = resolve(filePath);
-  const workspaceDir = realpathSync(getWorkspaceDir());
+  // realpathSync throws ENOENT synchronously if WORKSPACE_DIR points to a
+  // path that doesn't exist (typo, mount not ready, fresh container).
+  // Wrap with a descriptive error so the user sees the WORKSPACE_DIR
+  // misconfiguration rather than a confusing 'no such file or directory'
+  // for the workspace root that they didn't realize they had to create.
+  const rawWorkspaceDir = getWorkspaceDir();
+  let workspaceDir: string;
+  try {
+    workspaceDir = realpathSync(rawWorkspaceDir);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `WORKSPACE_DIR '${rawWorkspaceDir}' is not accessible. ` +
+      `Set the env var to an existing directory, or unset it to use cwd. ` +
+      `Underlying error: ${reason}`,
+    );
+  }
 
   // First check: catch obvious traversal before touching the filesystem
   if (!resolved.startsWith(workspaceDir + '/') && resolved !== workspaceDir) {

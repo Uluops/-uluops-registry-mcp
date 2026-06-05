@@ -32,7 +32,7 @@ import { registerGetDependenciesTool } from '../tools/get-dependencies.js';
 import { registerGetDependentsTool } from '../tools/get-dependents.js';
 // Forks
 import { registerListForksTool } from '../tools/list-forks.js';
-import { registerIsForkableTool } from '../tools/check-forkable.js';
+import { registerIsForkableTool } from '../tools/is-forkable.js';
 import { registerGetForkLineageTool } from '../tools/get-fork-lineage.js';
 import { registerForkDefinitionTool } from '../tools/fork-definition.js';
 // Executions

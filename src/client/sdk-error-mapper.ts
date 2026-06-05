@@ -37,10 +37,37 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 /** Extract HTTP status code from SDK errors when available */
 function getStatusCode(error: unknown): number | undefined {
-  if (error && typeof error === 'object' && 'statusCode' in error) {
+  if (error !== null && typeof error === 'object' && 'statusCode' in error) {
     return (error as { statusCode: number }).statusCode;
   }
   return undefined;
+}
+
+/**
+ * Validate that a server-supplied URL is safe to embed in MCP responses.
+ *
+ * The 402 handler embeds `upgradeUrl` from the API response into MCP text
+ * that AI agents read as context. A compromised or attacker-controlled API
+ * could emit `javascript:`, `data:`, or untrusted-host URLs as prompt-
+ * injection bait. This guard restricts the embedded URL to:
+ *   - https:// only (no javascript:/data:/file:/http:)
+ *   - hosts ending in `.uluops.ai` or the apex `uluops.ai`
+ *
+ * Mirrors the SSRF defense in config/index.ts for symmetry — outgoing
+ * payload URLs face the same trust constraints as incoming registry URLs.
+ */
+function isSafeUpgradeUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'https:') return false;
+  const hostname = parsed.hostname.toLowerCase();
+  if (hostname === 'uluops.ai') return true;
+  if (hostname.endsWith('.uluops.ai')) return true;
+  return false;
 }
 
 /** Build a structured error response with optional metadata */
@@ -91,12 +118,18 @@ export function extractErrorContext(error: unknown): ExtractedErrorContext {
     const details = (error as { details?: Record<string, unknown> }).details ?? {};
     const requiredTier = typeof details['requiredTier'] === 'string' ? details['requiredTier'] : undefined;
     const currentTier = typeof details['currentTier'] === 'string' ? details['currentTier'] : undefined;
-    const def = (details['definition'] && typeof details['definition'] === 'object')
+    const def = (details['definition'] !== null && typeof details['definition'] === 'object')
       ? details['definition'] as { type?: string; name?: string }
       : undefined;
-    const upgradeUrl = typeof details['upgradeUrl'] === 'string' ? details['upgradeUrl'] : undefined;
-    const sep = upgradeUrl?.includes('?') === true ? '&' : '?';
-    const trackedUrl = upgradeUrl !== undefined ? `${upgradeUrl}${sep}source=mcp` : undefined;
+    const rawUpgradeUrl = typeof details['upgradeUrl'] === 'string' ? details['upgradeUrl'] : undefined;
+    // Drop server-supplied URLs that don't pass the protocol/host guard.
+    // A compromised or attacker-controlled API could emit javascript:/data:
+    // or off-domain URLs as prompt-injection bait for the consuming agent.
+    const safeUpgradeUrl = rawUpgradeUrl !== undefined && isSafeUpgradeUrl(rawUpgradeUrl)
+      ? rawUpgradeUrl
+      : undefined;
+    const sep = safeUpgradeUrl?.includes('?') === true ? '&' : '?';
+    const trackedUrl = safeUpgradeUrl !== undefined ? `${safeUpgradeUrl}${sep}source=mcp` : undefined;
     return {
       message: sanitizeErrorMessage(getErrorMessage(error, 'Subscription required')),
       status,
@@ -150,24 +183,25 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
   if (isNotFoundError(error)) {
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Resource not found')),
-      statusCode ? { status: statusCode } : undefined,
+      statusCode !== undefined ? { status: statusCode } : undefined,
     );
   }
 
   if (isRateLimitError(error)) {
     const retryAfter = (error as { retryAfter?: number }).retryAfter;
+    const hasRetryAfter = typeof retryAfter === 'number' && retryAfter > 0;
     return buildErrorResponse(
-      retryAfter
+      hasRetryAfter
         ? `Rate limit exceeded. Retry after ${String(retryAfter)} seconds.`
         : 'Rate limit exceeded, please retry later.',
-      { status: 429, ...(retryAfter ? { retry_after_seconds: retryAfter } : {}) },
+      { status: 429, ...(hasRetryAfter ? { retry_after_seconds: retryAfter } : {}) },
     );
   }
 
   if (isValidationError(error)) {
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Invalid request parameters')),
-      statusCode ? { status: statusCode } : undefined,
+      statusCode !== undefined ? { status: statusCode } : undefined,
     );
   }
 
@@ -191,23 +225,34 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
     const requiredTier = details.requiredTier as string | undefined;
     const currentTier = details.currentTier as string | undefined;
     const def = details.definition as { type?: string; name?: string } | undefined;
-    const upgradeUrl = details.upgradeUrl as string | undefined;
-    const sep = upgradeUrl?.includes('?') ? '&' : '?';
-    const trackedUrl = upgradeUrl ? `${upgradeUrl}${sep}source=mcp` : undefined;
+    const rawUpgradeUrl = details.upgradeUrl as string | undefined;
+    // Restrict the embedded URL to https://*.uluops.ai to prevent
+    // server-controlled prompt-injection bait reaching the agent's context.
+    const safeUpgradeUrl = rawUpgradeUrl !== undefined && isSafeUpgradeUrl(rawUpgradeUrl)
+      ? rawUpgradeUrl
+      : undefined;
+    const sep = safeUpgradeUrl?.includes('?') === true ? '&' : '?';
+    const trackedUrl = safeUpgradeUrl !== undefined ? `${safeUpgradeUrl}${sep}source=mcp` : undefined;
 
-    const defLabel = def?.name ? `${def.type ?? 'definition'}/${def.name}` : 'this definition';
-    const tierLabel = requiredTier ? ` Requires ${requiredTier} tier or higher.` : '';
-    const currentLabel = currentTier ? ` Your current tier: ${currentTier}.` : '';
+    const defLabel = def?.name !== undefined && def.name !== ''
+      ? `${def.type ?? 'definition'}/${def.name}`
+      : 'this definition';
+    const tierLabel = requiredTier !== undefined && requiredTier !== ''
+      ? ` Requires ${requiredTier} tier or higher.`
+      : '';
+    const currentLabel = currentTier !== undefined && currentTier !== ''
+      ? ` Your current tier: ${currentTier}.`
+      : '';
 
     return buildErrorResponse(
       `Subscription required to access ${defLabel}.${tierLabel}${currentLabel}` +
-      (trackedUrl ? ` Upgrade: ${trackedUrl}` : ''),
+      (trackedUrl !== undefined ? ` Upgrade: ${trackedUrl}` : ''),
       {
         status: 402,
-        ...(requiredTier ? { required_tier: requiredTier } : {}),
-        ...(currentTier ? { current_tier: currentTier } : {}),
-        ...(def ? { definition: def } : {}),
-        ...(trackedUrl ? { upgrade_url: trackedUrl } : {}),
+        ...(requiredTier !== undefined && requiredTier !== '' ? { required_tier: requiredTier } : {}),
+        ...(currentTier !== undefined && currentTier !== '' ? { current_tier: currentTier } : {}),
+        ...(def !== undefined ? { definition: def } : {}),
+        ...(trackedUrl !== undefined ? { upgrade_url: trackedUrl } : {}),
       },
     );
   }
@@ -217,11 +262,12 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
     const details = 'details' in error
       ? (error as { details?: Record<string, unknown> }).details
       : undefined;
+    const nextAvailable = details?.nextAvailable;
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Resource conflict')),
       {
-        ...(statusCode ? { status: statusCode } : {}),
-        ...(details?.nextAvailable ? { nextAvailable: details.nextAvailable } : {}),
+        ...(statusCode !== undefined ? { status: statusCode } : {}),
+        ...(nextAvailable !== undefined && nextAvailable !== null ? { nextAvailable } : {}),
       },
     );
   }
@@ -229,14 +275,14 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
   if (isUnprocessableError(error)) {
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Unprocessable request')),
-      statusCode ? { status: statusCode } : undefined,
+      statusCode !== undefined ? { status: statusCode } : undefined,
     );
   }
 
   if (isRegistryApiError(error)) {
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Internal server error')),
-      statusCode ? { status: statusCode } : undefined,
+      statusCode !== undefined ? { status: statusCode } : undefined,
     );
   }
 

@@ -213,7 +213,7 @@ git clone git@github.com:Uluops/-uluops-registry-mcp.git
 cd -uluops-registry-mcp
 npm install
 npm run build
-npm test            # 329 tests
+npm test            # 348 tests
 npm run typecheck
 npm run lint
 ```

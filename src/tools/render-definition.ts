@@ -93,7 +93,7 @@ export function registerRenderDefinitionTool(
       // caller has opted in with overwrite: true. Default-deny matches
       // `cp --no-clobber` semantics and prevents agent-driven hallucinated
       // paths from destroying user work without a clear signal.
-      if (parsed.data.overwrite !== true) {
+      if (!parsed.data.overwrite) {
         const exists = await access(absPath).then(() => true).catch(() => false);
         if (exists) {
           return createErrorResponse(

@@ -7,7 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.2] - 2026-06-05
+## [0.2.3] - 2026-06-05
+
+Polish release. Six tracker findings closed: documentation freshness,
+filesystem availability + symlink hardening, src-tree naming alignment,
+402 upgrade-URL prompt-injection guard, and 19 lint warnings removed
+from the security-boundary module.
+
+### Fixed
+
+- **`readYamlFile` now wraps `realpathSync(WORKSPACE_DIR)` in a try/catch.** A typo'd `WORKSPACE_DIR` env var, an unmounted NFS path, or a fresh container where the dir hadn't been created yet previously threw an opaque `ENOENT` for the workspace root rather than the file the user actually asked about. The error message now names WORKSPACE_DIR explicitly and tells the user how to fix it.
+- **`validateLogDir` now dereferences symlinks before the containment check (CWE-59).** A symlink at `LOG_DIR` could previously escape the cwd/`/tmp/` constraint because `resolve()` doesn't follow symlinks. Also dereferences the comparison anchors (cwd, `/tmp/`) so macOS's `/tmp` → `/private/tmp` symlink no longer breaks the legitimate `/tmp/...` case. Only active when `ENABLE_FILE_LOGGING=true`.
+- **402 `upgradeUrl` now passes through a protocol/host guard before being embedded in MCP responses (CWE-601).** A compromised or malicious registry server could previously emit `javascript:`, `data:`, or off-domain URLs in the 402 response body, landing them in the consuming agent's context window as prompt-injection bait. The guard restricts the embedded URL to `https://` and host suffix `.uluops.ai` (or apex `uluops.ai`); anything else is dropped and the agent sees an upgrade message without a follow-able URL. Mirrors the SSRF defense in `config/index.ts`.
+
+### Changed
+
+- **`src/tools/check-forkable.ts` renamed to `src/tools/is-forkable.ts`.** The file registers `is_forkable` (renamed in v1.13.0 of the legacy package); the source filename was a legacy artifact. Internal-only rename — the tool name, schema, and behavior are unchanged.
+- **19 `@typescript-eslint/strict-boolean-expressions` lint warnings cleared from `sdk-error-mapper.ts`.** The security-boundary module is now lint-clean. Every implicit truthiness check was converted to explicit `!== undefined` / `!== ''` / `=== true` form. No behavior change — but the file is now easier to reason about as code paths near credential redaction.
+- **`isApiKey` detection in `src/index.ts` uses explicit `=== true`** for the optional-chained `startsWith('ulr_')`. Same intent as before; falls through to session-token auth when `apiKey` is undefined. Linter-friendly.
+- **README test count updated to 348** (was stale at 329).
+
+
 
 Hardening pass against the ship-pipeline findings. No new tools. No
 breaking changes to existing tool contracts (the new `render_definition`

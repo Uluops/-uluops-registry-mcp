@@ -53,11 +53,16 @@ import { registerBatchUsersTool } from '../tools/batch-users.js';
 const mockWriteFile = vi.fn().mockResolvedValue(undefined);
 const mockMkdir = vi.fn().mockResolvedValue(undefined);
 const mockLstat = vi.fn().mockRejectedValue(new Error('ENOENT'));
+// access() resolves when path exists, rejects when not. Default: not-present
+// so render_definition's overwrite gate lets the write through. Per-test
+// overrides via mockResolvedValueOnce(undefined) to simulate file-exists.
+const mockAccess = vi.fn().mockRejectedValue(new Error('ENOENT'));
 
 vi.mock('node:fs/promises', () => ({
   writeFile: (...args: unknown[]): Promise<void> => mockWriteFile(...args) as Promise<void>,
   mkdir: (...args: unknown[]): Promise<void> => mockMkdir(...args) as Promise<void>,
   lstat: (...args: unknown[]): Promise<unknown> => mockLstat(...args) as Promise<unknown>,
+  access: (...args: unknown[]): Promise<unknown> => mockAccess(...args) as Promise<unknown>,
 }));
 
 // Mock the registry SDK error module
@@ -778,10 +783,92 @@ describe('Tool Registration & SDK Calls', () => {
       mockIsNotFoundError.mockReturnValue(false);
 
       expect(result.isError).toBeUndefined();
-      expect(client.definitions.create).toHaveBeenCalled();
+      // create receives yaml with the version patched to the requested version (1.0.0),
+      // not the version that was in the source yaml (2.0.0). patchYamlVersion is the
+      // load-bearing piece here — if it no-ops, create gets the wrong version.
+      expect(client.definitions.create).toHaveBeenCalledWith(
+        'agent',
+        'my-agent',
+        expect.objectContaining({
+          yaml: expect.stringContaining('version: "1.0.0"'),
+        }),
+      );
       expect(client.definitions.publish).toHaveBeenCalledWith('agent', 'my-agent', '2.0.0');
       const parsed = parseResult(result) as Record<string, unknown>;
       expect(parsed._note).toContain('not found');
+    });
+
+    it('patches prerelease semver versions in yaml during create fallback', async () => {
+      // Regression test for the regex extension covering -rc.1, -beta.2, +build
+      // suffixes. The prior regex matched only `\d+\.\d+\.\d+`, leaving a
+      // `-rc.1` token stranded after the replacement and producing malformed
+      // YAML that the API would reject.
+      registerUpdateAndPublishTool(server, client);
+      const notFoundError = new Error('Not found');
+      (client.definitions.update as ReturnType<typeof vi.fn>).mockRejectedValueOnce(notFoundError);
+      mockIsNotFoundError.mockReturnValue(true);
+      (client.definitions.create as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        name: 'my-agent', version: '2.0.0-rc.1', type: 'agent',
+      });
+      (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        definition: { name: 'my-agent', version: '2.0.0-rc.1', type: 'agent', status: 'published' },
+        warnings: [],
+      });
+
+      const result = await getHandler(server)({
+        type: 'agent', name: 'my-agent', version: '2.0.0-rc.1',
+        yaml: 'name: my-agent\nversion: 1.0.0-beta.3\ndescription: example',
+      });
+
+      mockIsNotFoundError.mockReturnValue(false);
+
+      expect(result.isError).toBeUndefined();
+      const createCall = (client.definitions.create as ReturnType<typeof vi.fn>).mock.calls[0];
+      const patchedYaml = createCall?.[2]?.yaml as string;
+      // Patched to the requested prerelease version, and the source prerelease
+      // suffix is consumed (no stranded "-beta.3" or "-rc.1" trailing garbage)
+      expect(patchedYaml).toContain('version: "2.0.0-rc.1"');
+      expect(patchedYaml).not.toContain('1.0.0-beta.3');
+      expect(patchedYaml).not.toContain('"2.0.0-rc.1"-beta.3');
+    });
+
+    it('patches root-level (unindented) version in yaml during create fallback', async () => {
+      // Regression test for patchYamlVersion regex. The prior regex required
+      // `\s+version:` (indented) but real definition YAML uses root-level
+      // `version:` at column 0. This test fails if patchYamlVersion no-ops on
+      // the common unindented format.
+      registerUpdateAndPublishTool(server, client);
+      const notFoundError = new Error('Not found');
+      (client.definitions.update as ReturnType<typeof vi.fn>).mockRejectedValueOnce(notFoundError);
+      mockIsNotFoundError.mockReturnValue(true);
+      (client.definitions.create as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        name: 'my-agent', version: '2.0.0', type: 'agent',
+      });
+      (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        definition: { name: 'my-agent', version: '2.0.0', type: 'agent', status: 'published' },
+        warnings: [],
+      });
+
+      const result = await getHandler(server)({
+        type: 'agent', name: 'my-agent', version: '2.0.0',
+        // Root-level version field — predominant format. Old version 1.0.0
+        // in yaml; requested version is 2.0.0. patchYamlVersion must rewrite.
+        yaml: 'name: my-agent\nversion: 1.0.0\ndescription: example',
+      });
+
+      mockIsNotFoundError.mockReturnValue(false);
+
+      expect(result.isError).toBeUndefined();
+      expect(client.definitions.create).toHaveBeenCalledWith(
+        'agent',
+        'my-agent',
+        expect.objectContaining({
+          yaml: expect.stringContaining('version: "2.0.0"'),
+        }),
+      );
+      // And the old version string must NOT survive
+      const createCall = (client.definitions.create as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(createCall?.[2]?.yaml).not.toContain('version: 1.0.0');
     });
 
     it('returns error when publish fails after update', async () => {
@@ -1488,6 +1575,57 @@ describe('Tool Registration & SDK Calls', () => {
       // version has default('latest') so omitting it is OK; omit name (required, no default).
       const result = await getHandler(server)({ type: 'agent' });
       expect(result.isError).toBe(true);
+    });
+
+    it('refuses to overwrite an existing file when overwrite is not opted into', async () => {
+      const origBase = process.env['OUTPUT_BASE_DIR'];
+      process.env['OUTPUT_BASE_DIR'] = '/tmp/test-output';
+      try {
+        // Simulate file already exists at the target path
+        mockAccess.mockResolvedValueOnce(undefined);
+        registerRenderDefinitionTool(server, client);
+        const result = await getHandler(server)({
+          type: 'agent',
+          name: 'test',
+          version: '1.0.0',
+          output_path: '/tmp/test-output/existing.md',
+        });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('already exists');
+        expect(result.content[0].text).toContain('overwrite: true');
+        expect(mockWriteFile).not.toHaveBeenCalled();
+      } finally {
+        if (origBase === undefined) {
+          delete process.env['OUTPUT_BASE_DIR'];
+        } else {
+          process.env['OUTPUT_BASE_DIR'] = origBase;
+        }
+      }
+    });
+
+    it('writes to existing file when overwrite: true is passed', async () => {
+      const origBase = process.env['OUTPUT_BASE_DIR'];
+      process.env['OUTPUT_BASE_DIR'] = '/tmp/test-output';
+      try {
+        // File exists, but overwrite=true should allow the write
+        mockAccess.mockResolvedValueOnce(undefined);
+        registerRenderDefinitionTool(server, client);
+        const result = await getHandler(server)({
+          type: 'agent',
+          name: 'test',
+          version: '1.0.0',
+          output_path: '/tmp/test-output/existing.md',
+          overwrite: true,
+        });
+        expect(result.isError).toBeUndefined();
+        expect(mockWriteFile).toHaveBeenCalled();
+      } finally {
+        if (origBase === undefined) {
+          delete process.env['OUTPUT_BASE_DIR'];
+        } else {
+          process.env['OUTPUT_BASE_DIR'] = origBase;
+        }
+      }
     });
   });
 

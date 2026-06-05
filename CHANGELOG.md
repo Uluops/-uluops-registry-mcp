@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-06-05
+
+Hardening pass against the ship-pipeline findings. No new tools. No
+breaking changes to existing tool contracts (the new `render_definition`
+`overwrite` parameter defaults to `false` — agents that previously
+silently overwrote files now receive a clear error response and need to
+opt in).
+
+### Fixed
+
+- **`patchYamlVersion` now handles prerelease and build-metadata semver.**
+  The regex `\d+\.\d+\.\d+` was extended to `\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?(?:\+[A-Za-z0-9.-]+)?`. Previously, source YAML with `version: 1.0.0-rc.1` would leave the `-rc.1` suffix stranded after the replacement, producing malformed YAML that the API would reject. Closes the AF-006 audit trigger that was acknowledged at v0.2.0 ship time.
+- **`update_and_publish` create-fallback now guards `created.version`.** A malformed SDK response with a missing `version` field would have been silently passed through to `publish()`, producing a `/versions/undefined` URL and a 404 for a draft that was just successfully created. The handler now throws a descriptive error if `created.version` is missing or empty.
+- **`render_definition` no longer silently overwrites existing files.** New `overwrite: boolean` parameter (default `false`). When false (the default) and `output_path` resolves to an existing file, the tool returns a clear MCP error rather than destroying the prior content. Agents that need replacement semantics must explicitly pass `overwrite: true`.
+- **`batch_publish` per-item errors now carry rich SDK context.** Previously each failed-item entry only carried `error` (message) and `status`. The per-item catch now routes through a new `extractErrorContext(error)` helper that surfaces 402 `upgrade_url` + `required_tier` + `current_tier`, 429 `retry_after`, and 409 `nextAvailable` exactly as single-call tools do via `mapSdkErrorToMcp`.
+- **MCP server now auto-runs on the proper ESM entry-point check** instead of `NODE_ENV !== 'test'`. A stray `NODE_ENV=test` in the user's shell, CI, or `direnv` no longer silently disables `main()` — the harness would have started and hung waiting for stdio JSON-RPC that never arrived. Tests already import `main` directly and call it; no test changes needed.
+
+### Changed
+
+- **`isNumericSchema` swapped Zod `_def.innerType` access for Zod's public `unwrap()` / `removeDefault()` API.** Avoids coupling to Zod private internals that can rename across minor versions and would silently disable numeric coercion at the MCP boundary if Zod's `_def` shape ever changes.
+- **`isPublishedStatusError` extracted to a shared `src/utils/error-guards.ts` module.** Previously this 3-line guard was duplicated verbatim across `update-definition.ts` and `update-and-publish.ts`. A future change to the underlying API error message now updates one location instead of two.
+- **Added `prepublishOnly: npm run build` script.** Future `npm publish` runs no longer rely on the maintainer remembering to build first.
+
+### Added
+
+- **`extractErrorContext(error)` helper in `client/sdk-error-mapper.ts`** — returns the same structured fields (`status`, `required_tier`, `upgrade_url`, `retry_after`, `nextAvailable`) that `mapSdkErrorToMcp` produces, but without wrapping them in an MCP envelope. Used by `batch_publish`.
+
+### Tests
+
+348 tests pass (was 345, +3 regression coverage):
+- New: `patches prerelease semver versions in yaml during create fallback`
+- New: `refuses to overwrite an existing file when overwrite is not opted into`
+- New: `writes to existing file when overwrite: true is passed`
+
+## [0.2.1] - 2026-06-05
+
+### Changed
+
+- **Backend URL resolution deferred to the SDK.** Previously the MCP server
+  shadowed `@uluops/registry-sdk`'s `DEFAULT_BASE_URL` with its own copy
+  and effectively required `ULUOPS_REGISTRY_URL` (treating empty/undefined
+  as "use the shadow constant"). The SDK already resolves the correct
+  production URL (`https://api.uluops.ai/api/v1/registry`) by default and
+  switches to localhost when `NODE_ENV=development`; the MCP now passes
+  `baseUrl` through as `undefined` when the env var is unset/empty and lets
+  the SDK own URL resolution. Public consumers no longer set anything but
+  `ULUOPS_API_KEY`. README's configuration table reduced to consumer-
+  relevant variables; `ULUOPS_REGISTRY_URL` removed from the public
+  surface (still honored by the code when explicitly set).
+- **SSRF defense and host allowlist now gate on `baseUrl !== undefined`.**
+  When the operator does not set `ULUOPS_REGISTRY_URL` the SDK uses a
+  trusted compile-time constant, so the URL-parse/allowlist/private-host
+  checks are skipped — they only run when an operator explicitly provides
+  a URL that needs validation. Identical behavior for any URL that was
+  previously accepted; previously-rejected URLs are still rejected.
+- **Pairs with `@uluops/setup@0.6.4`** which stopped stamping
+  `ULUOPS_REGISTRY_URL` into `.mcp.json` files during onboarding, and with
+  `@uluops/ops-mcp@0.2.1` which applied the same fix to the ops tracker.
+
+### Internal
+
+- `DEFAULT_BASE_URL` constant removed from `src/config/index.ts`.
+- `ApiClientConfig.baseUrl` type widened to `string | undefined`.
+- Startup log apiUrl line shows `(SDK default)` when baseUrl is unset.
+
 ## [0.2.0] - 2026-06-05
 
 First release of the monorepo `@uluops/registry-mcp` package at parity
@@ -161,7 +226,9 @@ first public npm publish under the scoped name.
 - Error sanitization stripping sensitive data (API keys, tokens, stack traces) from MCP responses
 - Test suite with 194 tests covering all tools, resources, and registry config
 
-[Unreleased]: https://github.com/Uluops/-uluops-registry-mcp/compare/v1.14.0...HEAD
+[Unreleased]: https://github.com/Uluops/-uluops-registry-mcp/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Uluops/-uluops-registry-mcp/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/Uluops/-uluops-registry-mcp/releases/tag/v0.2.0
 [1.14.0]: https://github.com/Uluops/-uluops-registry-mcp/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/Uluops/-uluops-registry-mcp/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Uluops/-uluops-registry-mcp/compare/v1.11.0...v1.12.0

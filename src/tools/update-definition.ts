@@ -11,7 +11,8 @@
 
 import { z } from 'zod';
 import type { RegistryClient, UpdateDefinitionBody } from '@uluops/registry-sdk';
-import { isNotFoundError, isValidationError } from '@uluops/registry-sdk/errors';
+import { isNotFoundError } from '@uluops/registry-sdk/errors';
+import { isPublishedStatusError } from '../utils/error-guards.js';
 import {
   DefinitionTypeSchema,
   VisibilitySchema,
@@ -39,13 +40,6 @@ export const UpdateDefinitionInputSchema = z.object({
   change_type: ChangeTypeSchema.optional(),
   provenance: ProvenanceInputSchema.optional().describe('Authorship provenance. Merges with existing provenance if present.'),
 });
-
-/** Check if an error is a "published status" validation error from the API. */
-function isPublishedStatusError(error: unknown): boolean {
-  return isValidationError(error) &&
-    error instanceof Error &&
-    error.message.includes("'published' status");
-}
 
 export function registerUpdateDefinitionTool(
   server: McpServerToolRegistration,

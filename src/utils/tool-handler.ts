@@ -6,7 +6,7 @@
  */
 
 import { z } from 'zod';
-import { mapSdkErrorToMcp, mapZodErrorToMcp } from '../client/sdk-error-mapper.js';
+import { mapSdkErrorToMcp, mapZodErrorToMcp, sanitizeErrorMessage } from '../client/sdk-error-mapper.js';
 import { normalizeKeys } from './normalize-keys.js';
 import { createSuccessResponse, type McpToolResponse } from '../types/index.js';
 import { getDefaultType } from './session-state.js';
@@ -36,12 +36,17 @@ function coerceNumericFields(args: unknown, schema: z.ZodSchema): unknown {
   return obj;
 }
 
-/** Check if a Zod schema (possibly wrapped in optional/nullable/default) expects a number. */
+/**
+ * Check if a Zod schema (possibly wrapped in optional/nullable/default) expects a number.
+ * Uses Zod's public unwrap()/removeDefault() API rather than `_def.innerType`
+ * to avoid coupling to Zod's private internals — those can rename across
+ * minor Zod versions and break numeric coercion without compile-time warning.
+ */
 function isNumericSchema(schema: z.ZodTypeAny): boolean {
   if (schema instanceof z.ZodNumber) return true;
-  if (schema instanceof z.ZodOptional || schema instanceof z.ZodNullable || schema instanceof z.ZodDefault) {
-    return isNumericSchema((schema as any)._def.innerType);
-  }
+  if (schema instanceof z.ZodOptional) return isNumericSchema(schema.unwrap());
+  if (schema instanceof z.ZodNullable) return isNumericSchema(schema.unwrap());
+  if (schema instanceof z.ZodDefault) return isNumericSchema(schema.removeDefault());
   return false;
 }
 
@@ -129,12 +134,16 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
 
       return createSuccessResponse(result);
     } catch (error) {
-      // Log errors to stderr for debugging (MCP transport uses stdout)
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      // Log errors to stderr for debugging (MCP transport uses stdout).
+      // Sanitize through the same credential-redaction filter used for MCP
+      // responses — SDK errors may embed API keys, session tokens, or URL
+      // userinfo in their messages, and stderr is captured by the harness.
+      const rawMsg = error instanceof Error ? error.message : String(error);
+      const errorMsg = sanitizeErrorMessage(rawMsg).slice(0, 200);
       const errorType = error instanceof z.ZodError ? 'validation' :
         error instanceof Error ? error.constructor.name : 'unknown';
       process.stderr.write(
-        `[mcp-tool-error] type=${errorType} message=${errorMsg.slice(0, 200)}\n`
+        `[mcp-tool-error] type=${errorType} message=${errorMsg}\n`
       );
 
       if (error instanceof z.ZodError) {

@@ -88,7 +88,7 @@ import { registerCompareEffectivenessTool } from './compare-effectiveness.js';
 import { registerGetDiffImpactTool } from './get-diff-impact.js';
 
 /**
- * Register all 45 MCP tools with the server.
+ * Register all 44 MCP tools with the server.
  * @param server - MCP server instance to register tools on.
  * @param registryClient - Registry SDK client for API calls.
  */

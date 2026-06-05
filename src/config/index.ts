@@ -13,7 +13,6 @@ const { version: pkgVersion } = require('../../package.json') as { version: stri
 /** Package version read from package.json at module load time. */
 export const VERSION = pkgVersion;
 
-const DEFAULT_BASE_URL = 'https://api.uluops.ai/api/v1/registry';
 const DEFAULT_TIMEOUT = 30000;
 const DEFAULT_RETRIES = 3;
 const DEFAULT_LOG_LEVEL: LogLevel = 'info';
@@ -41,9 +40,11 @@ function parseInteger(value: string | undefined, defaultValue: number): number {
  * Load configuration from environment variables.
  */
 export function loadConfig(): RegistryMcpConfig {
-  // Treat both unset (undefined) and empty string as "use default" — the test
-  // suite documents this intent. `??` alone would keep empty string as a value.
-  const apiUrl = process.env['ULUOPS_REGISTRY_URL'] || DEFAULT_BASE_URL; // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing
+  // ULUOPS_REGISTRY_URL is optional. When unset or empty, RegistryClient falls
+  // back to @uluops/registry-sdk's DEFAULT_BASE_URL (prod by default,
+  // localhost when NODE_ENV=development).
+  const rawUrl = process.env['ULUOPS_REGISTRY_URL'];
+  const apiUrl = rawUrl !== undefined && rawUrl !== '' ? rawUrl : undefined;
   const apiKey = process.env['ULUOPS_API_KEY'];
   const orgSlug = process.env['ULUOPS_ORG_SLUG'];
 
@@ -70,23 +71,104 @@ export function loadConfig(): RegistryMcpConfig {
 }
 
 /**
- * Validate that required configuration is present and well-formed.
+ * Hosts allowlisted for the registry URL by default. Anything else must
+ * be explicitly opted into via ULUOPS_ALLOW_ANY_REGISTRY_HOST=1.
+ * Loopback names (localhost, 127.x.x.x, ::1) are also accepted to support
+ * local development against a self-hosted instance.
+ *
+ * Suffix check requires the leading dot — `endsWith('uluops.ai')` without
+ * the dot would accept attacker-controlled `eviluluops.ai`. The exact-
+ * match branch covers the bare apex.
  */
-export function validateConfig(config: RegistryMcpConfig): void {
-  if (!config.api.baseUrl) {
-    throw new Error('Registry API base URL is required');
-  }
+function isAllowedRegistryHost(hostname: string): boolean {
+  if (hostname === 'localhost') return true;
+  if (hostname === '127.0.0.1' || hostname.startsWith('127.')) return true;
+  if (hostname === '::1' || hostname === '[::1]') return true;
+  if (hostname === 'uluops.ai') return true;
+  if (hostname.endsWith('.uluops.ai')) return true;
+  return false;
+}
 
-  try {
-    const parsed = new URL(config.api.baseUrl);
+/**
+ * RFC-1918, IMDS, and link-local addresses that should never receive the
+ * API key by accident. Even with ULUOPS_ALLOW_ANY_REGISTRY_HOST=1, these
+ * hosts require an explicit ULUOPS_ALLOW_PRIVATE_REGISTRY=1 second escape
+ * hatch — the typical AI-agent-driven misconfiguration we are defending
+ * against would not set both env vars.
+ */
+function isPrivateOrMetadataHost(hostname: string): boolean {
+  // AWS / GCP / Azure instance metadata service
+  if (hostname === '169.254.169.254') return true;
+  // RFC-1918 ranges (rough prefix match; sufficient for defense-in-depth)
+  if (hostname.startsWith('10.')) return true;
+  if (hostname.startsWith('192.168.')) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true;
+  // Link-local
+  if (hostname.startsWith('169.254.')) return true;
+  return false;
+}
+
+/**
+ * Validate that required configuration is present and well-formed.
+ *
+ * Returns a list of non-fatal warnings (e.g., custom registry URL accepted
+ * via escape hatch) that the caller should log so the user sees what
+ * happened during startup.
+ */
+export function validateConfig(config: RegistryMcpConfig): { warnings: string[] } {
+  const warnings: string[] = [];
+
+  // baseUrl is optional. When undefined, RegistryClient falls back to the
+  // SDK's DEFAULT_BASE_URL — a trusted compile-time constant, so the SSRF
+  // defense below only runs when the operator explicitly set a URL.
+  if (config.api.baseUrl !== undefined) {
+    let parsed: URL;
+    try {
+      parsed = new URL(config.api.baseUrl);
+    } catch {
+      throw new Error(`Invalid Registry API URL: ${config.api.baseUrl}`);
+    }
+
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
       throw new Error(`Registry API URL must use http or https scheme, got: ${parsed.protocol}`);
     }
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('scheme')) {
-      throw error;
+
+    // SSRF defense (CWE-918). The URL receives ULUOPS_API_KEY as a Bearer
+    // header on every request. By default only *.uluops.ai (the canonical
+    // host) and loopback (localhost dev) are allowed without opt-in.
+    const allowAnyHost = process.env['ULUOPS_ALLOW_ANY_REGISTRY_HOST'] === '1';
+    const allowPrivate = process.env['ULUOPS_ALLOW_PRIVATE_REGISTRY'] === '1';
+    const hostname = parsed.hostname.toLowerCase();
+
+    if (isPrivateOrMetadataHost(hostname) && !allowPrivate) {
+      throw new Error(
+        `Registry API URL host '${hostname}' is a private or instance-metadata address. ` +
+        `If you really intend this, set ULUOPS_ALLOW_PRIVATE_REGISTRY=1 to acknowledge the risk.`,
+      );
     }
-    throw new Error(`Invalid Registry API URL: ${config.api.baseUrl}`);
+
+    if (!isAllowedRegistryHost(hostname) && !allowAnyHost) {
+      throw new Error(
+        `Registry API URL host '${hostname}' is not on the default allowlist. ` +
+        `By default only *.uluops.ai and loopback are accepted to prevent the ` +
+        `API key from being forwarded to untrusted hosts. If you are pointing ` +
+        `at a non-production endpoint, set ULUOPS_ALLOW_ANY_REGISTRY_HOST=1 to ` +
+        `acknowledge the risk.`,
+      );
+    }
+
+    if (allowAnyHost && !isAllowedRegistryHost(hostname)) {
+      warnings.push(
+        `Registry API URL host '${hostname}' accepted via ULUOPS_ALLOW_ANY_REGISTRY_HOST=1. ` +
+        `Every API call will forward ULUOPS_API_KEY as a Bearer header to this host.`,
+      );
+    }
+
+    if (parsed.username !== '' || parsed.password !== '') {
+      throw new Error(
+        'Registry API URL must not include userinfo (user:pass@). Set ULUOPS_API_KEY instead.',
+      );
+    }
   }
 
   if (config.api.apiKey === undefined || config.api.apiKey === '') {
@@ -100,4 +182,6 @@ export function validateConfig(config: RegistryMcpConfig): void {
   if (config.api.retries < 0) {
     throw new Error('Retries must be a non-negative number');
   }
+
+  return { warnings };
 }

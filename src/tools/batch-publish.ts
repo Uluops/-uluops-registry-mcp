@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import { DefinitionTypeSchema, type McpServerToolRegistration, createSuccessResponse } from '../types/index.js';
-import { mapSdkErrorToMcp, mapZodErrorToMcp, sanitizeErrorMessage } from '../client/sdk-error-mapper.js';
+import { mapSdkErrorToMcp, mapZodErrorToMcp, extractErrorContext } from '../client/sdk-error-mapper.js';
 import { trimDefinitionResponse } from '../utils/trim-definition.js';
 
 const DefinitionRefSchema = z.object({
@@ -45,18 +45,18 @@ export function registerBatchPublishTool(
             // item against `risk_profile` / `runtime_md` to find which one is broken.
             published.push({ ...trimmed, warnings });
           } catch (error: unknown) {
-            const message = error instanceof Error
-              ? sanitizeErrorMessage(error.message)
-              : 'Unknown error';
-            const statusCode = error && typeof error === 'object' && 'statusCode' in error
-              ? (error as { statusCode: number }).statusCode
-              : undefined;
+            // Route per-item failures through extractErrorContext so the
+            // batch response surfaces the same rich error metadata that
+            // single-call tools get via mapSdkErrorToMcp: 402 upgradeUrl
+            // and tier info, 429 retry_after, 409 nextAvailable.
+            const ctx = extractErrorContext(error);
+            const { message, ...rest } = ctx;
             failed.push({
               type: def.type,
               name: def.name,
               version: def.version,
               error: message,
-              ...(statusCode ? { status: statusCode } : {}),
+              ...rest,
             });
           }
         }

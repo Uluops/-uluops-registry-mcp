@@ -5,8 +5,12 @@
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export interface ApiClientConfig {
-  /** Base URL for the registry API */
-  baseUrl: string;
+  /**
+   * Base URL for the registry API. Optional — when undefined, the SDK's
+   * `DEFAULT_BASE_URL` is used (prod by default; localhost when
+   * `NODE_ENV=development`).
+   */
+  baseUrl?: string;
   /** API key for authentication */
   apiKey?: string;
   /** Org slug for multi-tenancy — sets X-Org-Slug header on all requests */

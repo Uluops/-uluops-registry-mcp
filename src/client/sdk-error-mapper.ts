@@ -58,6 +58,83 @@ function buildErrorResponse(
   };
 }
 
+export interface ExtractedErrorContext {
+  /** Sanitized human-readable message. */
+  message: string;
+  /** HTTP status code if available on the SDK error. */
+  status?: number;
+  /** 402-only: tier required for access. */
+  required_tier?: string;
+  /** 402-only: caller's current tier. */
+  current_tier?: string;
+  /** 402-only: definition reference. */
+  definition?: { type?: string; name?: string };
+  /** 402-only: upgrade URL (mcp-source-tagged). */
+  upgrade_url?: string;
+  /** 409-only: next available version hint. */
+  nextAvailable?: unknown;
+  /** 429-only: server-recommended retry delay in seconds. */
+  retry_after?: number;
+}
+
+/**
+ * Extract the same structured-error fields as `mapSdkErrorToMcp` produces,
+ * but without wrapping them in an `McpToolResponse`. Useful inside batch
+ * loops where each per-item failure should embed the rich error context
+ * (402 upgrade URL, 429 retry-after, 409 nextAvailable) into the parent
+ * response rather than producing one MCP error envelope per failure.
+ */
+export function extractErrorContext(error: unknown): ExtractedErrorContext {
+  const status = getStatusCode(error);
+
+  if (status === 402) {
+    const details = (error as { details?: Record<string, unknown> }).details ?? {};
+    const requiredTier = typeof details['requiredTier'] === 'string' ? details['requiredTier'] : undefined;
+    const currentTier = typeof details['currentTier'] === 'string' ? details['currentTier'] : undefined;
+    const def = (details['definition'] && typeof details['definition'] === 'object')
+      ? details['definition'] as { type?: string; name?: string }
+      : undefined;
+    const upgradeUrl = typeof details['upgradeUrl'] === 'string' ? details['upgradeUrl'] : undefined;
+    const sep = upgradeUrl?.includes('?') === true ? '&' : '?';
+    const trackedUrl = upgradeUrl !== undefined ? `${upgradeUrl}${sep}source=mcp` : undefined;
+    return {
+      message: sanitizeErrorMessage(getErrorMessage(error, 'Subscription required')),
+      status,
+      ...(requiredTier !== undefined ? { required_tier: requiredTier } : {}),
+      ...(currentTier !== undefined ? { current_tier: currentTier } : {}),
+      ...(def !== undefined ? { definition: def } : {}),
+      ...(trackedUrl !== undefined ? { upgrade_url: trackedUrl } : {}),
+    };
+  }
+
+  if (isRateLimitError(error)) {
+    const details = (error as { details?: Record<string, unknown> }).details ?? {};
+    const retryAfter = typeof details['retryAfter'] === 'number' ? details['retryAfter'] : undefined;
+    return {
+      message: sanitizeErrorMessage(getErrorMessage(error, 'Rate limit exceeded')),
+      status,
+      ...(retryAfter !== undefined ? { retry_after: retryAfter } : {}),
+    };
+  }
+
+  if (isConflictError(error)) {
+    const details = 'details' in (error as object)
+      ? (error as { details?: Record<string, unknown> }).details
+      : undefined;
+    const nextAvailable = details?.['nextAvailable'];
+    return {
+      message: sanitizeErrorMessage(getErrorMessage(error, 'Resource conflict')),
+      ...(status !== undefined ? { status } : {}),
+      ...(nextAvailable !== undefined ? { nextAvailable } : {}),
+    };
+  }
+
+  return {
+    message: sanitizeErrorMessage(getErrorMessage(error, 'Unknown error')),
+    ...(status !== undefined ? { status } : {}),
+  };
+}
+
 /**
  * Map an SDK error to an MCP tool response.
  *

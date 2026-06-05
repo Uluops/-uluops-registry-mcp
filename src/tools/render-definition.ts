@@ -5,7 +5,7 @@
  * Optionally write the markdown directly to a file via output_path.
  */
 
-import { writeFile, mkdir, lstat } from 'node:fs/promises';
+import { writeFile, mkdir, lstat, access } from 'node:fs/promises';
 import { dirname, resolve, relative } from 'node:path';
 import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
@@ -47,6 +47,10 @@ export const RenderDefinitionInputSchema = z.object({
     .min(1)
     .describe('Write rendered output to this file path instead of returning it in the response.')
     .optional(),
+  overwrite: z
+    .boolean()
+    .describe('When true, allow output_path to overwrite an existing file. Defaults to false — an existing file at output_path produces an error response rather than being silently replaced.')
+    .default(false),
 });
 
 export function registerRenderDefinitionTool(
@@ -83,6 +87,19 @@ export function registerRenderDefinitionTool(
       const pathStat = await lstat(absPath).catch(() => null);
       if (pathStat?.isSymbolicLink() === true) {
         return createErrorResponse('output_path must not be a symbolic link');
+      }
+
+      // Refuse to silently overwrite an existing regular file unless the
+      // caller has opted in with overwrite: true. Default-deny matches
+      // `cp --no-clobber` semantics and prevents agent-driven hallucinated
+      // paths from destroying user work without a clear signal.
+      if (parsed.data.overwrite !== true) {
+        const exists = await access(absPath).then(() => true).catch(() => false);
+        if (exists) {
+          return createErrorResponse(
+            `output_path '${absPath}' already exists. Pass overwrite: true to replace it.`,
+          );
+        }
       }
 
       // Verify no symlink in ancestor directories resolves outside the base dir

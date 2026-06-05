@@ -6,6 +6,7 @@
  * the UluOps Registry API via MCP, using @uluops/registry-sdk.
  */
 
+import { fileURLToPath } from 'node:url';
 import { SecureMcpServer } from 'mcp-secure-server';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { RegistryClient } from '@uluops/registry-sdk';
@@ -24,7 +25,7 @@ async function main(): Promise<void> {
   }
 
   const config = loadConfig();
-  validateConfig(config);
+  const { warnings: configWarnings } = validateConfig(config);
 
   const logger = createLogger({
     level: config.security.logLevel,
@@ -32,9 +33,13 @@ async function main(): Promise<void> {
     logDir: config.security.logDir,
   });
 
+  for (const warning of configWarnings) {
+    logger.warn(warning);
+  }
+
   logger.info('Starting UluOps Registry MCP client', {
     version: config.server.version,
-    apiUrl: config.api.baseUrl,
+    apiUrl: config.api.baseUrl ?? '(SDK default)',
   });
 
   // Retry config applies to all requests including writes. This is safe because:
@@ -170,7 +175,17 @@ async function main(): Promise<void> {
 
 export { main };
 
-if (process.env.NODE_ENV !== 'test') {
+// Auto-run main() only when this module is the program entry point.
+// Tests import `{ main }` directly and call it themselves; they do not
+// need (and previously relied on a fragile `NODE_ENV=test` guard to
+// suppress) auto-execution. The ESM-standard entry-point check below is
+// stable across NODE_ENV values, so a stray `NODE_ENV=test` in the user's
+// shell no longer silently stops the server from starting.
+const isEntryPoint =
+  typeof process.argv[1] === 'string' &&
+  process.argv[1] === fileURLToPath(import.meta.url);
+
+if (isEntryPoint) {
   main().catch((error: unknown) => {
     // console.error is intentional here — logger may not be initialized yet at startup
     const message = error instanceof Error ? error.message : String(error);

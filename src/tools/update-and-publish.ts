@@ -9,7 +9,8 @@
 
 import { z } from 'zod';
 import type { RegistryClient, UpdateDefinitionBody } from '@uluops/registry-sdk';
-import { isNotFoundError, isValidationError } from '@uluops/registry-sdk/errors';
+import { isNotFoundError } from '@uluops/registry-sdk/errors';
+import { isPublishedStatusError } from '../utils/error-guards.js';
 import {
   DefinitionTypeSchema,
   VisibilitySchema,
@@ -40,13 +41,6 @@ export const UpdateAndPublishInputSchema = z.object({
   change_type: ChangeTypeSchema.optional(),
 });
 
-/** Check if an error is a "published status" validation error from the API. */
-function isPublishedStatusError(error: unknown): boolean {
-  return isValidationError(error) &&
-    error instanceof Error &&
-    error.message.includes("'published' status");
-}
-
 /**
  * Patch the version field in definition YAML to match the requested version.
  * When update_and_publish falls back to create (because the target version is
@@ -55,9 +49,14 @@ function isPublishedStatusError(error: unknown): boolean {
  * the YAML version matches the requested version before calling create.
  */
 function patchYamlVersion(yaml: string, newVersion: string): string {
-  // Replace the first indented `version:` field value (the interface version)
+  // Replace the first `version:` line value. Matches both root-level (e.g.
+  // `version: 1.0.0` in an ADL document) and indented (e.g.
+  // `  version: 1.0.0` nested under `interface:`) forms. `\s*` matches any
+  // leading whitespace including none. Accepts unquoted or single/double
+  // quoted version values, with optional prerelease (-rc.1, -beta.2) and
+  // build metadata (+build.5) suffixes per semver 2.0.0.
   return yaml.replace(
-    /^(\s+version:\s+)["']?\d+\.\d+\.\d+["']?/m,
+    /^(\s*version:\s+)["']?\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?(?:\+[A-Za-z0-9.-]+)?["']?/m,
     `$1"${newVersion}"`
   );
 }
@@ -105,6 +104,14 @@ export function registerUpdateAndPublishTool(
               yaml: patchedYaml,
               ...(visibility !== undefined && { visibility }),
             });
+            // Defensive guard against malformed SDK response — passing
+            // undefined to publish(...) would build /versions/undefined and
+            // return a confusing 404 for a draft that was just created.
+            if (created?.version === undefined || created.version === '') {
+              throw new Error(
+                `Definitions create() returned no version field for ${type}/${name}. Cannot continue to publish step.`,
+              );
+            }
             publishVersion = created.version;
             note = isNotFoundError(error)
               ? `Version '${version}' not found. Created new draft '${created.version}' and published.`

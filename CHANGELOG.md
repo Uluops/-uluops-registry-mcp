@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-05
+
+First release of the monorepo `@uluops/registry-mcp` package at parity
+with the standalone `uluops-registry-mcp` 0.1.1 codebase, prepared for
+first public npm publish under the scoped name.
+
+### Added
+
+- **`list_languages` and `get_language` tools** — language registry
+  read tools surfaced through the MCP server.
+
+### Changed
+
+- **`@uluops/registry-sdk` bumped `^0.27.2` → `0.30.2`** (three minor
+  versions). Pulls in 0.29.0 publish-warning surfacing, 0.30.x sdk-core
+  security hardening cascade, and the schema-removal cleanup.
+- **`@uluops/sdk-core` confirmed at `0.11.1`** with `redirect: 'error'`
+  on all fetch sites, control-character stripping, and widened sensitive-
+  key coverage (`x-api-key`, `set-cookie`, `proxy-authorization`).
+- **All runtime and dev dependencies pinned to exact versions** per the
+  2026-06-01 UluOps supply-chain hardening policy.
+- **`vitest` and `@vitest/coverage-v8` bumped to `4.1.8`** — eliminates
+  the moderate-severity esbuild advisory chained through vite. `npm audit`
+  now reports 0 vulnerabilities.
+
+### Not included
+
+- **`sync_models` admin tool deliberately excluded.** Calls a private
+  registry admin endpoint not exposed through the public SDK; reserved
+  for internal use and intentionally never shipped in this public package.
+
+### Historical lineage (legacy `uluops-registry-mcp` versions below)
+
 ## [1.14.0] - 2026-05-20
 
 ### Changed

@@ -38,9 +38,12 @@ export function registerBatchPublishTool(
 
         for (const def of input.definitions) {
           try {
-            const result = await registryClient.definitions.publish(def.type, def.name, def.version);
-            const trimmed = trimDefinitionResponse(result) as Record<string, unknown>;
-            published.push(trimmed);
+            const { definition, warnings } = await registryClient.definitions.publish(def.type, def.name, def.version);
+            const trimmed = trimDefinitionResponse(definition) as Record<string, unknown>;
+            // Attach per-item warnings so a batch with one TRANSLATION_FAILED is
+            // visible in the published list — otherwise the caller has to walk every
+            // item against `risk_profile` / `runtime_md` to find which one is broken.
+            published.push({ ...trimmed, warnings });
           } catch (error: unknown) {
             const message = error instanceof Error
               ? sanitizeErrorMessage(error.message)

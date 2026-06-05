@@ -153,9 +153,10 @@ async function main(): Promise<void> {
         'list_providers',
         'list_aliases',
         'get_translator_version',
-        'sync_models',
         'get_user',
         'batch_users',
+        'list_languages',
+        'get_language',
       ],
     },
     resources: [

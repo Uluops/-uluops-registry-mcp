@@ -41,7 +41,9 @@ function parseInteger(value: string | undefined, defaultValue: number): number {
  * Load configuration from environment variables.
  */
 export function loadConfig(): RegistryMcpConfig {
-  const apiUrl = process.env['ULUOPS_REGISTRY_URL'] || DEFAULT_BASE_URL;
+  // Treat both unset (undefined) and empty string as "use default" — the test
+  // suite documents this intent. `??` alone would keep empty string as a value.
+  const apiUrl = process.env['ULUOPS_REGISTRY_URL'] || DEFAULT_BASE_URL; // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing
   const apiKey = process.env['ULUOPS_API_KEY'];
   const orgSlug = process.env['ULUOPS_ORG_SLUG'];
 

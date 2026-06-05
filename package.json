@@ -1,6 +1,6 @@
 {
   "name": "@uluops/registry-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP server for the UluOps Registry API — definition management, versioning, and analytics",
   "type": "module",
   "main": "dist/index.js",
@@ -59,24 +59,24 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "@uluops/definition-factory": "^0.36.0",
-    "@uluops/registry-sdk": "^0.21.0",
-    "@uluops/sdk-core": "^0.9.0",
-    "mcp-secure-server": "^0.0.14-security",
-    "zod": "^3.23.0"
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "@uluops/definition-factory": "0.36.0",
+    "@uluops/registry-sdk": "0.30.2",
+    "@uluops/sdk-core": "0.11.1",
+    "mcp-secure-server": "0.0.14-security",
+    "zod": "3.25.76"
   },
   "devDependencies": {
-    "@eslint/js": "^9.0.0",
-    "@types/node": "^22.10.0",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
-    "@vitest/coverage-v8": "^2.1.0",
-    "eslint": "^9.0.0",
-    "prettier": "^3.0.0",
-    "tsx": "^4.0.0",
-    "typescript": "^5.7.0",
-    "typescript-eslint": "^8.52.0",
-    "vitest": "^2.1.0"
+    "@eslint/js": "9.39.2",
+    "@types/node": "22.19.11",
+    "@typescript-eslint/eslint-plugin": "8.55.0",
+    "@typescript-eslint/parser": "8.55.0",
+    "@vitest/coverage-v8": "4.1.8",
+    "eslint": "9.39.2",
+    "prettier": "3.8.1",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.55.0",
+    "vitest": "4.1.8"
   }
 }

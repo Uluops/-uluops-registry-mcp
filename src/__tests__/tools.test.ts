@@ -24,7 +24,6 @@ import { registerGetModelTool } from '../tools/get-model.js';
 import { registerResolveAliasTool } from '../tools/resolve-alias.js';
 import { registerListProvidersTool } from '../tools/list-providers.js';
 import { registerListAliasesTool } from '../tools/list-aliases.js';
-import { registerSyncModelsTool } from '../tools/sync-models.js';
 // Versions
 import { registerListVersionsTool } from '../tools/list-versions.js';
 import { registerDiffVersionsTool } from '../tools/diff-versions.js';
@@ -134,7 +133,7 @@ function createMockRegistryClient(): RegistryClient {
       search: vi.fn().mockResolvedValue({ items: [], total: 0 }),
       create: vi.fn().mockResolvedValue({ name: 'new-def', type: 'agent' }),
       update: vi.fn().mockResolvedValue({ name: 'test', type: 'agent' }),
-      publish: vi.fn().mockResolvedValue({ name: 'test', status: 'published' }),
+      publish: vi.fn().mockResolvedValue({ definition: { name: 'test', status: 'published' }, warnings: [] }),
       deprecate: vi.fn().mockResolvedValue({ name: 'test', status: 'deprecated' }),
       delete: vi.fn().mockResolvedValue(undefined),
     },
@@ -737,7 +736,8 @@ describe('Tool Registration & SDK Calls', () => {
         name: 'my-agent', version: '1.0.0', type: 'agent', status: 'draft',
       });
       (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        name: 'my-agent', version: '1.0.0', type: 'agent', status: 'published',
+        definition: { name: 'my-agent', version: '1.0.0', type: 'agent', status: 'published' },
+        warnings: [],
       });
 
       const result = await getHandler(server)({
@@ -766,7 +766,8 @@ describe('Tool Registration & SDK Calls', () => {
         name: 'my-agent', version: '2.0.0', type: 'agent',
       });
       (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        name: 'my-agent', version: '2.0.0', type: 'agent', status: 'published',
+        definition: { name: 'my-agent', version: '2.0.0', type: 'agent', status: 'published' },
+        warnings: [],
       });
 
       const result = await getHandler(server)({
@@ -992,22 +993,6 @@ describe('Tool Registration & SDK Calls', () => {
       expect(result.isError).toBeUndefined();
       const parsed = parseResult(result) as { alias: string }[];
       expect(parsed[0].alias).toBe('sonnet');
-    });
-  });
-
-  describe('sync_models (no args)', () => {
-    it('registers with correct name', () => {
-      registerSyncModelsTool(server, client);
-      expect(server.tools[0].name).toBe('sync_models');
-    });
-
-    it('calls SDK and returns sync result in response', async () => {
-      registerSyncModelsTool(server, client);
-      const result = await getHandler(server)({});
-      expect(client.models.sync).toHaveBeenCalled();
-      expect(result.isError).toBeUndefined();
-      const parsed = parseResult(result) as { synced: number };
-      expect(parsed.synced).toBe(5);
     });
   });
 
@@ -1416,7 +1401,10 @@ describe('Tool Registration & SDK Calls', () => {
     it('passes type, name, version as positional args (no output_path)', async () => {
       registerRenderDefinitionTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
-      expect(client.render.get).toHaveBeenCalledWith('agent', 'test', '1.0.0');
+      expect(client.render.get).toHaveBeenCalledWith('agent', 'test', '1.0.0', {
+        target: undefined,
+        model: undefined,
+      });
     });
 
     it('returns rendered markdown when no output_path given', async () => {
@@ -1497,7 +1485,8 @@ describe('Tool Registration & SDK Calls', () => {
 
     it('rejects missing required fields', async () => {
       registerRenderDefinitionTool(server, client);
-      const result = await getHandler(server)({ type: 'agent', name: 'test' });
+      // version has default('latest') so omitting it is OK; omit name (required, no default).
+      const result = await getHandler(server)({ type: 'agent' });
       expect(result.isError).toBe(true);
     });
   });
@@ -1560,12 +1549,36 @@ describe('Tool Registration & SDK Calls', () => {
       expect(parsed.error).toBe('Connection refused');
     });
 
-    it('handles void SDK responses as success: true', async () => {
-      (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    it('returns the trimmed definition plus warnings on a clean publish', async () => {
+      // registry-sdk@0.29.0 publish() always returns { definition, warnings: [] }.
+      // (Previously this test mocked undefined; that contract no longer holds —
+      // the SDK schema validates the response envelope.)
+      (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValue({
+        definition: { name: 'test', type: 'agent', version: '1.0.0', status: 'published', yaml: 'agent: {}' },
+        warnings: [],
+      });
       registerPublishDefinitionTool(server, client);
       const result = await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
       expect(result.isError).toBeUndefined();
-      expect(parseResult(result)).toEqual({ success: true });
+      const parsed = parseResult(result) as { definition: { status: string }; warnings: unknown[] };
+      expect(parsed.definition.status).toBe('published');
+      expect(parsed.warnings).toEqual([]);
+    });
+
+    it('surfaces TRANSLATION_FAILED warnings alongside the trimmed definition', async () => {
+      (client.definitions.publish as ReturnType<typeof vi.fn>).mockResolvedValue({
+        definition: { name: 'test', type: 'agent', version: '1.0.0', status: 'published' },
+        warnings: [{
+          code: 'TRANSLATION_FAILED',
+          message: 'Definition published, but translation failed — `runtimeMd` was not stamped and rendering will not work until the YAML is fixed.',
+          details: { type: 'agent', name: 'test', version: '1.0.0', error: 'Missing required "agent" key at root level' },
+        }],
+      });
+      registerPublishDefinitionTool(server, client);
+      const result = await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0' });
+      const parsed = parseResult(result) as { warnings: Array<{ code: string }> };
+      expect(parsed.warnings).toHaveLength(1);
+      expect(parsed.warnings[0]?.code).toBe('TRANSLATION_FAILED');
     });
   });
 

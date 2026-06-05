@@ -283,14 +283,6 @@ export const toolRegistry: ToolSpec[] = [
     quotaPerHour: 5000,
   },
   {
-    name: 'sync_models',
-    sideEffects: 'write',
-    maxArgsSize: 10 * KB,
-    maxEgressBytes: 200 * KB,
-    quotaPerMinute: 10,
-    quotaPerHour: 50,
-  },
-  {
     name: 'get_user',
     sideEffects: 'read',
     maxArgsSize: 10 * KB,
@@ -305,6 +297,23 @@ export const toolRegistry: ToolSpec[] = [
     maxEgressBytes: 200 * KB,
     quotaPerMinute: 60,
     quotaPerHour: 1000,
+  },
+
+  {
+    name: 'list_languages',
+    sideEffects: 'read',
+    maxArgsSize: 256,
+    maxEgressBytes: 10 * KB,
+    quotaPerMinute: 240,
+    quotaPerHour: 5000,
+  },
+  {
+    name: 'get_language',
+    sideEffects: 'read',
+    maxArgsSize: 1 * KB,
+    maxEgressBytes: 500 * KB,
+    quotaPerMinute: 120,
+    quotaPerHour: 2000,
   },
 
   // ============================================================================

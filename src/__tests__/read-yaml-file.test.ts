@@ -116,12 +116,19 @@ describe('readYamlFile', () => {
   });
 
   it('resolves relative paths before reading', () => {
-    mockedReadFileSync.mockReturnValue('name: test');
-    readYamlFile('./relative/path/file.yaml');
-    // Should be called with an absolute path (resolved)
-    const calledPath = mockedReadFileSync.mock.calls[0][0] as string;
-    expect(calledPath).toMatch(/^\//);
-    expect(calledPath).toContain('file.yaml');
+    // WORKSPACE_DIR is /home (set in beforeAll); make CWD match so the relative
+    // path resolves under the containment boundary.
+    const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue('/home');
+    try {
+      mockedReadFileSync.mockReturnValue('name: test');
+      readYamlFile('./relative/path/file.yaml');
+      // Should be called with an absolute path (resolved)
+      const calledPath = mockedReadFileSync.mock.calls[0][0] as string;
+      expect(calledPath).toMatch(/^\//);
+      expect(calledPath).toContain('file.yaml');
+    } finally {
+      cwdSpy.mockRestore();
+    }
   });
 });
 

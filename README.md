@@ -4,6 +4,12 @@
 
 # @uluops/registry-mcp
 
+[![npm version](https://img.shields.io/npm/v/@uluops/registry-mcp.svg)](https://www.npmjs.com/package/@uluops/registry-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js Version](https://img.shields.io/node/v/@uluops/registry-mcp)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg)](https://www.typescriptlang.org/)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](src/__tests__/)
+
 MCP (Model Context Protocol) server for the [UluOps](https://uluops.ai) Registry API. Provides **44 tools** and **4 resources** that let Claude Code, OpenCode, Gemini CLI, and other MCP-compatible harnesses browse, create, validate, version, and analyze AI workflow definitions (agents, commands, workflows, pipelines).
 
 ## Quick start

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-06-07
+
+Docs + packaging polish. Adds the standard 5-badge set to the README matching the rest of the public UluOps packages, and closes a packaging hygiene gap — the package declared `"license": "MIT"` but shipped without the LICENSE file. No behavioural change.
+
+### Added
+
+- LICENSE file (MIT, Copyright (c) 2026 UluOps) at the repo root. The package previously declared `"license": "MIT"` in `package.json` but the file was absent. Adding it makes the license terms reachable both from a GitHub-cloned consumer and from an unpacked npm tarball.
+- LICENSE listed in the `files` array so it ships in the published tarball. Without this entry the LICENSE would have been added to the repo but excluded from the npm package — the same hygiene gap from a different angle.
+
+### Changed
+
+- README header gains the five shields.io badges (npm version, MIT license, node engine, TypeScript 5.7+, tests passing) immediately under the package name, matching the `@uluops/core` package presentation. The tagline was already present from the v0.2.3 ship; this completes the visual alignment with the rest of the public UluOps surface. Tests badge points to `src/__tests__/` (the actual test home in this repo).
+
 ## [0.2.3] - 2026-06-05
 
 Polish release. Six tracker findings closed: documentation freshness,

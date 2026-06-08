@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-06-08
+
+### Dependencies
+
+- **Bump `@uluops/registry-sdk` 0.30.2 → 0.31.1.** Wave-coordination bump for the live-tests T2 wave (R12 envelope rewrite + post-impl r2 hardening). Picks up:
+  - **R12 envelope schemas** (0.31.0): `dependencies.get()` and `dependencies.getDependents()` now return real typed envelopes (`DependencyGraphResponse` with recursive `graph` + `flat` + `totalCount` + `maxDepth`; `DependentsResponse` with `Dependent[]` carrying `context`). Replaces the all-optional `dependencyGraphSchema` that silently parsed every real response as `{}`. The MCP layer passes SDK return types through opaquely, so no source changes here — but consumers of `get_dependents` / `get_dependencies` now receive the typed envelope shape via JSON-serialized tool responses.
+  - **CWE-674 pre-parse depth guard** (0.31.1): `dependencies.get()` checks the envelope's `maxDepth` field before the recursive Zod parse runs, throwing `RangeError` when > `MAX_SAFE_GRAPH_DEPTH` (50, ~7× the live-verified production max of 7). A malicious or pathological 10k-deep payload would otherwise exhaust the V8 call stack via the recursive `z.lazy()` walk.
+  - **CWE-20 defensive string ceilings** (0.31.1): `.max()` bounds on `name` (100), `version` (20), `context` (255) across `dependencyNodeSchema`, `flatDepSchema`, and `dependentSchema`. Oversized payloads convert from silent memory pressure into a loud `ZodError` at parse time.
+
+Build + 348 tests pass on the new pin. No source changes in this package.
+
 ## [0.2.7] - 2026-06-07
 
 ### Fixed

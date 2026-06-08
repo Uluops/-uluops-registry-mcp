@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-06-07
+
+### Fixed
+
+- **Bumped `mcp-secure-server` 0.0.14-security → 0.0.15-security** (`package.json:67`) to pick up the `top`/`whoami` false-positive fix. The 0.0.14-security `command.systemInfo` regexes used `\b<cmd>\s*` — the `\s*` quantifier matches zero whitespace, so any identifier beginning with those letters tripped the COMMAND_INJECTION layer (`topPerformers`, `topology`, `topic`, `whoamiHandler`, etc.). Surfaced on 2026-06-07 when Codex called `get_ecosystem_overview({ fields: ["topPerformers"] })` and the request was rejected by layer 2 as `Top Process Monitor` before reaching the registry's subscription-tier check. Every other `fields` value reached the intended 403 — the field name was the sole trigger. The bidirectional `\b<cmd>\b` form in 0.0.15-security continues to block real shell invocations (`top`, `top -o cpu`, `top | head`, `top; ls`, `whoami`, `whoami | grep root`) but rejects identifier substrings cleanly. Verified via Verdaccio publish + install + live regex probe before npm promotion.
+
+## [0.2.6] - 2026-06-07
+
+### Fixed
+
+- **Entry-point guard now resolves symlinks before comparing** (`src/index.ts:187-208`). The 0.2.5 guard compared `process.argv[1]` against `fileURLToPath(import.meta.url)` by literal string equality. That works under `node dist/index.js` but breaks silently under `npx -y @uluops/registry-mcp` — npx creates a `node_modules/.bin/<name>` symlink in a temp dir and execs that, so `argv[1]` is the symlink path while `import.meta.url` resolves to the symlink's target. The two strings never match, `isEntryPoint` returns false, `main()` never runs, and the process exits 0 with **no output on stdout or stderr** — not a "version mismatch" or a "couldn't find binary" — pure silence. Every Codex/Claude harness that pinned this package via `npx -y @uluops/registry-mcp@<v>` got a server that started, immediately exited, and produced no diagnostic the user could grep on. The new `resolvedEqualsModule()` helper calls `realpathSync` on both sides before comparing, normalizing the npx-symlink case while preserving the test-isolation property (vitest's runner is `argv[1]` during tests, not this file). Caught on 2026-06-07 after the 0.2.5 ship — the `definition-factory` fix made the package installable but didn't surface this second-layer bug because `node dist/index.js` (the diff probe used to verify 0.2.5) always matched argv[1] to the real path.
+
+### Internal
+
+- Added `realpathSync` import from `node:fs` to support the new guard. No new runtime dependencies — `realpathSync` ships with Node.
+
+## [0.2.5] - 2026-06-07
+
+### Fixed
+
+- **Removed stale `@uluops/definition-factory` dependency** (`package.json:65`). The dep was listed at `0.36.0` but never imported by any source or compiled output — pure dead weight from an earlier prototype. Because `@uluops/definition-factory` is published as a **restricted** package on npm, every external `npx -y @uluops/registry-mcp` failed at install time with an unauthorized-package error before the binary ever started. `@uluops/ops-mcp` connected fine because it never had this dep; same `npx -y` launch shape, different resolution outcome. Surfaced on 2026-06-07 when WSL Codex couldn't connect to the registry MCP server while the tracker MCP server worked from the get. Local launches via `node dist/index.js` masked the bug because the dev's npm install can resolve org-restricted packages — only `npx -y` in an isolated tmp dir exhibits the failure. Build + dist + tests unchanged with the dep removed.
+
 ## [0.2.4] - 2026-06-07
 
 Docs + packaging polish. Adds the standard 5-badge set to the README matching the rest of the public UluOps packages, and closes a packaging hygiene gap — the package declared `"license": "MIT"` but shipped without the LICENSE file. No behavioural change.

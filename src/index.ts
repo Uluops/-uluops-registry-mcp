@@ -6,6 +6,7 @@
  * the UluOps Registry API via MCP, using @uluops/registry-sdk.
  */
 
+import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { SecureMcpServer } from 'mcp-secure-server';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -180,12 +181,30 @@ export { main };
 // Auto-run main() only when this module is the program entry point.
 // Tests import `{ main }` directly and call it themselves; they do not
 // need (and previously relied on a fragile `NODE_ENV=test` guard to
-// suppress) auto-execution. The ESM-standard entry-point check below is
-// stable across NODE_ENV values, so a stray `NODE_ENV=test` in the user's
-// shell no longer silently stops the server from starting.
-const isEntryPoint =
-  typeof process.argv[1] === 'string' &&
-  process.argv[1] === fileURLToPath(import.meta.url);
+// suppress) auto-execution.
+//
+// `process.argv[1]` may be a symlink (this is exactly how `npx -y` invokes
+// scoped bins — npx creates a `node_modules/.bin/<name>` symlink in a temp
+// dir and exec's that), while `import.meta.url` always resolves to the
+// real on-disk path of THIS file. A literal string equality would silently
+// return false under npx and main() would never run — the server would
+// exit 0 with no output, breaking every Codex/Claude harness that pins
+// this package via `npx -y @uluops/registry-mcp@<v>`. Resolving both sides
+// through realpath normalizes that case while preserving the test-import
+// path (which leaves argv[1] pointing at vitest's runner, not at this
+// file — the comparison still correctly returns false).
+function resolvedEqualsModule(): boolean {
+  if (typeof process.argv[1] !== 'string') return false;
+  try {
+    return (
+      realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
+}
+
+const isEntryPoint = resolvedEqualsModule();
 
 if (isEntryPoint) {
   main().catch((error: unknown) => {

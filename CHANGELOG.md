@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.10] - 2026-06-11
+
+### Security
+
+- **Bump `mcp-secure-server` 0.0.15-security → 0.0.16-security.** Picks up the `executionWrappers` word-boundary fix: the `System Call` (`/system\s*\(/`) and `Exec Call` (`/exec\s*\(/`) content-layer patterns were unanchored, so benign prose like `filesystem (` matched the `system (` substring and was rejected as a CRITICAL command-injection attempt. The new `\b`-anchored patterns still catch real `system(`/`exec(` calls. Drop-in patch, no API change; build + dist unchanged.
+
 ## [0.2.9] - 2026-06-08
 
 ### Internal

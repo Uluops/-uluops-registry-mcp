@@ -62,7 +62,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
-    "@uluops/registry-sdk": "0.31.1",
+    "@uluops/registry-sdk": "0.32.0",
     "@uluops/sdk-core": "0.11.1",
     "mcp-secure-server": "0.0.16-security",
     "zod": "3.25.76"

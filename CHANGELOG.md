@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.12] - 2026-06-16
+
+### Changed
+
+- **Bump `@uluops/registry-sdk` 0.33.0 → 0.35.0 and `@uluops/sdk-core` 0.11.1 → 0.13.0** (both exact). registry-sdk 0.34.0 added the real `ResponseValidationError` (response-schema failures now stay inside the `RegistryApiError` hierarchy) plus root exports for the safety/`riskProfile` types and `RetranslateResult`; 0.35.0 re-pinned `sdk-core` to 0.13.0. The direct `sdk-core` pin is moved in lockstep so the tree resolves a single `sdk-core` copy (consistent error-class `instanceof`). sdk-core 0.13.0 fixes pulled in: `retries: 0` makes one attempt and surfaces the real typed error; actionable 401 (server reason preserved + guidance); `isApiKey()` enforces minimum length. Pure passthrough — no tool-schema change. 348 tests green.
+
 ## [0.2.11] - 2026-06-16
 
 ### Changed

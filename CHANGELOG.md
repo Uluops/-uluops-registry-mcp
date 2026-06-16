@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.11] - 2026-06-16
+
+### Changed
+
+- **Bump `@uluops/registry-sdk` 0.32.0 → 0.33.0.** Surfaces the durable fork source-identity snapshot through the fork tools: `get_fork_lineage` (and the fork list/create paths) now return `sourceType` / `sourceName` / `sourceVersion` on the fork record plus `sourceAvailable` on lineage, so a fork's origin is readable even after the source is deleted (requires registry API ≥ V1 `2026-06-16`). Pure passthrough — no tool-schema change. Live-verified end-to-end against a local registry.
+
 ## [0.2.10] - 2026-06-11
 
 ### Security

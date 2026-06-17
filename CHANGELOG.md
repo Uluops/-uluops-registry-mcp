@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`format` parameter on `get_language`** (`compact` default | `full`). `compact` returns a condensed schema digest — leaf fields collapse to one-line signature strings (`"req · string enum[a|b|c] · description"`), `$defs` stay flat with `→name` ref-pointers, `enum`s are complete, and `if`/`then`/`oneOf`/`allOf` conditional requirements (including `forbidden` fields) are preserved — sufficient to author a valid definition while ~50–75% smaller as emitted (ADL 87.6 KB → 41.8 KB). Dropped vs. full: patterns, length/range bounds, examples, `format`, `additionalProperties`. `format:'full'` returns the complete JSON Schema unchanged (default behavior preserved for that mode). Pure MCP-layer transform — no registry-api/SDK change. Live-verified end-to-end against a local registry (authored and validated a real ADL agent from the compact digest alone).
+
 ## [0.2.12] - 2026-06-16
 
 ### Changed

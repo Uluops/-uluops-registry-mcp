@@ -155,7 +155,7 @@ compare_effectiveness({ type: "agent", name: "code-validator", versions: ["1.0.0
 | `list_providers` | List AI providers |
 | `list_aliases` | List all model aliases |
 | `list_languages` | List supported definition languages (ADL, CDL, WDL, PDL) |
-| `get_language` | Get a definition language with its current JSON Schema |
+| `get_language` | Get a definition language with its JSON Schema. `format`: `compact` (default — condensed digest sufficient to author a definition, ~50–75% smaller), `full` (complete JSON Schema with patterns, bounds, and examples) |
 
 ### Execution & users (P2)
 | Tool | Description |

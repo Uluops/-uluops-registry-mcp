@@ -62,6 +62,13 @@ async function main(): Promise<void> {
     securityLevel: 'basic',
     maxRequestsPerMinute: 120,
     maxMessageSize: 500 * 1024,
+    // Raise the per-string-parameter cap from the secure-server default (5000)
+    // to the message ceiling. Definition tools (validate/create/update) carry
+    // full YAML / runtime markdown in a single string field that routinely
+    // exceeds 5000 chars; the per-tool maxArgsSize already allows 500KB–1MB,
+    // so the default string cap was the artificial bottleneck. Requires
+    // mcp-secure-server >= 0.0.17, which exposes maxStringLength at create time.
+    maxStringLength: 500 * 1024,
     maxParamCount: 500,
 
     burstThreshold: 15,

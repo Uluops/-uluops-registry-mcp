@@ -5,7 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.14] - 2026-06-17
+
+### Fixed
+
+- **Raised the per-string-parameter cap so realistic definition YAML passes through direct MCP fields.** `validate_definition` / `create_definition` / `update_definition` rejected full YAML in a single string field with `STRING_LIMIT_EXCEEDED` ("String parameter too long: N chars (max: 5000)") — the `mcp-secure-server` default per-string cap — even though the per-tool `maxArgsSize` already allowed 500 KB–1 MB. Bumped `mcp-secure-server` 0.0.16-security → 0.0.17-security (which exposes `maxStringLength` at server-create time) and set `maxStringLength: 500 * 1024` to align the per-string cap with the message ceiling. Proven: a 7842-char string parameter now passes structure validation where it previously failed. 354 tests green.
+
+## [0.2.13] - 2026-06-17
 
 ### Added
 

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.15] - 2026-06-22
+
+### Added
+
+- **`renderProfile` parameter on `render_definition`** (`core` | `uluops-full`). Callers can now request the full UluOps render profile — failure taxonomy reference, failure-code guidance, tracker frontmatter, and JSON output block where the agent role supports them — instead of the `core` default. Threads through to `registryClient.render.get`, which forwards it as a query param to the registry. Verified end-to-end: an explorer rendered with `renderProfile: uluops-full` includes the `## Failure Taxonomy Reference` table; `core` omits it.
+
 ## [0.2.14] - 2026-06-17
 
 ### Fixed

@@ -32,6 +32,10 @@ export const RenderDefinitionInputSchema = z.object({
   type: DefinitionTypeSchema,
   name: z.string().min(1),
   version: z.string().min(1).default('latest'),
+  renderProfile: z
+    .enum(['core', 'uluops-full'])
+    .describe("Render profile. 'core' (default) is a clean prompt with no UluOps-specific sections. 'uluops-full' adds the failure taxonomy reference, failure-code guidance, tracker frontmatter, and JSON output block where the agent role supports them.")
+    .optional(),
   target: z
     .string()
     .min(1)
@@ -61,6 +65,7 @@ export function registerRenderDefinitionTool(
     registryClient.render.get(n.type, n.name, n.version, {
       target: n.target,
       model: n.model,
+      renderProfile: n.renderProfile,
     })
   );
 
@@ -119,7 +124,7 @@ export function registerRenderDefinitionTool(
           parsed.data.type,
           parsed.data.name,
           parsed.data.version,
-          { target: parsed.data.target, model: parsed.data.model },
+          { target: parsed.data.target, model: parsed.data.model, renderProfile: parsed.data.renderProfile },
         );
 
         // SDK RenderResult guarantees markdown: string

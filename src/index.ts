@@ -156,6 +156,8 @@ async function main(): Promise<void> {
         'sync_models',
         'get_user',
         'batch_users',
+        'list_languages',
+        'get_language',
       ],
     },
     resources: [

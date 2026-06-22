@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-06-07
+
+### Fixed
+
+- **Removed stale `@uluops/definition-factory` dependency** (`package.json:64`). The dep was listed at `0.36.0` but never imported by any source or compiled output — pure dead weight from an earlier prototype. Because `@uluops/definition-factory` is published as a **restricted** package on npm, every external `npx -y @uluops/registry-mcp` failed at install time with an unauthorized-package error before the binary ever started. `@uluops/ops-mcp` connected fine because it never had this dep; same `npx -y` launch shape, different resolution outcome. Surfaced on 2026-06-07 when WSL Codex couldn't connect to the registry MCP server while the tracker MCP server worked from the get. 331/331 tests still pass with the dep removed; build + dist unchanged.
+- **Version reconciled to 0.2.5** (`package.json:3`). Local source had drifted to `0.1.1` while npm carried `0.2.4` — likely an `npm version` ran during publish without a follow-up commit. The new bump publishes the missing fix and re-aligns the source-of-truth version.
+
 ## [0.1.1] - 2026-06-01
 
 ### Security

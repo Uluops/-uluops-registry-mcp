@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.16] - 2026-06-28
+
+### Added
+
+- **`uniqueExecutionCount` accepted as a `sortBy` value** on `list_definitions` (`SortFieldSchema` now `name | createdAt | updatedAt | executionCount | uniqueExecutionCount`). The registry exposes two execution counts — `executionCount` (total runs) and `uniqueExecutionCount` (distinct actors, gaming-resistant) — and the "popular" discovery rail ranks on the latter; this lets MCP callers sort by it.
+
+### Changed
+
+- **Bumped `@uluops/registry-sdk` `0.36.0` → `0.37.0`**, which adds `uniqueExecutionCount` to the definition shapes and to the SDK's `SORT_FIELDS`, so the new sort value passes the SDK's parameter handling.
+
 ## [0.2.15] - 2026-06-22
 
 ### Added

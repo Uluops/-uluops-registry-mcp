@@ -34,7 +34,7 @@ export const AgentTypeSchema = z.enum(['validator', 'executor', 'analyst', 'gene
 export const VisibilitySchema = z.enum(['private', 'unlisted', 'public']);
 
 /** Sortable fields for list queries. */
-export const SortFieldSchema = z.enum(['name', 'createdAt', 'updatedAt', 'executionCount']);
+export const SortFieldSchema = z.enum(['name', 'createdAt', 'updatedAt', 'executionCount', 'uniqueExecutionCount']);
 
 /** Sort direction. */
 export const SortOrderSchema = z.enum(['asc', 'desc']);

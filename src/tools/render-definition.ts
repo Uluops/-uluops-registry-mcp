@@ -49,7 +49,7 @@ export const RenderDefinitionInputSchema = z.object({
   output_path: z
     .string()
     .min(1)
-    .describe('Write rendered output to this file path instead of returning it in the response.')
+    .describe('Write rendered output to this file path instead of returning it in the response. Written on the MCP server host\'s filesystem, not the caller\'s — remote callers should omit this and take the rendered output from the response.')
     .optional(),
   overwrite: z
     .boolean()

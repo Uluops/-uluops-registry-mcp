@@ -14,7 +14,12 @@ import { resolveYamlInput } from '../utils/read-yaml-file.js';
 export const ValidateDefinitionInputSchema = z.object({
   type: DefinitionTypeSchema,
   yaml: z.string().min(1).max(500_000).optional(),
-  file_path: z.string().min(1).max(1000).optional(),
+  file_path: z
+    .string()
+    .min(1)
+    .max(1000)
+    .describe('Path to a .yaml/.yml file on the MCP server host (read from the server\'s filesystem, not the caller\'s). Remote callers should pass yaml inline instead.')
+    .optional(),
 });
 
 export function registerValidateDefinitionTool(

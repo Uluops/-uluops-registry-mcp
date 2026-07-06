@@ -51,7 +51,9 @@ export function readYamlFile(filePath: string): string {
   // First check: catch obvious traversal before touching the filesystem
   if (!resolved.startsWith(workspaceDir + '/') && resolved !== workspaceDir) {
     throw new Error(
-      `file_path must resolve within ${workspaceDir} — got ${resolved}`
+      `file_path must resolve within ${workspaceDir} — got ${resolved}. ` +
+      `Note: file_path is read on the MCP server host's filesystem, not the caller's. ` +
+      `If you are calling from a remote client, pass the YAML inline via the yaml parameter instead.`
     );
   }
 

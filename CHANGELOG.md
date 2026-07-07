@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.18] - 2026-07-06
+
+### Dependencies
+
+- **sdk-core `0.14.0` → `0.15.0`, registry-sdk `0.38.0` → `0.39.0`** (the sdk-core
+  0.15.0 coherent set). sdk-core 0.15.0 adds the streaming transport; this MCP does
+  not consume it — pin-alignment only, collapsing the tree to a single
+  `sdk-core@0.15.0`. No behavior change.
+
+## [0.2.17] - 2026-07-02
+
+### Dependencies
+
+- **sdk-core `0.13.0` → `0.14.0`, registry-sdk `0.37.0` → `0.38.0`** (backfilled entry
+  for the 0.14.0 cascade adoption; pin-alignment only).
+
 ## [0.2.16] - 2026-06-28
 
 ### Added

@@ -21,7 +21,7 @@ export function registerGetEffectivenessTool(
 ): void {
   server.tool(
     'get_effectiveness',
-    'Get effectiveness metrics for a definition: pass rate, scores, taxonomy distribution, health score, and composition lift. Version defaults to latest. Quality numbers (passRate/runAvgScore) are VOTER-WEIGHTED: one actor, one vote — a single account cannot dominate them with run volume. metrics.provenance reports who stands behind them: actorCount/voterCount (windowed), confidence (provisional until 3+ qualifying actors), and the independent vs selfReported split — provenance.independent is the headline figure to quote; selfReported is the author rating their own definition. uniqueUsers is the all-time distinct-actor count.',
+    'Get effectiveness metrics for a definition: pass rate, scores, taxonomy distribution, health score, and composition lift. Version defaults to latest. Quality numbers (passRate/runAvgScore) are VOTER-WEIGHTED: one actor, one vote — a single account cannot dominate them with run volume. metrics.provenance reports who stands behind them: actorCount/voterCount (windowed), confidence (provisional until 3+ qualifying actors), and the independent vs selfReported split — provenance.independent is the headline figure to quote; selfReported is the author rating their own definition. uniqueUsers is the all-time distinct-actor count. For AGENTS, quality is participation-based (snapshot scores across every run the agent appears in, constituent or standalone) and passRate is null by design — a run-level gate result cannot be attributed to one constituent.',
     GetEffectivenessInputSchema.shape,
     createToolHandler(GetEffectivenessInputSchema, (n) =>
       registryClient.analytics.getEffectiveness(n.type, n.name, n.version)

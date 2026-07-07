@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0] - 2026-07-07
+
+### Changed
+
+- Bump `@uluops/registry-sdk` to `0.40.0` — the SDK's zod schemas now pass the additive
+  `provenance` block through (older SDKs' default `.strip()` silently dropped it), so
+  `get_effectiveness` responses carry `metrics.provenance` with the independent vs
+  selfReported quality split, and the per-version analytics tools carry the name-scoped
+  provenance block.
+- `get_effectiveness` / `get_health` tool descriptions now explain the voter-weighted
+  quality semantics: one actor one vote, `provenance.independent` as the headline figure,
+  the provisional-until-3-actors confidence label, and health's actor-diversity gate.
+
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),

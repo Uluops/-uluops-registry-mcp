@@ -21,7 +21,7 @@ export function registerGetHealthTool(
 ): void {
   server.tool(
     'get_health',
-    'Get health grade (A-F), issue profile, and contributing factors for a definition. Health scores are provisional. Version defaults to latest.',
+    'Get health grade (A-F), issue profile, and contributing factors for a definition. Health scores are provisional (weight tables pending calibration). The pass-rate factor only feeds health when 3+ qualifying actors stand behind it (voter-weighted, actor-diversity gated) — thin-actor definitions read as insufficient-data rather than confidently scored. Version defaults to latest.',
     GetHealthInputSchema.shape,
     createToolHandler(GetHealthInputSchema, (n) =>
       registryClient.analytics.getHealth(n.type, n.name, n.version)

@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.2] - 2026-07-07
+
+### Changed
+
+- Bump `@uluops/registry-sdk` to `0.41.0` — `effectiveness.passRate` is nullable (D11:
+  agents report `null`, quality for agents is participation-based and score-only; a
+  run-level gate result cannot be attributed to one constituent). `get_effectiveness`
+  description explains the agent semantics so models render the null honestly.
+
+## [0.3.1] - 2026-07-07
+
+### Changed
+
+- Bump `@uluops/registry-sdk` to `0.40.1` — `QualitySegment.actorCount` (the voting
+  population a segment's numbers rest on) passes through the schemas; "based on N users"
+  copy must use it, never `voterCount` (which is honestly 0 under a blend-mode score).
+
 ## [0.3.0] - 2026-07-07
 
 ### Changed

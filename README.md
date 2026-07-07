@@ -167,8 +167,8 @@ compare_effectiveness({ type: "agent", name: "code-validator", versions: ["1.0.0
 ### Analytics (P3)
 | Tool | Description |
 |------|-------------|
-| `get_effectiveness` | Effectiveness metrics for a definition: pass rate, scores, taxonomy, health score |
-| `get_health` | Health grade and issue profile for a definition |
+| `get_effectiveness` | Effectiveness metrics: voter-weighted quality (one actor, one vote) with the `provenance` block — `independent` vs `selfReported` split, confidence label. Agents are score-only (`passRate: null`) |
+| `get_health` | Health grade and issue profile for a definition; the pass-rate factor requires 3+ qualifying actors |
 | `get_ecosystem_overview` | Ecosystem-wide analytics overview |
 | `get_lineage` | Lineage graph for a definition (versions + forks as a tree) |
 | `get_evolution` | Version-over-version metrics with trend detection |

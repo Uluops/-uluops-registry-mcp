@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.3] - 2026-07-12
+
+### Changed
+
+- Bump `@uluops/registry-sdk` to `0.44.0` — `list_definitions`/`search_definitions`
+  now pass through the list-grain risk scalars (`riskLevel`/`scanStatus`/`deepStatus`)
+  the registry API emits since the risk-verdict list projection (2026-07-12). No
+  handler or ToolSpec change (verbatim passthrough; three scalars are well within
+  egress limits). Consuming agents can rank/warn during discovery without a
+  per-definition `get` — gate `riskLevel` on the SDK's `isListVerdictTrustworthy`
+  (absent/null triple = pending, never clean; `none` + `scanStatus:'failed'` is a
+  sentinel).
+
 ## [0.3.2] - 2026-07-07
 
 ### Changed

@@ -206,9 +206,15 @@ This server uses [mcp-secure-server](https://github.com/aself101/mcp-secure-serv
 |---------|-------|-------|
 | Security level | `basic` | |
 | Max requests/min | 120 | Global rate limit |
+| Max message size | 500 KB | Layer 1 envelope |
+| Max string length | 500 KB | Per-string cap — definition tools carry full YAML in one field |
+| Max param bytes | 500 KB | Layer 2 serialized-params cap (requires `mcp-secure-server >= 0.0.19-security`) |
+| Suspicious message size | 500 KB | Layer 3 hard block, not a log-only flag |
 | Burst threshold | 15 | Requests within burst window |
 | Burst window | 5000 ms | |
 | Automation detection | Disabled | The calling harness is trusted automation |
+
+The four size settings are stacked ceilings — a rejection names whichever fires first, so they are kept aligned at the envelope; the per-tool `maxArgsSize` in `tool-registry.ts` is the tool-scoped gate beneath them.
 
 Per-tool quotas are configured in `src/config/tool-registry.ts`. Read-heavy tools (list, get, search) allow up to 240 req/min. Write tools (create, update, publish) are 30–60 req/min.
 
@@ -219,7 +225,7 @@ git clone git@github.com:Uluops/-uluops-registry-mcp.git
 cd -uluops-registry-mcp
 npm install
 npm run build
-npm test            # 348 tests
+npm test            # 354 tests
 npm run typecheck
 npm run lint
 ```

@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.3.4] - 2026-07-17
+
+### Changed
+
+- Bump `mcp-secure-server` `0.0.17-security` → `0.0.19-security`:
+  - Layer 1 limit rejections carry cap provenance (`STRING_LIMIT_EXCEEDED`
+    names the offending field path; each rejection names the cap that fired).
+  - `command.shellAccess` patterns require invocation context instead of bare
+    mentions — directly relevant here: security-agent definitions
+    (security-analyst, mcp-validator) legitimately reference attack patterns
+    in `knowledge_base` examples, and prose mentions of `powershell`/`cmd.exe`/
+    `/bin/sh` (including shebangs) no longer reject at the transport layer.
+  - Layer 2 serialized-params cap is configurable (`maxParamBytes`, was
+    hardcoded 50000 bytes).
+- **Server config: `maxParamBytes: 500KB` and `suspiciousMessageSize: 500KB`**
+  (`src/index.ts`) — aligned to the existing `maxMessageSize`/`maxStringLength`
+  ceilings. Definition tools (`validate`/`create`/`update`) carry full YAML in
+  a single field that can exceed 50KB; without these, the raised 0.0.17 string
+  cap was moot because Layer 2's 50KB param cap and Layer 3's 50KB
+  suspicious-message hard block (basic preset) fired first — the same
+  stacked-ceiling failure observed on the tracker MCP (positional-sweep
+  run #19, 2026-07-17).
+
 ## [0.3.3] - 2026-07-12
 
 ### Changed

@@ -70,6 +70,13 @@ async function main(): Promise<void> {
     // mcp-secure-server >= 0.0.17, which exposes maxStringLength at create time.
     maxStringLength: 500 * 1024,
     maxParamCount: 500,
+    // Raise the Layer 2 serialized-params cap (default 50000 bytes) and the
+    // Layer 3 suspicious-message block (basic preset: 50000 bytes) to the
+    // message ceiling — definition YAML payloads routinely exceed 50KB and
+    // the per-tool maxArgsSize already allows 500KB-1MB. Requires
+    // mcp-secure-server >= 0.0.19-security (maxParamBytes).
+    maxParamBytes: 500 * 1024,
+    suspiciousMessageSize: 500 * 1024,
 
     burstThreshold: 15,
     burstWindowMs: 5000,

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.5] - 2026-07-18
+
+### Changed
+
+- Bump `@uluops/registry-sdk` `0.44.0` → `0.45.0`: `list_definitions` /
+  `search_definitions` now pass through `analyzerStale` (`boolean | null`) on
+  list items — verdict currency computed server-side (`null` = never scanned,
+  `true` = verdict predates the registry's current analyzer and is demoted in
+  search ordering, `false` = current). Informational only: deliberately NOT
+  part of `isListVerdictTrustworthy` — consuming agents should surface it as
+  a disclosure ("verdict may be outdated"), never as an un-trust signal. No
+  handler or ToolSpec change (verbatim passthrough; one boolean per item is
+  negligible against the 1 MB egress ceiling).
+
 ## [0.3.4] - 2026-07-17
 
 ### Changed

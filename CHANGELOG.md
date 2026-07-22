@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.6] - 2026-07-22
+
+### Changed
+
+- Bump `@uluops/registry-sdk` `0.45.0` → `0.46.0`: `list_versions` now passes
+  through per-version author identity — `createdByName` (creator username,
+  `null` for deleted users) and `provenance` (the version's contributor
+  record). Select them via the generic `fields` meta-parameter, e.g.
+  `fields: ["version", "createdBy", "createdByName", "provenance"]`. Requires
+  registry API `2026-07-22`+ (older APIs simply omit the fields). No handler
+  or ToolSpec change: `fields` filtering is generic (tool-handler), and
+  provenance contributor records are a few hundred bytes per version —
+  negligible against the 500 KB egress cap even at the 200-version limit.
+
 ## [0.3.5] - 2026-07-18
 
 ### Changed

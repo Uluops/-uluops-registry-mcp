@@ -61,7 +61,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@uluops/registry-sdk": "0.47.1",
     "@uluops/sdk-core": "0.15.0",
     "mcp-secure-server": "0.0.19-security",
@@ -81,6 +81,7 @@
     "vitest": "4.1.8"
   },
   "overrides": {
-    "hono": "4.12.25"
+    "hono": "4.12.32",
+    "@hono/node-server": "2.0.12"
   }
 }

@@ -2,6 +2,23 @@
 
 ## [0.3.7] - 2026-07-27
 
+### Security
+
+- Runtime dependency tree cleared of all audit findings:
+  - `@modelcontextprotocol/sdk` `1.29.0` → `1.30.0`
+  - `hono` override `4.12.25` → `4.12.32` (the pinned override had itself
+    entered the advisory range GHSA-xgm2/GHSA-hvrm/GHSA-w62v; 4.12.27+ is fixed)
+  - `@hono/node-server` override → `2.0.12` (entire 1.x line is in the
+    GHSA-frvp-7c67-39w9 range; only used by the protocol SDK's HTTP transports —
+    this server is stdio-only — and the full suite passes under 2.x)
+  - transitive `fast-uri` + `mcp-secure-server`'s `brace-expansion` refreshed
+    via `npm audit fix`
+- Remaining audit findings are dev-tooling-only with no runtime path: the
+  brace-expansion DoS advisory (GHSA-mh99-v99m-4gvg) fanned across the
+  eslint/typescript-eslint tree (fix requires the eslint@10 major), and a
+  low-severity Windows-only esbuild dev-server advisory range-pinned by
+  tsx/vite. Accepted, revisit on the next lint-stack upgrade.
+
 ### Changed
 
 - Bump `@uluops/registry-sdk` `0.46.0` → `0.47.1`: `list_models`, `get_model`,

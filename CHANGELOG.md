@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.7] - 2026-07-27
+
+### Changed
+
+- Bump `@uluops/registry-sdk` `0.46.0` → `0.47.1`: `list_models`, `get_model`,
+  and `resolve_alias` now pass through the model pricing block —
+  `cost: { input, output, cacheRead?, cacheWrite?, sourceUpdatedAt? }`, USD per
+  **million** tokens (models.dev convention). `null`/absent = unpriced; the
+  registry never fabricates `{input: 0, output: 0}` (honest-absent polarity), so
+  a rate of `0` never means "unknown". `sourceUpdatedAt` is models.dev per-model
+  entry provenance, not a cost capture date — treat rates without it as
+  provenance-unknown. Requires registry API `2026-07-26`+ (older APIs simply
+  omit the block). No handler or ToolSpec change: handlers return the SDK model
+  verbatim, and the block is ~100 bytes per model — negligible against the
+  500 KB (list) / 50 KB (get) egress caps.
+
 ## [0.3.6] - 2026-07-22
 
 ### Changed

@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Removed
+
+- **`min_subscription` from `update_definition`.** The registry stopped accepting it on
+  2026-08-05 (NEX-01) — the field is inert metadata, frozen at `free` since the 2026-06-10
+  pricing pivot. The API strips it silently rather than rejecting, so the tool would have kept
+  reporting success while changing nothing.
+
+  The `@uluops/registry-sdk` pin (`0.47.1`) still declares the field on `UpdateDefinitionBody`;
+  it is removed in SDK `0.48.0`. Bumping the pin is a separate step and is not required for this
+  change to be correct — the tool simply no longer sends it.
+
 ## [0.3.7] - 2026-07-27
 
 ### Security

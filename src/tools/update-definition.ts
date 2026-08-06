@@ -17,7 +17,6 @@ import {
   DefinitionTypeSchema,
   VisibilitySchema,
   TierSchema,
-  SubscriptionTierSchema,
   ChangeTypeSchema,
   ProvenanceInputSchema,
   type McpServerToolRegistration,
@@ -39,7 +38,6 @@ export const UpdateDefinitionInputSchema = z.object({
     .optional(),
   visibility: VisibilitySchema.optional(),
   tier: TierSchema.optional(),
-  min_subscription: SubscriptionTierSchema.optional(),
   description: z.string().optional(),
   tags: z.array(z.string()).optional(),
   change_type: ChangeTypeSchema.optional(),
@@ -59,7 +57,6 @@ export function registerUpdateDefinitionTool(
       if (n.yaml !== undefined) body.yaml = n.yaml;
       if (n.visibility !== undefined) body.visibility = n.visibility;
       if (n.tier !== undefined) body.tier = n.tier;
-      if (n.minSubscription !== undefined) body.minSubscription = n.minSubscription;
       if (n.description !== undefined) body.description = n.description;
       if (n.tags !== undefined) body.tags = n.tags;
       if (n.changeType !== undefined) body.changeType = n.changeType;

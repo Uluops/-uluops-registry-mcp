@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`@uluops/registry-sdk` 0.48.0 → 0.49.0** (registry-api ADR-013 activation prerequisite).
+  Definition reads now tolerate the drop-aware deep-analysis fields: `deep.errorReason`
+  validates as shape rather than a closed enum that threw on unknown reasons (the vocabulary
+  is server-owned and grows — `unrepresentable_findings` shipped 2026-08-18), and
+  `deep.droppedFindings` survives parsing instead of being strip-mode deleted. Latent until
+  the registry's deep worker activates; this bump must be live before it does.
+
 ### Removed
 
 - **`min_subscription` from `update_definition`.** The registry stopped accepting it on

@@ -2,6 +2,10 @@
  * list_definitions tool
  *
  * List definitions with filters (type, status, domain, visibility, search, tags, pagination).
+ * Returns a compact per-item projection by default; pass format:'full' for all
+ * catalog fields. The public catalog is large enough (558+ definitions) that an
+ * unprojected default page exceeds MCP client response limits (RE-PROBE-02 N4)
+ * — the 2-space pretty-printed full shape is ~26 fields/item × 50 items.
  */
 
 import { z } from 'zod';
@@ -19,6 +23,16 @@ import {
 } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
 
+/** Per-item projection served by format:'compact' (the default). */
+export const COMPACT_LIST_FIELDS = [
+  'type',
+  'name',
+  'version',
+  'status',
+  'visibility',
+  'description',
+] as const;
+
 export const ListDefinitionsInputSchema = z.object({
   type: DefinitionTypeSchema.optional(),
   status: DefinitionStatusSchema.optional(),
@@ -33,7 +47,31 @@ export const ListDefinitionsInputSchema = z.object({
   order: SortOrderSchema.optional(),
   page: z.number().int().positive().optional(),
   limit: z.number().int().positive().max(100).optional(),
+  format: z
+    .enum(['compact', 'full'])
+    .optional()
+    .default('compact')
+    .describe(
+      "Response verbosity. 'compact' (default) projects each item to " +
+        `${COMPACT_LIST_FIELDS.join(', ')} — enough to browse and address a ` +
+        "definition. 'full' returns all catalog fields per item (counts, risk, " +
+        'timestamps, authorship). To select other specific fields, combine ' +
+        "format:'full' with the fields parameter.",
+    ),
 });
+
+/** Project one catalog item down to the compact field set. */
+function toCompactItem(item: unknown): unknown {
+  if (typeof item !== 'object' || item === null) return item;
+  const obj = item as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+  for (const field of COMPACT_LIST_FIELDS) {
+    if (field in obj) {
+      result[field] = obj[field];
+    }
+  }
+  return result;
+}
 
 export function registerListDefinitionsTool(
   server: McpServerToolRegistration,
@@ -41,9 +79,11 @@ export function registerListDefinitionsTool(
 ): void {
   server.tool(
     'list_definitions',
-    'List registry definitions with optional filters (type, status, domain, visibility, search, tags, pagination).',
+    'List registry definitions with optional filters (type, status, domain, visibility, search, ' +
+      "tags, pagination). Returns a compact projection per item by default; pass format:'full' " +
+      'for all catalog fields.',
     ListDefinitionsInputSchema.shape,
-    createToolHandler(ListDefinitionsInputSchema, (n) => {
+    createToolHandler(ListDefinitionsInputSchema, async (n) => {
       const query: Record<string, unknown> = {};
       if (n.type !== undefined) query.type = n.type;
       if (n.status !== undefined) query.status = n.status;
@@ -56,9 +96,19 @@ export function registerListDefinitionsTool(
       if (n.authorshipType !== undefined) query.authorshipType = n.authorshipType;
       if (n.sort !== undefined) query.sortBy = n.sort;
       if (n.order !== undefined) query.sortOrder = n.order;
-      if (n.page !== undefined) query.offset = (n.page - 1) * (n.limit ?? 20);
+      // 50 mirrors the API's default page size — offsets must be computed with
+      // the same value the server will apply when no limit is sent.
+      if (n.page !== undefined) query.offset = (n.page - 1) * (n.limit ?? 50);
       if (n.limit !== undefined) query.limit = n.limit;
-      return registryClient.definitions.list(query);
+      const result = await registryClient.definitions.list(query);
+      if (n.format === 'full') {
+        return result;
+      }
+      return {
+        ...result,
+        format: 'compact',
+        definitions: result.definitions.map(toCompactItem),
+      };
     })
   );
 }

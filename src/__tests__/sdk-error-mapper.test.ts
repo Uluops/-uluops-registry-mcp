@@ -145,7 +145,18 @@ describe('mapSdkErrorToMcp', () => {
     const result = mapSdkErrorToMcp(new ForbiddenError('Insufficient permissions'));
     expect(result.isError).toBe(true);
     expect(parseErrorText(result)).toBe('Insufficient permissions');
-    expect(parseErrorPayload(result).status).toBe(403);
+    const payload = parseErrorPayload(result);
+    expect(payload.status).toBe(403);
+    expect(payload).not.toHaveProperty('required_role');
+    expect(payload).not.toHaveProperty('suggestion');
+  });
+
+  it('adds role guidance to role-gate 403s (R16)', () => {
+    const result = mapSdkErrorToMcp(new ForbiddenError('Requires admin role'));
+    const payload = parseErrorPayload(result);
+    expect(payload.status).toBe(403);
+    expect(payload.required_role).toBe('admin');
+    expect(String(payload.suggestion)).toContain('UluOps runtime');
   });
 
   it('maps ConflictError preserving message', () => {

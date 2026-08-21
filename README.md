@@ -100,7 +100,7 @@ compare_effectiveness({ type: "agent", name: "code-validator", versions: ["1.0.0
 ### Core tools (P0)
 | Tool | Description |
 |------|-------------|
-| `list_definitions` | List definitions with filters (type, status, domain, visibility, search, tags, pagination) |
+| `list_definitions` | List definitions with filters (type, status, domain, visibility, search, tags, pagination). `format`: `compact` (default — type, name, version, status, visibility, description per item), `full` (all catalog fields) |
 | `get_definition` | Get a single definition by type + name, optionally with YAML / runtime / refs |
 | `search_definitions` | Search definitions by keyword |
 | `list_models` | List AI models with optional filters |
@@ -160,7 +160,7 @@ compare_effectiveness({ type: "agent", name: "code-validator", versions: ["1.0.0
 ### Execution & users (P2)
 | Tool | Description |
 |------|-------------|
-| `record_execution` | Record a definition execution (idempotent) |
+| `record_execution` | Record a definition execution (idempotent). Admin-only — executions are recorded automatically by the runtime; user keys get a 403 explaining this |
 | `get_user` | Get public user profile |
 | `batch_users` | Batch user lookup (max 100) |
 

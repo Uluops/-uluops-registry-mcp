@@ -70,16 +70,20 @@ vi.mock('node:fs/promises', () => ({
 const mockIsNotFoundError = vi.fn().mockReturnValue(false);
 const mockIsValidationError = vi.fn().mockReturnValue(false);
 
-vi.mock('@uluops/registry-sdk/errors', () => ({
-  isRegistryApiError: (): boolean => false,
-  isNotFoundError: (...args: unknown[]): boolean => mockIsNotFoundError(...args) as boolean,
-  isRateLimitError: (): boolean => false,
-  isValidationError: (...args: unknown[]): boolean => mockIsValidationError(...args) as boolean,
-  isConflictError: (): boolean => false,
-  isUnprocessableError: (): boolean => false,
-  UnauthorizedError: class extends Error {},
-  ForbiddenError: class extends Error {},
-}));
+vi.mock('@uluops/registry-sdk/errors', () => {
+  class ForbiddenError extends Error {}
+  return {
+    isRegistryApiError: (): boolean => false,
+    isNotFoundError: (...args: unknown[]): boolean => mockIsNotFoundError(...args) as boolean,
+    isRateLimitError: (): boolean => false,
+    isValidationError: (...args: unknown[]): boolean => mockIsValidationError(...args) as boolean,
+    isConflictError: (): boolean => false,
+    isUnprocessableError: (): boolean => false,
+    isForbiddenError: (e: unknown): boolean => e instanceof ForbiddenError,
+    UnauthorizedError: class extends Error {},
+    ForbiddenError,
+  };
+});
 
 // Mock resolveYamlInput for file_path tests.
 // The real resolveYamlInput calls readYamlFile internally; here we mock both
@@ -251,14 +255,50 @@ describe('Tool Registration & SDK Calls', () => {
     });
 
     it('returns data as JSON with correct response shape', async () => {
-      const mockData = { items: [{ name: 'test' }], total: 1 };
+      const mockData = { definitions: [{ name: 'test' }], total: 1 };
       (client.definitions.list as ReturnType<typeof vi.fn>).mockResolvedValue(mockData);
       registerListDefinitionsTool(server, client);
       const result = await getHandler(server)({});
       expect(result.isError).toBeUndefined();
       expect(result.content).toHaveLength(1);
       expect(result.content[0].type).toBe('text');
-      expect(parseResult(result)).toEqual(mockData);
+      expect(parseResult(result)).toEqual({ ...mockData, format: 'compact' });
+    });
+
+    it('projects items to the compact field set by default (N4)', async () => {
+      (client.definitions.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+        definitions: [
+          {
+            type: 'agent', name: 'test', version: '1.0.0', status: 'published',
+            visibility: 'public', description: 'A test', executionCount: 5,
+            riskLevel: 'none', tags: ['a'], createdAt: '2026-01-01',
+          },
+        ],
+        total: 1, limit: 50, offset: 0, hasMore: false,
+      });
+      registerListDefinitionsTool(server, client);
+      const parsed = parseResult(await getHandler(server)({})) as {
+        format: string; definitions: Record<string, unknown>[]; total: number;
+      };
+      expect(parsed.format).toBe('compact');
+      expect(parsed.definitions[0]).toEqual({
+        type: 'agent', name: 'test', version: '1.0.0', status: 'published',
+        visibility: 'public', description: 'A test',
+      });
+      expect(parsed.total).toBe(1);
+    });
+
+    it("returns all catalog fields with format:'full'", async () => {
+      const mockData = {
+        definitions: [
+          { type: 'agent', name: 'test', version: '1.0.0', status: 'published', executionCount: 5, tags: ['a'] },
+        ],
+        total: 1,
+      };
+      (client.definitions.list as ReturnType<typeof vi.fn>).mockResolvedValue(mockData);
+      registerListDefinitionsTool(server, client);
+      const parsed = parseResult(await getHandler(server)({ format: 'full' })) as Record<string, unknown>;
+      expect(parsed).toEqual(mockData);
     });
 
     it('passes domain, agent_type, visibility, and search filters individually', async () => {
@@ -1306,6 +1346,22 @@ describe('Tool Registration & SDK Calls', () => {
       expect(opts.source).toBe('mcp'); // default
       expect(opts).not.toHaveProperty('runId');
     });
+
+    it('rewrites the bare admin-role 403 with runtime guidance (R16)', async () => {
+      const { ForbiddenError } = await import('@uluops/registry-sdk/errors');
+      (client.executions.record as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new ForbiddenError('Requires admin role')
+      );
+      registerRecordExecutionTool(server, client);
+      const result = await getHandler(server)({
+        type: 'agent',
+        name: 'test',
+        version: '1.0.0',
+      });
+      expect(result.isError).toBe(true);
+      const payload = parseResult(result) as { error: string };
+      expect(payload.error).toContain('recorded automatically by the UluOps runtime');
+    });
   });
 
   describe('get_execution_stats', () => {
@@ -1787,7 +1843,7 @@ describe('Tool Registration & SDK Calls', () => {
   describe('fields parameter', () => {
     it('filters response to requested fields only', async () => {
       (client.definitions.list as ReturnType<typeof vi.fn>).mockResolvedValue({
-        items: [
+        definitions: [
           { name: 'test', type: 'agent', version: '1.0.0', status: 'published', description: 'A test' },
         ],
         total: 1,
@@ -1796,15 +1852,15 @@ describe('Tool Registration & SDK Calls', () => {
       });
       registerListDefinitionsTool(server, client);
       const result = await getHandler(server)({ fields: ['name', 'version'] });
-      const parsed = parseResult(result) as { items: Record<string, unknown>[]; total: number };
-      expect(parsed.items[0]).toEqual({ name: 'test', version: '1.0.0' });
-      expect(parsed.items[0]).not.toHaveProperty('status');
-      expect(parsed.items[0]).not.toHaveProperty('description');
+      const parsed = parseResult(result) as { definitions: Record<string, unknown>[]; total: number };
+      expect(parsed.definitions[0]).toEqual({ name: 'test', version: '1.0.0' });
+      expect(parsed.definitions[0]).not.toHaveProperty('status');
+      expect(parsed.definitions[0]).not.toHaveProperty('description');
     });
 
     it('preserves pagination metadata even when not in fields', async () => {
       (client.definitions.list as ReturnType<typeof vi.fn>).mockResolvedValue({
-        items: [{ name: 'test', type: 'agent' }],
+        definitions: [{ name: 'test', type: 'agent' }],
         total: 1,
         limit: 20,
         offset: 0,
@@ -1819,14 +1875,14 @@ describe('Tool Registration & SDK Calls', () => {
 
     it('does not filter when fields is not provided', async () => {
       (client.definitions.list as ReturnType<typeof vi.fn>).mockResolvedValue({
-        items: [{ name: 'test', type: 'agent', status: 'published' }],
+        definitions: [{ name: 'test', type: 'agent', status: 'published' }],
         total: 1,
       });
       registerListDefinitionsTool(server, client);
       const result = await getHandler(server)({});
-      const parsed = parseResult(result) as { items: Record<string, unknown>[] };
-      expect(parsed.items[0]).toHaveProperty('status');
-      expect(parsed.items[0]).toHaveProperty('type');
+      const parsed = parseResult(result) as { definitions: Record<string, unknown>[] };
+      expect(parsed.definitions[0]).toHaveProperty('status');
+      expect(parsed.definitions[0]).toHaveProperty('type');
     });
   });
 });

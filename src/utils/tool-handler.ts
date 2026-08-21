@@ -217,8 +217,17 @@ export function filterResponseFields(data: unknown, fields: string[]): unknown {
       continue;
     }
 
-    // For array values, pick fields from each item
-    if (Array.isArray(value)) {
+    // Arrays holding objects are list containers ({items: [...]}) — keep the
+    // key and project each item. A scalar array (a definition's `tags`) is
+    // itself a leaf field, so it falls through to the membership test below;
+    // treating every array as a container let unrequested scalar-array keys
+    // leak past the filter (RE-PROBE-02 N3). Empty arrays stay container —
+    // dropping `{items: []}` from a zero-result list would change its shape.
+    if (
+      Array.isArray(value) &&
+      (value.length === 0 ||
+        value.some((item) => typeof item === 'object' && item !== null))
+    ) {
       result[key] = (value as unknown[]).map((item: unknown): unknown => {
         if (typeof item === 'object' && item !== null) {
           return pickFields(item as Record<string, unknown>, fields);

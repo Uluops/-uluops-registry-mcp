@@ -4,6 +4,31 @@
 
 ### Changed
 
+- **`list_definitions` defaults to a compact per-item projection** (`type`, `name`, `version`,
+  `status`, `visibility`, `description`), with `format: 'full'` restoring the complete ~30-field
+  catalog item (RE-PROBE-02 N4). The public catalog passed 550 definitions, at which point an
+  unprojected default page (50 items, 2-space pretty-printed) exceeded MCP client response
+  limits — the default call failed for exactly the callers the tool exists for. Same shape as
+  the `get_language` compact default (R1). Compact responses carry `format: 'compact'` as a
+  marker. Consumers reading fields outside the compact set from default responses must now pass
+  `format: 'full'` — that is the observable break, and it is deliberate.
+- **`fields` filtering no longer leaks unrequested scalar-array fields** (RE-PROBE-02 N3).
+  `filterResponseFields` treated every array-valued key as a list container and kept it
+  unconditionally, so `get_definition(fields: [...])` returned `tags` regardless of the request.
+  Scalar arrays are now leaf fields subject to the same membership test as any other key; arrays
+  of objects (and empty arrays) keep container semantics. A consumer that relied on receiving
+  `tags` without requesting it must add `tags` to its `fields` list.
+- **`record_execution` denials now explain themselves** (RE-PROBE-02 R16). The tool is
+  admin-only by design (executions are recorded by the runtime; the endpoint's role gate is the
+  API's) but was returning the platform's bare `"Requires admin role"`. The tool stays in the
+  toolset — the MCP server never learns the caller's role, so it cannot be conditionally hidden —
+  and the 403 now states that executions are recorded automatically and user keys never need the
+  tool. Generic role-gate 403s across all tools additionally carry `required_role` and a
+  `suggestion` explaining that role-gated operations belong to the runtime/operators. The role
+  detection is message-matched (`Requires <role> role`) because the SDK's `ForbiddenError`
+  currently drops the API's structured `INSUFFICIENT_ROLE` code; switch to code-based branching
+  when sdk-core retains 403 code/details.
+
 - **`@uluops/registry-sdk` 0.48.0 → 0.49.0** (registry-api ADR-013 activation prerequisite).
   Definition reads now tolerate the drop-aware deep-analysis fields: `deep.errorReason`
   validates as shape rather than a closed enum that threw on unknown reasons (the vocabulary

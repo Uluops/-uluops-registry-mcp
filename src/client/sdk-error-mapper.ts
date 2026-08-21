@@ -213,10 +213,25 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
   }
 
   if (error instanceof ForbiddenError) {
-    return buildErrorResponse(
-      sanitizeErrorMessage(getErrorMessage(error, 'Access denied')),
-      { status: 403 },
-    );
+    const message = sanitizeErrorMessage(getErrorMessage(error, 'Access denied'));
+    // Role-gated endpoints surface the platform's terse "Requires <role> role"
+    // (RE-PROBE-02 R16). A user-key caller cannot act on that alone — say whose
+    // job the operation is. Message-matched because the SDK's ForbiddenError
+    // drops the API's structured error code (INSUFFICIENT_ROLE); switch to
+    // code-based branching once sdk-core retains 403 code/details.
+    const roleMatch = /^Requires (\w+) role\b/.exec(message);
+    return buildErrorResponse(message, {
+      status: 403,
+      ...(roleMatch
+        ? {
+            required_role: roleMatch[1],
+            suggestion:
+              'This API key\'s role is below the required role. Role-gated ' +
+              'operations are performed by the UluOps runtime or an operator, ' +
+              'not by user keys.',
+          }
+        : {}),
+    });
   }
 
   // 402 Subscription Required — content gating (spec Section 9.2)

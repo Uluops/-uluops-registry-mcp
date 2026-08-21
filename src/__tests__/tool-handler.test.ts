@@ -277,10 +277,20 @@ describe('filterResponseFields', () => {
     expect(filterResponseFields({ a: 1, b: 2 }, ['x', 'y'])).toEqual({});
   });
 
-  it('preserves non-object array items as-is', () => {
+  it('drops unrequested scalar-array fields (N3: tags leak)', () => {
     const data = { tags: ['a', 'b', 'c'] };
-    expect(filterResponseFields(data, ['value'])).toEqual({
+    expect(filterResponseFields(data, ['value'])).toEqual({});
+  });
+
+  it('includes scalar-array fields when requested', () => {
+    const data = { name: 'test', tags: ['a', 'b', 'c'] };
+    expect(filterResponseFields(data, ['tags'])).toEqual({
       tags: ['a', 'b', 'c'],
     });
+  });
+
+  it('preserves empty arrays as list containers', () => {
+    const data = { items: [], total: 0 };
+    expect(filterResponseFields(data, ['name'])).toEqual({ items: [], total: 0 });
   });
 });

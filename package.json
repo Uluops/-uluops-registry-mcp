@@ -1,6 +1,6 @@
 {
   "name": "@uluops/registry-mcp",
-  "version": "0.3.7",
+  "version": "0.4.0",
   "description": "MCP server for the UluOps Registry API — definition management, versioning, and analytics",
   "type": "module",
   "main": "dist/index.js",

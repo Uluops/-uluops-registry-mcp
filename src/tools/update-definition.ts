@@ -14,7 +14,7 @@ import type { RegistryClient, UpdateDefinitionBody } from '@uluops/registry-sdk'
 import { isNotFoundError } from '@uluops/registry-sdk/errors';
 import { isPublishedStatusError } from '../utils/error-guards.js';
 import {
-  DefinitionTypeSchema,
+  DefinitionTypeWithDefaultSchema,
   VisibilitySchema,
   TierSchema,
   ChangeTypeSchema,
@@ -26,7 +26,7 @@ import { resolveYamlInput } from '../utils/read-yaml-file.js';
 import { trimDefinitionResponse } from '../utils/trim-definition.js';
 
 export const UpdateDefinitionInputSchema = z.object({
-  type: DefinitionTypeSchema,
+  type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   version: z.string().min(1),
   yaml: z.string().max(500_000).optional(),

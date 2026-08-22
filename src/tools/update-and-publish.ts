@@ -7,16 +7,18 @@
  * automatically creates a new draft version before publishing.
  */
 
+import { getDefaultType } from '../utils/session-state.js';
 import { z } from 'zod';
 import type { RegistryClient, UpdateDefinitionBody } from '@uluops/registry-sdk';
 import { isNotFoundError } from '@uluops/registry-sdk/errors';
 import { isPublishedStatusError } from '../utils/error-guards.js';
 import {
-  DefinitionTypeSchema,
+  DefinitionTypeWithDefaultSchema,
   VisibilitySchema,
   ChangeTypeSchema,
   type McpServerToolRegistration,
   createSuccessResponse,
+  createErrorResponse,
 } from '../types/index.js';
 import type { McpToolResponse } from '../types/index.js';
 import { mapSdkErrorToMcp, mapZodErrorToMcp } from '../client/sdk-error-mapper.js';
@@ -30,7 +32,7 @@ function isMcpResponse(value: unknown): value is McpToolResponse {
 }
 
 export const UpdateAndPublishInputSchema = z.object({
-  type: DefinitionTypeSchema,
+  type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   version: z.string().min(1),
   yaml: z.string().max(500_000).optional(),
@@ -85,7 +87,14 @@ export function registerUpdateAndPublishTool(
 
         const input = UpdateAndPublishInputSchema.parse(resolved);
 
-        const { type, name, version, yaml, visibility, description, tags, change_type } = input;
+        const { type: parsedType, name, version, yaml, visibility, description, tags, change_type } = input;
+        // RG4: custom parse path — resolve the session default explicitly.
+        const type = parsedType ?? getDefaultType();
+        if (type === undefined) {
+          return createErrorResponse(
+            "Missing 'type': pass it explicitly (agent, command, workflow, pipeline) or set a session default first with set_default_type.",
+          );
+        }
 
         // Build update body (SDK expects camelCase changeType)
         const body: UpdateDefinitionBody = {};

@@ -2,6 +2,45 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-22
+
+MCP tool-sweep batch 2 (tracker project `mcp-tool-surface-sweep`). Pairs with
+registry API ≥0.54.0 (RG16's `changed` flag; RG2's repointed aliases).
+
+### Fixed
+
+- **The `fields` projection no longer destroys responses silently** (RG1):
+  - Unknown field names are REJECTED with the valid set listed, instead of
+    silently dropped (the failure that returned 30 rows with no identity).
+  - Single-object payloads (`{definition: {...}}` wrappers, mutation envelopes)
+    are projected INTO rather than erased — a fork with `fields` now returns the
+    projected fork instead of bare `{}` with no proof of the write.
+  - A sibling collection whose schema matches none of the requested fields is
+    dropped rather than emptied to N×`{}` (aliases beside models); requesting a
+    container by its own name keeps it unprojected. Empty arrays keep their
+    container shape.
+- **`set_default_type` actually works** (RG4): every definition tool declared
+  `type` schema-required, so the protocol layer rejected type-less calls with
+  -32602 BEFORE the session default could inject — the tool reported success and
+  gated nothing. `type` is now optional-with-session-default on definition tools
+  (list-tool `type` FILTERS stay genuinely optional and unguarded), with an
+  actionable error when neither an explicit type nor a default is present.
+  Custom-parse tools (render_definition, update_and_publish) resolve the default
+  explicitly; batch_publish items keep explicit required types by design.
+- **`get_execution_stats.window` means days again** (RG3): documented in days,
+  implemented in minutes — `window: 7` silently returned seven MINUTES reported
+  as a weekly figure. The day-denominated contract stands; the tool converts to
+  the API's minutes at the boundary and says so.
+
+### Changed
+
+- **Alias-float contract documented where authors meet it** (RG2 docs):
+  `resolve_alias`/`list_aliases` now state that a bare alias tracks the current
+  family model and is repointed each generation (qualified ids pin), and that
+  the absence of a `fable` alias is deliberate.
+- **`retranslate_definition` description surfaces `changed: boolean`** (RG16) —
+  distinguishing a correct no-op from work that silently didn't happen.
+
 ## [0.4.0] - 2026-08-21
 
 ### Changed

@@ -30,6 +30,7 @@ export type {
 // Shared Zod schemas for runtime validation
 export {
   DefinitionTypeSchema,
+  DefinitionTypeWithDefaultSchema,
   DefinitionStatusSchema,
   DomainSchema,
   AgentTypeSchema,

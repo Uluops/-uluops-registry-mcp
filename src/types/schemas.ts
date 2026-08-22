@@ -10,6 +10,17 @@ import { z } from 'zod';
 /** Registry definition types: agent, command, workflow, or pipeline. */
 export const DefinitionTypeSchema = z.enum(['agent', 'command', 'workflow', 'pipeline']);
 
+/**
+ * RG4: `type` honoring the session default. set_default_type was INERT — every
+ * definition tool declared `type` schema-required, so the protocol layer
+ * rejected type-less calls with -32602 BEFORE the handler's session-default
+ * injection could run. Optional at the schema; the shared handler guard errors
+ * when neither an explicit type nor a session default is present.
+ */
+export const DefinitionTypeWithDefaultSchema = DefinitionTypeSchema.optional().describe(
+  'Definition type (agent, command, workflow, pipeline). Optional when a session default is set via set_default_type; otherwise required.',
+);
+
 /** Lifecycle statuses for definitions. */
 export const DefinitionStatusSchema = z.enum(['draft', 'published', 'deprecated', 'archived']);
 

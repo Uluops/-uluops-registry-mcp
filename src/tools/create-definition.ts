@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import {
-  DefinitionTypeSchema,
+  DefinitionTypeWithDefaultSchema,
   VisibilitySchema,
   ProvenanceInputSchema,
   type McpServerToolRegistration,
@@ -18,7 +18,7 @@ import { resolveYamlInput } from '../utils/read-yaml-file.js';
 import { trimDefinitionResponse } from '../utils/trim-definition.js';
 
 export const CreateDefinitionInputSchema = z.object({
-  type: DefinitionTypeSchema,
+  type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   yaml: z.string().min(1).max(500_000).optional(),
   file_path: z

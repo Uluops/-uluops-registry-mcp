@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
-import { createToolHandler, extractFieldsParam, filterResponseFields } from '../utils/tool-handler.js';
+import { createToolHandler, extractFieldsParam, filterResponseFields , collectFieldUniverse } from '../utils/tool-handler.js';
 import { setDefaultType } from '../utils/session-state.js';
 
 describe('createToolHandler', () => {
@@ -292,5 +292,101 @@ describe('filterResponseFields', () => {
   it('preserves empty arrays as list containers', () => {
     const data = { items: [], total: 0 };
     expect(filterResponseFields(data, ['name'])).toEqual({ items: [], total: 0 });
+  });
+});
+
+describe('RG1 — fields projection safety (tool-sweep batch 2)', () => {
+  it('mode 3/4: single-object payloads are projected, not erased — mutations keep identity', () => {
+    // publish_definition-shaped response: {definition: {...}, warnings: []}
+    const data = {
+      definition: { name: 'x', version: '1.0.0', status: 'published', yaml: 'big' },
+      warnings: [],
+    };
+    const out = filterResponseFields(data, ['name', 'version', 'status']) as Record<string, unknown>;
+    expect(out.definition).toEqual({ name: 'x', version: '1.0.0', status: 'published' });
+    // The pre-fix behavior returned {warnings: []} with the payload erased.
+    expect(out).toHaveProperty('definition');
+  });
+
+  it('mode 2: a sibling collection matching no fields is dropped, not emptied to N x {}', () => {
+    const data = {
+      models: [{ modelId: 'm1', tier: 'standard' }],
+      aliases: [{ alias: 'sonnet', target: 'x' }],
+    };
+    const out = filterResponseFields(data, ['modelId', 'tier']) as Record<string, unknown>;
+    expect(out.models).toEqual([{ modelId: 'm1', tier: 'standard' }]);
+    // aliases previously came back as [{}] — now the non-matching container is dropped.
+    expect(out).not.toHaveProperty('aliases');
+  });
+
+  it('whole-container select by name keeps the container unprojected', () => {
+    const data = { models: [{ modelId: 'm1' }], aliases: [{ alias: 'sonnet' }] };
+    const out = filterResponseFields(data, ['aliases']) as Record<string, unknown>;
+    expect(out.aliases).toEqual([{ alias: 'sonnet' }]);
+  });
+
+  it('mode 1: collectFieldUniverse spans top-level, array items, and wrapped objects', () => {
+    const universe = collectFieldUniverse({
+      definition: { name: 'x', version: '1' },
+      warnings: [],
+      items: [{ modelId: 'm' }],
+      total: 1,
+    });
+    for (const k of ['definition', 'warnings', 'items', 'total', 'name', 'version', 'modelId']) {
+      expect(universe.has(k), k).toBe(true);
+    }
+    expect(universe.has('contextWindow')).toBe(false);
+  });
+
+  it('mode 1 end-to-end: unknown field names are REJECTED with the valid set listed', async () => {
+    const schema = z.object({ name: z.string() });
+    const sdkCall = vi.fn().mockResolvedValue({ items: [{ modelId: 'm1', tier: 'standard' }], total: 1 });
+    const handler = createToolHandler(schema, sdkCall);
+    const result = await handler({ name: 'x', fields: ['id', 'contextWindow'] });
+    const text = (result.content[0] as { text: string }).text;
+    expect(result.isError).toBe(true);
+    expect(text).toContain('id');
+    expect(text).toContain('contextWindow');
+    expect(text).toContain('modelId'); // the valid set is named
+  });
+});
+
+describe('RG4 — session default actually applies (tool-sweep batch 2)', () => {
+  const withDefaultType = z.object({
+    // Mirrors DefinitionTypeWithDefaultSchema's marker description.
+    type: z.enum(['agent', 'command', 'workflow', 'pipeline']).optional().describe('Optional when a session default is set via set_default_type; otherwise required.'),
+    name: z.string(),
+  });
+
+  it('errors actionably when type is absent and no session default is set', async () => {
+    setDefaultType(undefined);
+    const sdkCall = vi.fn().mockResolvedValue({});
+    const handler = createToolHandler(withDefaultType, sdkCall);
+    const result = await handler({ name: 'x' });
+    expect(result.isError).toBe(true);
+    expect((result.content[0] as { text: string }).text).toContain('set_default_type');
+    expect(sdkCall).not.toHaveBeenCalled();
+  });
+
+  it('control: the session default flows through to the SDK call', async () => {
+    setDefaultType('agent');
+    const sdkCall = vi.fn().mockResolvedValue({});
+    const handler = createToolHandler(withDefaultType, sdkCall);
+    await handler({ name: 'x' });
+    expect((sdkCall.mock.calls[0][0] as Record<string, unknown>).type).toBe('agent');
+    setDefaultType(undefined);
+  });
+
+  it('control: a genuinely-optional type FILTER stays omittable (no false guard)', async () => {
+    setDefaultType(undefined);
+    const filterSchema = z.object({
+      type: z.enum(['agent', 'command', 'workflow', 'pipeline']).optional(),
+      query: z.string(),
+    });
+    const sdkCall = vi.fn().mockResolvedValue({});
+    const handler = createToolHandler(filterSchema, sdkCall);
+    const result = await handler({ query: 'x' });
+    expect(result.isError).not.toBe(true);
+    expect(sdkCall).toHaveBeenCalled();
   });
 });

@@ -5,12 +5,13 @@
  * Optionally write the markdown directly to a file via output_path.
  */
 
+import { getDefaultType } from '../utils/session-state.js';
 import { writeFile, mkdir, lstat, access } from 'node:fs/promises';
 import { dirname, resolve, relative } from 'node:path';
 import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import {
-  DefinitionTypeSchema,
+  DefinitionTypeWithDefaultSchema,
   type McpServerToolRegistration,
   createSuccessResponse,
   createErrorResponse,
@@ -29,7 +30,7 @@ function getOutputBaseDir(): string {
 }
 
 export const RenderDefinitionInputSchema = z.object({
-  type: DefinitionTypeSchema,
+  type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   version: z.string().min(1).default('latest'),
   renderProfile: z
@@ -75,6 +76,14 @@ export function registerRenderDefinitionTool(
     RenderDefinitionInputSchema.shape,
     async (args: unknown) => {
       const parsed = RenderDefinitionInputSchema.safeParse(args);
+      // RG4: this tool parses its own input, so resolve the session default
+      // here (the shared handler guard does it for createToolHandler tools).
+      const resolvedType = parsed.success ? (parsed.data.type ?? getDefaultType()) : undefined;
+      if (parsed.success && resolvedType === undefined) {
+        return createErrorResponse(
+          "Missing 'type': pass it explicitly (agent, command, workflow, pipeline) or set a session default first with set_default_type.",
+        );
+      }
       if (!parsed.success || parsed.data.output_path === undefined) {
         return baseHandler(args);
       }
@@ -121,7 +130,7 @@ export function registerRenderDefinitionTool(
 
       try {
         const result = await registryClient.render.get(
-          parsed.data.type,
+          resolvedType!,
           parsed.data.name,
           parsed.data.version,
           { target: parsed.data.target, model: parsed.data.model, renderProfile: parsed.data.renderProfile },

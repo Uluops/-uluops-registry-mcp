@@ -12,6 +12,8 @@ import { mapSdkErrorToMcp, mapZodErrorToMcp, extractErrorContext } from '../clie
 import { trimDefinitionResponse } from '../utils/trim-definition.js';
 
 const DefinitionRefSchema = z.object({
+  // Batch items name their targets explicitly — the session default (RG4)
+  // applies to top-level tool params, not batch entries.
   type: DefinitionTypeSchema,
   name: z.string().min(1),
   version: z.string().min(1),

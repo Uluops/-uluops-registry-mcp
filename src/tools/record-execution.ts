@@ -7,11 +7,11 @@
 import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import { ForbiddenError, isForbiddenError } from '@uluops/registry-sdk/errors';
-import { DefinitionTypeSchema, type McpServerToolRegistration } from '../types/index.js';
+import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
 
 export const RecordExecutionInputSchema = z.object({
-  type: DefinitionTypeSchema,
+  type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   version: z.string().min(1),
   source: z.string().min(1).default('mcp'),

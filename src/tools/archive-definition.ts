@@ -7,12 +7,12 @@
 
 import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
-import { DefinitionTypeSchema, type McpServerToolRegistration } from '../types/index.js';
+import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
 import { trimDefinitionResponse } from '../utils/trim-definition.js';
 
 export const ArchiveDefinitionInputSchema = z.object({
-  type: DefinitionTypeSchema,
+  type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   version: z.string().min(1),
 });

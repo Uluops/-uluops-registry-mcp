@@ -1373,7 +1373,8 @@ describe('Tool Registration & SDK Calls', () => {
     it('passes type, name, version, window as positional args', async () => {
       registerGetExecutionStatsTool(server, client);
       await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0', window: 30 });
-      expect(client.executions.getStats).toHaveBeenCalledWith('agent', 'test', '1.0.0', 30);
+      // RG3: day-denominated input converted to the API's minutes (30d -> 43200m)
+      expect(client.executions.getStats).toHaveBeenCalledWith('agent', 'test', '1.0.0', 43200);
     });
 
     it('passes undefined window when not provided', async () => {

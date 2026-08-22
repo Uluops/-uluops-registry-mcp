@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import { mapSdkErrorToMcp, mapZodErrorToMcp, sanitizeErrorMessage } from '../client/sdk-error-mapper.js';
 import { normalizeKeys } from './normalize-keys.js';
-import { createSuccessResponse, type McpToolResponse } from '../types/index.js';
+import { createSuccessResponse, createErrorResponse, type McpToolResponse } from '../types/index.js';
 import { getDefaultType } from './session-state.js';
 
 /**
@@ -113,6 +113,23 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
 
       let input = schema.parse(coerceNumericFields(injectedArgs, schema));
 
+      // RG4 guard: `type` is now schema-optional so the session default can
+      // actually apply (a required type was protocol-rejected before injection
+      // ran, making set_default_type inert). When a tool declares `type` and
+      // neither an explicit value nor a session default supplied one, say
+      // exactly what to do — never forward a type-less call to the SDK.
+      // Only tools whose `type` is the WithDefault flavor (formerly REQUIRED,
+      // relaxed so the session default can apply) get the guard — list tools
+      // carry a genuinely-optional `type` FILTER that must stay omittable.
+      // The WithDefault schema is identified by its distinctive description.
+      const shape = schema instanceof z.ZodObject ? (schema.shape as Record<string, z.ZodTypeAny>) : undefined;
+      const typeRequiresDefault = shape?.['type']?.description?.includes('set_default_type') ?? false;
+      if (typeRequiresDefault && (input as Record<string, unknown>)['type'] === undefined) {
+        return createErrorResponse(
+          "Missing 'type': pass it explicitly (agent, command, workflow, pipeline) or set a session default first with set_default_type.",
+        );
+      }
+
       if (options?.preProcess) {
         const preResult = options.preProcess(input);
         if (isMcpToolResponse(preResult)) {
@@ -127,8 +144,21 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
         result = options.postProcess(result);
       }
 
-      // Apply field selection after all processing
+      // Apply field selection after all processing.
+      // RG1: the projection had five silent failure modes, all 200s — unknown
+      // names dropped (rows with no identity), sibling collections emptied,
+      // wrapped payloads erased, mutations returning bare {}. Unknown names
+      // are now REJECTED with the valid set listed, and single-object payloads
+      // are projected instead of dropped.
       if (fields) {
+        const universe = collectFieldUniverse(result);
+        const unknown = fields.filter((f) => !universe.has(f));
+        if (unknown.length > 0) {
+          return createErrorResponse(
+            `Unknown field(s) in 'fields': ${unknown.join(', ')}. ` +
+            `Valid fields for this response: ${[...universe].sort().join(', ')}.`,
+          );
+        }
         result = filterResponseFields(result, fields);
       }
 
@@ -201,6 +231,30 @@ export function extractFieldsParam(args: unknown): {
 const PAGINATION_KEYS = new Set(['total', 'limit', 'offset', 'hasMore', 'page', 'totalPages']);
 
 /**
+ * Collect every field name a `fields` projection could legitimately request
+ * from this response (RG1): top-level keys, keys of items in object-array
+ * containers, and keys of single-object payloads one level down (wrapped
+ * responses like {definition: {...}, warnings: []}).
+ */
+export function collectFieldUniverse(data: unknown): Set<string> {
+  const universe = new Set<string>();
+  if (typeof data !== 'object' || data === null) return universe;
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    universe.add(key);
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+          for (const k of Object.keys(item as Record<string, unknown>)) universe.add(k);
+        }
+      }
+    } else if (typeof value === 'object' && value !== null) {
+      for (const k of Object.keys(value as Record<string, unknown>)) universe.add(k);
+    }
+  }
+  return universe;
+}
+
+/**
  * Filter response fields to only include requested properties.
  * Preserves pagination metadata. For array properties, picks fields from each item.
  */
@@ -228,12 +282,40 @@ export function filterResponseFields(data: unknown, fields: string[]): unknown {
       (value.length === 0 ||
         value.some((item) => typeof item === 'object' && item !== null))
     ) {
-      result[key] = (value as unknown[]).map((item: unknown): unknown => {
+      const projectedItems = (value as unknown[]).map((item: unknown): unknown => {
         if (typeof item === 'object' && item !== null) {
           return pickFields(item as Record<string, unknown>, fields);
         }
         return item;
       });
+      // RG1 mode 2: a sibling collection with a DIFFERENT schema (aliases next
+      // to models) used to come back as N empty objects. If a non-empty
+      // container matched nothing, drop the key — unless the caller asked for
+      // the container itself by name. Empty arrays stay ({items: []} keeps its
+      // shape for zero-result lists).
+      const anyMatch = projectedItems.some(
+        (item) => typeof item !== 'object' || item === null || Object.keys(item as object).length > 0,
+      );
+      if (value.length === 0 || anyMatch || fields.includes(key)) {
+        result[key] = fields.includes(key) ? value : projectedItems;
+      }
+      continue;
+    }
+
+    // Single-object payloads (wrapped responses: {definition: {...}}, mutation
+    // envelopes) are projection TARGETS, not opaque leaves (RG1 modes 3/4):
+    // dropping them erased the payload and left mutations answering bare {}.
+    // Project into them; keep the key when anything matched, or when the key
+    // itself was requested (whole-object select).
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      if (fields.includes(key)) {
+        result[key] = value;
+        continue;
+      }
+      const projected = pickFields(value as Record<string, unknown>, fields);
+      if (Object.keys(projected).length > 0) {
+        result[key] = projected;
+      }
       continue;
     }
 

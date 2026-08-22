@@ -7,12 +7,12 @@
 
 import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
-import { DefinitionTypeSchema, type McpServerToolRegistration } from '../types/index.js';
+import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
 import { resolveYamlInput } from '../utils/read-yaml-file.js';
 
 export const ValidateDefinitionInputSchema = z.object({
-  type: DefinitionTypeSchema,
+  type: DefinitionTypeWithDefaultSchema,
   yaml: z.string().min(1).max(500_000).optional(),
   file_path: z
     .string()

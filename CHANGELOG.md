@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-23
+
+MCP tool-sweep batch 3 (mechanical tail). Pairs with registry API ≥0.55.0 and
+`@uluops/registry-sdk` 0.51.0.
+
+### Changed
+
+- **`list_providers` is paginated** (RG9): `limit` (default 50, max 200) and
+  `offset` params; the response `total` is the whole catalog. The unpaginated
+  default had outgrown a single MCP response (~197 providers / 55KB).
+  **Observable change: a bare call now returns the first page, not everything.**
+- **`get_diff_impact` accepts `from`/`to`** (RG14), matching its sibling
+  `diff_versions`; `from_version`/`to_version` still work. Same concept,
+  adjacent tools, no more coin-flip.
+- **`get_effectiveness` description conditions the `provenance.independent`
+  claim** (RG12): the independent/selfReported split exists only once
+  qualifying executions do — at zero executions those fields are absent and
+  there is no headline figure to quote. The description said otherwise.
+
 ## [0.5.0] - 2026-08-22
 
 MCP tool-sweep batch 2 (tracker project `mcp-tool-surface-sweep`). Pairs with

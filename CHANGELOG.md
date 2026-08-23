@@ -34,6 +34,12 @@ registry API ≥0.54.0 (RG16's `changed` flag; RG2's repointed aliases).
 
 ### Changed
 
+- **`@uluops/registry-sdk` 0.4x → 0.50.0, `@uluops/sdk-core` 0.15.0 → 0.17.0** —
+  the SDK bump carries the batch's new response fields (retranslate `changed`,
+  version `status`, lineage `chain`/`depth`/`root`) through to tool responses;
+  the sdk-core bump rides in the SAME change because registry-sdk nests 0.17
+  and a 0.15 direct pin would leave two SdkApiError class identities in one
+  process (the dual-identity instanceof hazard the ops-sdk rule documents).
 - **Alias-float contract documented where authors meet it** (RG2 docs):
   `resolve_alias`/`list_aliases` now state that a bare alias tracks the current
   family model and is repointed each generation (qualified ids pin), and that

@@ -128,9 +128,15 @@ export function registerRenderDefinitionTool(
         }
       }
 
+      // Narrow for the compiler: undefined resolvedType was either rejected
+      // above (no session default) or delegated to baseHandler (parse failure).
+      if (resolvedType === undefined) {
+        return baseHandler(args);
+      }
+
       try {
         const result = await registryClient.render.get(
-          resolvedType!,
+          resolvedType,
           parsed.data.name,
           parsed.data.version,
           { target: parsed.data.target, model: parsed.data.model, renderProfile: parsed.data.renderProfile },

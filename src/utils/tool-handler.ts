@@ -294,7 +294,7 @@ export function filterResponseFields(data: unknown, fields: string[]): unknown {
       // the container itself by name. Empty arrays stay ({items: []} keeps its
       // shape for zero-result lists).
       const anyMatch = projectedItems.some(
-        (item) => typeof item !== 'object' || item === null || Object.keys(item as object).length > 0,
+        (item) => typeof item !== 'object' || item === null || Object.keys(item).length > 0,
       );
       if (value.length === 0 || anyMatch || fields.includes(key)) {
         result[key] = fields.includes(key) ? value : projectedItems;

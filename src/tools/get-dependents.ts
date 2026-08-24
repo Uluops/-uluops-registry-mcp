@@ -12,7 +12,7 @@ import { createToolHandler } from '../utils/tool-handler.js';
 export const GetDependentsInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
-  version: z.string().min(1),
+  version: z.string().min(1).optional(),
 });
 
 export function registerGetDependentsTool(
@@ -21,7 +21,7 @@ export function registerGetDependentsTool(
 ): void {
   server.tool(
     'get_dependents',
-    'Get the reverse dependency graph — what depends on this definition version.',
+    'Get the reverse dependency graph — what depends on this definition version. Omit version to use the latest published version.',
     GetDependentsInputSchema.shape,
     createToolHandler(GetDependentsInputSchema, (n) =>
       registryClient.dependencies.getDependents(n.type, n.name, n.version)

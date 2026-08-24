@@ -12,7 +12,7 @@ import { createToolHandler } from '../utils/tool-handler.js';
 export const GetDependenciesInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
-  version: z.string().min(1),
+  version: z.string().min(1).optional(),
   depth: z.number().int().positive().optional(),
 });
 
@@ -22,7 +22,7 @@ export function registerGetDependenciesTool(
 ): void {
   server.tool(
     'get_dependencies',
-    'Get the forward dependency graph for a definition version.',
+    'Get the forward dependency graph for a definition version. Omit version to use the latest published version.',
     GetDependenciesInputSchema.shape,
     createToolHandler(GetDependenciesInputSchema, (n) => {
       const options: Record<string, unknown> = {};

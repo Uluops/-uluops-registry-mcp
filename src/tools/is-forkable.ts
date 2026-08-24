@@ -12,7 +12,7 @@ import { createToolHandler } from '../utils/tool-handler.js';
 export const IsForkableInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
-  version: z.string().min(1),
+  version: z.string().min(1).optional(),
 });
 
 export function registerIsForkableTool(
@@ -21,7 +21,7 @@ export function registerIsForkableTool(
 ): void {
   server.tool(
     'is_forkable',
-    'Check if a definition version can be forked.',
+    'Check if a definition version can be forked. Omit version to check the latest published version.',
     IsForkableInputSchema.shape,
     createToolHandler(IsForkableInputSchema, (n) =>
       registryClient.forks.isForkable(n.type, n.name, n.version)

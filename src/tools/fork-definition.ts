@@ -23,7 +23,7 @@ export function registerForkDefinitionTool(
 ): void {
   server.tool(
     'fork_definition',
-    'Fork a definition version under a new name.',
+    'Fork a definition version under a new name. The fork starts at version 1.0.0 regardless of the source version (it is a new artifact with its own history). Its default display_name derives from the new name — pass display_name to override.',
     ForkDefinitionInputSchema.shape,
     createToolHandler(ForkDefinitionInputSchema, (n) =>
       registryClient.forks.create(n.type, n.name, n.version, {

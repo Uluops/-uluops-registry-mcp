@@ -12,7 +12,7 @@ import { createToolHandler } from '../utils/tool-handler.js';
 export const ListForksInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
-  version: z.string().min(1),
+  version: z.string().min(1).optional(),
 });
 
 export function registerListForksTool(
@@ -21,7 +21,7 @@ export function registerListForksTool(
 ): void {
   server.tool(
     'list_forks',
-    'List all forks of a definition version.',
+    'List all forks of a definition version. Omit version to list forks of the latest published version.',
     ListForksInputSchema.shape,
     createToolHandler(ListForksInputSchema, (n) =>
       registryClient.forks.list(n.type, n.name, n.version)

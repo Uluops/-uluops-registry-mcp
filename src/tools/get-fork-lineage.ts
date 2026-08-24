@@ -12,7 +12,7 @@ import { createToolHandler } from '../utils/tool-handler.js';
 export const GetForkLineageInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
-  version: z.string().min(1),
+  version: z.string().min(1).optional(),
 });
 
 export function registerGetForkLineageTool(
@@ -21,7 +21,7 @@ export function registerGetForkLineageTool(
 ): void {
   server.tool(
     'get_fork_lineage',
-    'Get the fork ancestry chain for a definition version.',
+    'Get the fork ancestry chain for a definition version. Omit version to trace from the latest published version.',
     GetForkLineageInputSchema.shape,
     createToolHandler(GetForkLineageInputSchema, (n) =>
       registryClient.forks.getAncestry(n.type, n.name, n.version)

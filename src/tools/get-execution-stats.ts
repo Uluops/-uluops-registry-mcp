@@ -12,7 +12,7 @@ import { createToolHandler } from '../utils/tool-handler.js';
 export const GetExecutionStatsInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
-  version: z.string().min(1),
+  version: z.string().min(1).optional(),
   // RG3: documented in DAYS, but the API parameter is MINUTES — window:7 used
   // to silently mean seven minutes, reported as a weekly figure. The tool
   // keeps the day-denominated contract and converts at this boundary.
@@ -25,7 +25,7 @@ export function registerGetExecutionStatsTool(
 ): void {
   server.tool(
     'get_execution_stats',
-    "Get execution statistics for a definition version. Optional window parameter in DAYS (converted to the API's minute-denominated window; the response echoes windowMinutes).",
+    "Get execution statistics for a definition version. Omit version to use the latest published version. Optional window parameter in DAYS (converted to the API's minute-denominated window; the response echoes windowMinutes).",
     GetExecutionStatsInputSchema.shape,
     createToolHandler(GetExecutionStatsInputSchema, (n) =>
       registryClient.executions.getStats(n.type, n.name, n.version, n.window === undefined ? undefined : n.window * 24 * 60)

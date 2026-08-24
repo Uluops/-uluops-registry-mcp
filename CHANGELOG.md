@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-24
+
+### Changed — MCP tool-sweep non-breaking batch (RG10, RG11, RG15)
+
+- **`version` is optional on six read tools** (RG10): get_dependencies,
+  get_dependents, is_forkable, list_forks, get_execution_stats, and
+  get_fork_lineage default to the latest published version when version is
+  omitted — read-only graph questions about "the current one" no longer force
+  an extra version lookup. archive_definition, delete_definition, and
+  retranslate_definition deliberately keep version required (terminal or
+  content-mutating actions on a moving "latest" target).
+- **diff_versions documents its formats honestly** (RG11): the description
+  now says the default sections format collapses to ["agent"] for ADL
+  (prefer fields), and documents the fields format's valueDiff
+  diff-match-patch opcodes ([0]=unchanged, [-1]=removed, [1]=added).
+- **fork_definition documents the version reset** (RG15): forks start at
+  1.0.0 by design, and the default display_name derives from the new name.
+
 ## [0.7.0] - 2026-08-23
 
 ### Added — MCP tool-sweep error-module batch (RG5, T3)

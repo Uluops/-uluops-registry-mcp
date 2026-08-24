@@ -27,7 +27,7 @@ export function registerArchiveDefinitionTool(
     ArchiveDefinitionInputSchema.shape,
     createToolHandler(ArchiveDefinitionInputSchema, (n) =>
       registryClient.definitions.archive(n.type, n.name, n.version),
-      { postProcess: trimDefinitionResponse }
+      { toolName: 'archive_definition', postProcess: trimDefinitionResponse }
     )
   );
 }

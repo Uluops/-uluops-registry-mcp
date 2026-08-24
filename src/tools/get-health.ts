@@ -25,6 +25,6 @@ export function registerGetHealthTool(
     GetHealthInputSchema.shape,
     createToolHandler(GetHealthInputSchema, (n) =>
       registryClient.analytics.getHealth(n.type, n.name, n.version)
-    )
+    , { toolName: 'get_health' })
   );
 }

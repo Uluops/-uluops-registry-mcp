@@ -19,6 +19,6 @@ export function registerListAliasesTool(
     'list_aliases',
     'List all model aliases and their resolved provider+model mappings. ALIAS-FLOAT CONTRACT: bare aliases track the current family model and are repointed each generation (see resolve_alias); qualified model ids pin. There is deliberately no fable alias (restricted-availability model).',
     ListAliasesInputSchema.shape,
-    createToolHandler(ListAliasesInputSchema, () => registryClient.models.listAliases())
+    createToolHandler(ListAliasesInputSchema, () => registryClient.models.listAliases(), { toolName: 'list_aliases' })
   );
 }

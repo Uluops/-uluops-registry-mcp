@@ -46,6 +46,7 @@ export function registerCreateDefinitionTool(
         ...(n.provenance !== undefined && { provenance: n.provenance }),
       }),
       {
+        toolName: 'create_definition',
         preProcess: (input) => resolveYamlInput(input, { required: true }),
         postProcess: trimDefinitionResponse,
       }

@@ -24,6 +24,6 @@ export function registerGetTranslationAnalyticsTool(
     GetTranslationAnalyticsInputSchema.shape,
     createToolHandler(GetTranslationAnalyticsInputSchema, (n) =>
       registryClient.analytics.getTranslation(n.type, n.name)
-    )
+    , { toolName: 'get_translation_analytics' })
   );
 }

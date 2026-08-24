@@ -151,9 +151,9 @@ export function registerUpdateAndPublishTool(
         return createSuccessResponse({ ...trimmed, _note: note, warnings });
       } catch (error) {
         if (error instanceof z.ZodError) {
-          return mapZodErrorToMcp(error);
+          return mapZodErrorToMcp(error, 'update_and_publish');
         }
-        return mapSdkErrorToMcp(error);
+        return mapSdkErrorToMcp(error, 'update_and_publish');
       }
     }
   );

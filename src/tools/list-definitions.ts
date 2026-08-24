@@ -109,6 +109,6 @@ export function registerListDefinitionsTool(
         format: 'compact',
         definitions: result.definitions.map(toCompactItem),
       };
-    })
+    }, { toolName: 'list_definitions' })
   );
 }

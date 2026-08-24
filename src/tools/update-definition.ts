@@ -87,6 +87,7 @@ export function registerUpdateDefinitionTool(
       }
     },
       {
+        toolName: 'update_definition',
         preProcess: (input) => resolveYamlInput(input, { required: false }),
         postProcess: trimDefinitionResponse,
       }

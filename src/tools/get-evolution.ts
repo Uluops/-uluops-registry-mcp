@@ -24,6 +24,6 @@ export function registerGetEvolutionTool(
     GetEvolutionInputSchema.shape,
     createToolHandler(GetEvolutionInputSchema, (n) =>
       registryClient.analytics.getEvolution(n.type, n.name)
-    )
+    , { toolName: 'get_evolution' })
   );
 }

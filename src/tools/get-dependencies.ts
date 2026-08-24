@@ -28,6 +28,6 @@ export function registerGetDependenciesTool(
       const options: Record<string, unknown> = {};
       if (n.depth !== undefined) options.maxDepth = n.depth;
       return registryClient.dependencies.get(n.type, n.name, n.version, options);
-    })
+    }, { toolName: 'get_dependencies' })
   );
 }

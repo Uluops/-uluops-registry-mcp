@@ -24,6 +24,6 @@ export function registerListProvidersTool(
     'list_providers',
     'List AI model providers, paginated (limit default 50, max 200; offset). The response total is the whole catalog, not the page.',
     ListProvidersInputSchema.shape,
-    createToolHandler(ListProvidersInputSchema, (n) => registryClient.models.listProviders({ limit: n.limit, offset: n.offset }))
+    createToolHandler(ListProvidersInputSchema, (n) => registryClient.models.listProviders({ limit: n.limit, offset: n.offset }), { toolName: 'list_providers' })
   );
 }

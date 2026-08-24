@@ -32,6 +32,6 @@ export function registerPublishDefinitionTool(
         definition: trimDefinitionResponse(result.definition),
         warnings: result.warnings,
       };
-    })
+    }, { toolName: 'publish_definition' })
   );
 }

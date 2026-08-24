@@ -21,6 +21,6 @@ export function registerGetTranslatorVersionTool(
     GetTranslatorVersionInputSchema.shape,
     createToolHandler(GetTranslatorVersionInputSchema, () =>
       registryClient.translation.getVersion()
-    )
+    , { toolName: 'get_translator_version' })
   );
 }

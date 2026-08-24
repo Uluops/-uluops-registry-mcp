@@ -51,6 +51,6 @@ export function registerSearchDefinitionsTool(
         authorshipType: n.authorshipType,
         limit: n.limit,
       })
-    )
+    , { toolName: 'search_definitions' })
   );
 }

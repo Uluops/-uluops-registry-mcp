@@ -70,6 +70,60 @@ function isSafeUpgradeUrl(url: string): boolean {
   return false;
 }
 
+/**
+ * RG5 envelope parity with the tracker MCP: every error response carries
+ * `error_type`, `tool` (when known), and a `suggestion` — the registry's
+ * messages were already the better-written half of the product ("Cannot
+ * delete published definition ... Deprecate it first."), but the guidance
+ * lived only in prose. These fields make it structured, so an agent working
+ * across both servers can branch on one contract.
+ */
+const ERROR_SUGGESTIONS: Record<string, string> = {
+  NotFoundError: 'Verify the resource ID/name exists. Use a list or search tool to find valid identifiers.',
+  RateLimitError: 'Wait for the retry_after period, then retry.',
+  ValidationError: 'Check parameter types and required fields against the tool schema.',
+  UnauthorizedError: 'Verify ULUOPS_API_KEY is set to a valid ulr_* key. Manage keys at https://app.uluops.ai/settings/api-keys.',
+  // 403 is access/scope/role, NOT tier — genuine tier limits surface as 402.
+  ForbiddenError: 'Access denied. The target may not exist, may belong to another org, or your key may lack the required scope/role — verify the id(s), the org context, and your key permissions before assuming a tier limit.',
+  ConflictError: 'Conflict — often a version that already exists. If the response carries nextAvailable, publish that version instead.',
+  UnprocessableError: 'The request is well-formed but cannot be processed. Check business logic constraints (definition state, lifecycle rules).',
+};
+
+/**
+ * 404 remedies are resource-keyed, naming the discovery tool (tracker T7
+ * pattern). The registry's NotFoundError messages name the resource
+ * ("Definition 'agent/x' not found", "Model 'y' not found") — key on it.
+ */
+const NOT_FOUND_DISCOVERY_TOOLS: Array<[RegExp, string]> = [
+  [/\bdefinition\b/i, 'list_definitions or search_definitions'],
+  [/\bmodel\b/i, 'list_models'],
+  [/\bprovider\b/i, 'list_providers'],
+  [/\balias\b/i, 'list_aliases'],
+  [/\bversion\b/i, 'list_versions'],
+  [/\blanguage\b/i, 'list_languages'],
+  [/\bfork\b/i, 'list_forks'],
+  [/\buser\b/i, 'batch_users'],
+];
+
+function notFoundSuggestion(message: string): string {
+  for (const [pattern, tool] of NOT_FOUND_DISCOVERY_TOOLS) {
+    if (pattern.test(message)) {
+      return `Verify the resource ID/name exists — call ${tool} to find valid identifiers.`;
+    }
+  }
+  return ERROR_SUGGESTIONS['NotFoundError'] as string;
+}
+
+function getErrorTypeName(error: unknown): string {
+  // Prefer the `name` property over `constructor.name`: SDK error classes set
+  // both to the same string, but `name` survives dual-package class-identity
+  // splits (a nested sdk-core copy has different constructors, same names).
+  if (error instanceof Error) {
+    return error.name !== '' && error.name !== 'Error' ? error.name : error.constructor.name;
+  }
+  return 'unknown';
+}
+
 /** Build a structured error response with optional metadata */
 function buildErrorResponse(
   message: string,
@@ -177,13 +231,29 @@ export function extractErrorContext(error: unknown): ExtractedErrorContext {
  * - Retry-after information for rate limits
  * - Field-level validation details
  */
-export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
+export function mapSdkErrorToMcp(error: unknown, toolName?: string): McpToolResponse {
   const statusCode = getStatusCode(error);
+  const errorType = getErrorTypeName(error);
+  const notFound = isNotFoundError(error);
+  // 404 remedies are resource-keyed, naming the discovery tool (tracker T7).
+  const suggestion = notFound
+    ? notFoundSuggestion(getErrorMessage(error, ''))
+    : ERROR_SUGGESTIONS[errorType];
+  // Pass the API's cause code through so clients can branch on cause, not
+  // just HTTP status (tracker T20 pattern).
+  const causeCode = (error as { code?: string }).code;
+  const context: Record<string, unknown> = {
+    ...(statusCode !== undefined ? { status: statusCode } : {}),
+    error_type: errorType,
+    ...(typeof causeCode === 'string' ? { code: causeCode } : {}),
+    ...(toolName != null ? { tool: toolName } : {}),
+    ...(suggestion != null ? { suggestion } : {}),
+  };
 
-  if (isNotFoundError(error)) {
+  if (notFound) {
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Resource not found')),
-      statusCode !== undefined ? { status: statusCode } : undefined,
+      context,
     );
   }
 
@@ -194,37 +264,53 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
       hasRetryAfter
         ? `Rate limit exceeded. Retry after ${String(retryAfter)} seconds.`
         : 'Rate limit exceeded, please retry later.',
-      { status: 429, ...(hasRetryAfter ? { retry_after_seconds: retryAfter } : {}) },
+      { ...context, status: 429, ...(hasRetryAfter ? { retry_after_seconds: retryAfter } : {}) },
     );
   }
 
   if (isValidationError(error)) {
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Invalid request parameters')),
-      statusCode !== undefined ? { status: statusCode } : undefined,
+      context,
     );
   }
 
   if (error instanceof UnauthorizedError) {
     return buildErrorResponse(
-      'Authentication required. Verify ULUOPS_API_KEY is set to a valid ulr_* key.',
-      { status: 401 },
+      'Authentication required. Verify ULUOPS_API_KEY is set to a valid ulr_* key. Manage keys at https://app.uluops.ai/settings/api-keys.',
+      { ...context, status: 401 },
     );
   }
 
   if (error instanceof ForbiddenError) {
     const message = sanitizeErrorMessage(getErrorMessage(error, 'Access denied'));
-    // Role-gated endpoints surface the platform's terse "Requires <role> role"
-    // (RE-PROBE-02 R16). A user-key caller cannot act on that alone — say whose
-    // job the operation is. Message-matched because the SDK's ForbiddenError
-    // drops the API's structured error code (INSUFFICIENT_ROLE); switch to
-    // code-based branching once sdk-core retains 403 code/details.
+
+    // INSUFFICIENT_SCOPE — a read-scope key attempting a write (per-key
+    // scopes, platform authenticate middleware). Nothing about the target or
+    // the org is wrong; only the key's scope is (tracker T20 pattern).
+    if (causeCode === 'INSUFFICIENT_SCOPE') {
+      return buildErrorResponse(message, {
+        ...context,
+        status: 403,
+        suggestion:
+          'This API key has read scope and the operation is a write. The target and org are fine — ' +
+          'switch to a key minted with write scope (ulu auth api-keys create --scope write).',
+      });
+    }
+
+    // Role-gated endpoints: code-based when the SDK retains the API's 403
+    // code (sdk-core >=0.17), message-matched as fallback for the platform's
+    // terse "Requires <role> role" copy (RE-PROBE-02 R16). A user-key caller
+    // cannot act on that alone — say whose job the operation is.
     const roleMatch = /^Requires (\w+) role\b/.exec(message);
+    const isRoleDenial =
+      causeCode === 'INSUFFICIENT_ROLE' || causeCode === 'ROLE_REQUIRED' || roleMatch !== null;
     return buildErrorResponse(message, {
+      ...context,
       status: 403,
-      ...(roleMatch
+      ...(isRoleDenial
         ? {
-            required_role: roleMatch[1],
+            ...(roleMatch ? { required_role: roleMatch[1] } : {}),
             suggestion:
               'This API key\'s role is below the required role. Role-gated ' +
               'operations are performed by the UluOps runtime or an operator, ' +
@@ -263,7 +349,11 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
       `Subscription required to access ${defLabel}.${tierLabel}${currentLabel}` +
       (trackedUrl !== undefined ? ` Upgrade: ${trackedUrl}` : ''),
       {
+        ...context,
         status: 402,
+        suggestion:
+          'This is a subscription-tier limit, not a permissions problem — the key and target are fine. ' +
+          "Upgrade the org's plan to access this definition.",
         ...(requiredTier !== undefined && requiredTier !== '' ? { required_tier: requiredTier } : {}),
         ...(currentTier !== undefined && currentTier !== '' ? { current_tier: currentTier } : {}),
         ...(def !== undefined ? { definition: def } : {}),
@@ -281,7 +371,7 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Resource conflict')),
       {
-        ...(statusCode !== undefined ? { status: statusCode } : {}),
+        ...context,
         ...(nextAvailable !== undefined && nextAvailable !== null ? { nextAvailable } : {}),
       },
     );
@@ -290,29 +380,29 @@ export function mapSdkErrorToMcp(error: unknown): McpToolResponse {
   if (isUnprocessableError(error)) {
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Unprocessable request')),
-      statusCode !== undefined ? { status: statusCode } : undefined,
+      context,
     );
   }
 
   if (isRegistryApiError(error)) {
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Internal server error')),
-      statusCode !== undefined ? { status: statusCode } : undefined,
+      context,
     );
   }
 
   if (error instanceof Error) {
-    return buildErrorResponse(sanitizeErrorMessage(error.message));
+    return buildErrorResponse(sanitizeErrorMessage(error.message), context);
   }
 
-  return buildErrorResponse('An unexpected error occurred');
+  return buildErrorResponse('An unexpected error occurred', context);
 }
 
 /**
  * Map a Zod validation error to an MCP tool response.
  * Shows all validation errors with field paths and expected values.
  */
-export function mapZodErrorToMcp(error: unknown): McpToolResponse {
+export function mapZodErrorToMcp(error: unknown, toolName?: string): McpToolResponse {
   let message = 'Invalid input parameters';
 
   if (error instanceof Error && 'issues' in error) {
@@ -324,5 +414,10 @@ export function mapZodErrorToMcp(error: unknown): McpToolResponse {
     message = `Validation failed (${String(count)} error${count > 1 ? 's' : ''}): ${details}`;
   }
 
-  return buildErrorResponse(message, { status: 400 });
+  return buildErrorResponse(message, {
+    status: 400,
+    error_type: 'ZodValidationError',
+    ...(toolName != null ? { tool: toolName } : {}),
+    suggestion: 'Check parameter types and required fields against the tool schema.',
+  });
 }

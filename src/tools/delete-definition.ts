@@ -25,6 +25,6 @@ export function registerDeleteDefinitionTool(
     DeleteDefinitionInputSchema.shape,
     createToolHandler(DeleteDefinitionInputSchema, (n) =>
       registryClient.definitions.delete(n.type, n.name, n.version)
-    )
+    , { toolName: 'delete_definition' })
   );
 }

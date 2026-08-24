@@ -25,6 +25,6 @@ export function registerGetForkLineageTool(
     GetForkLineageInputSchema.shape,
     createToolHandler(GetForkLineageInputSchema, (n) =>
       registryClient.forks.getAncestry(n.type, n.name, n.version)
-    )
+    , { toolName: 'get_fork_lineage' })
   );
 }

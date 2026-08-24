@@ -68,7 +68,7 @@ export function registerRenderDefinitionTool(
       model: n.model,
       renderProfile: n.renderProfile,
     })
-  );
+  , { toolName: 'render_definition' });
 
   server.tool(
     'render_definition',

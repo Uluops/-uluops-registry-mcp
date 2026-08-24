@@ -48,6 +48,6 @@ export function registerRecordExecutionTool(
         }
         throw error;
       }
-    })
+    }, { toolName: 'record_execution' })
   );
 }

@@ -25,6 +25,6 @@ export function registerIsForkableTool(
     IsForkableInputSchema.shape,
     createToolHandler(IsForkableInputSchema, (n) =>
       registryClient.forks.isForkable(n.type, n.name, n.version)
-    )
+    , { toolName: 'is_forkable' })
   );
 }

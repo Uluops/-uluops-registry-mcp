@@ -148,7 +148,11 @@ describe('mapSdkErrorToMcp', () => {
     const payload = parseErrorPayload(result);
     expect(payload.status).toBe(403);
     expect(payload).not.toHaveProperty('required_role');
-    expect(payload).not.toHaveProperty('suggestion');
+    // RG5 envelope parity: every error now carries the generic type-keyed
+    // suggestion (and error_type) — role-specific guidance still only on
+    // role denials, asserted in the R16 test below.
+    expect(payload.error_type).toBe('ForbiddenError');
+    expect(payload.suggestion).toContain('Access denied');
   });
 
   it('adds role guidance to role-gate 403s (R16)', () => {
@@ -157,6 +161,51 @@ describe('mapSdkErrorToMcp', () => {
     expect(payload.status).toBe(403);
     expect(payload.required_role).toBe('admin');
     expect(String(payload.suggestion)).toContain('UluOps runtime');
+  });
+
+  it('role denials branch on the API code, not only the message (RG5)', () => {
+    // sdk-core >=0.17 retains the 403 code — an INSUFFICIENT_ROLE denial gets
+    // role guidance even when the message is not the platform's terse copy.
+    const error = new ForbiddenError('Publishing is restricted for this definition.');
+    Object.assign(error as unknown as Record<string, unknown>, { code: 'INSUFFICIENT_ROLE' });
+    const payload = parseErrorPayload(mapSdkErrorToMcp(error));
+    expect(payload.status).toBe(403);
+    expect(payload.code).toBe('INSUFFICIENT_ROLE');
+    expect(String(payload.suggestion)).toContain('UluOps runtime');
+  });
+
+  it('INSUFFICIENT_SCOPE 403 names the scope fix, not the id/org audit (RG5/T20)', () => {
+    const error = new ForbiddenError('This API key is read-only. Use a key with write scope.');
+    Object.assign(error as unknown as Record<string, unknown>, { code: 'INSUFFICIENT_SCOPE' });
+    const payload = parseErrorPayload(mapSdkErrorToMcp(error, 'publish_definition'));
+    expect(payload.status).toBe(403);
+    expect(payload.tool).toBe('publish_definition');
+    const suggestion = String(payload.suggestion);
+    expect(suggestion).toContain('--scope write');
+    expect(suggestion.toLowerCase()).not.toContain('verify the id');
+  });
+
+  it('envelope parity: error_type, tool, and suggestion on every branch (RG5)', () => {
+    const notFound = mapSdkErrorToMcp(new NotFoundError("Definition 'agent/nope' not found"), 'get_definition');
+    const payload = parseErrorPayload(notFound);
+    expect(payload.error_type).toBe('NotFoundError');
+    expect(payload.tool).toBe('get_definition');
+    // 404 remedy names the discovery tool for the resource (tracker T7 pattern).
+    expect(String(payload.suggestion)).toContain('list_definitions');
+
+    const generic = parseErrorPayload(mapSdkErrorToMcp(new Error('boom'), 'get_health'));
+    expect(generic.error_type).toBe('Error');
+    expect(generic.tool).toBe('get_health');
+  });
+
+  it('404 discovery keying picks the resource-specific tool (RG5)', () => {
+    const model = parseErrorPayload(mapSdkErrorToMcp(new NotFoundError("Model 'claude-9' not found")));
+    expect(String(model.suggestion)).toContain('list_models');
+    const alias = parseErrorPayload(mapSdkErrorToMcp(new NotFoundError("Alias 'opus' not found")));
+    expect(String(alias.suggestion)).toContain('list_aliases');
+    // Unrecognized resource falls back to the generic discovery remedy.
+    const other = parseErrorPayload(mapSdkErrorToMcp(new NotFoundError('Widget not found')));
+    expect(String(other.suggestion)).toContain('list or search tool');
   });
 
   it('maps ConflictError preserving message', () => {

@@ -21,6 +21,6 @@ export function registerGetEcosystemOverviewTool(
     GetEcosystemOverviewInputSchema.shape,
     createToolHandler(GetEcosystemOverviewInputSchema, () =>
       registryClient.analytics.getEcosystemOverview()
-    )
+    , { toolName: 'get_ecosystem_overview' })
   );
 }

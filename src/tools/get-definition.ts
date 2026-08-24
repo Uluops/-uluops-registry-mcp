@@ -34,6 +34,6 @@ export function registerGetDefinitionTool(
       if (n.includeRefs !== undefined) options.includeRefs = n.includeRefs;
       if (n.normalize !== undefined) options.normalize = n.normalize;
       return registryClient.definitions.get(n.type, n.name, n.version, options);
-    })
+    }, { toolName: 'get_definition' })
   );
 }

@@ -25,6 +25,6 @@ export function registerGetDependentsTool(
     GetDependentsInputSchema.shape,
     createToolHandler(GetDependentsInputSchema, (n) =>
       registryClient.dependencies.getDependents(n.type, n.name, n.version)
-    )
+    , { toolName: 'get_dependents' })
   );
 }

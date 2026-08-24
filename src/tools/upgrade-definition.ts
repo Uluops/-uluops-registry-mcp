@@ -34,6 +34,7 @@ export function registerUpgradeDefinitionTool(
     createToolHandler(UpgradeDefinitionInputSchema, (n) =>
       registryClient.translation.upgradeDefinition(n.type, n.name, { yaml: n.yaml }),
       {
+        toolName: 'upgrade_definition',
         preProcess: (input) => resolveYamlInput(input, { required: true }),
       }
     )

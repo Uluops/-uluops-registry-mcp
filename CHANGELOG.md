@@ -2,6 +2,32 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-23
+
+### Added — MCP tool-sweep error-module batch (RG5, T3)
+
+- **Structured error envelope, at parity with the tracker MCP** (RG5): every
+  error response now carries `error_type`, `tool` (threaded through all 44
+  tools), the API's cause `code` when present, and a `suggestion`. The
+  registry's messages were already the better-written half of the product —
+  the guidance lived in prose ("Deprecate it first."); now it is also
+  structured, so an agent working across both servers can branch on one
+  contract. 404 remedies are resource-keyed and name the discovery tool
+  (definition → `list_definitions`/`search_definitions`, model →
+  `list_models`, alias → `list_aliases`, …) — the tracker's T7 pattern.
+- **Cause-keyed 403s**: `INSUFFICIENT_SCOPE` (read key attempting a write —
+  names the write-scope fix) and code-based role denials
+  (`INSUFFICIENT_ROLE`/`ROLE_REQUIRED`, with the "Requires <role> role"
+  message-match retained as fallback). The 402 branch gains a suggestion
+  naming it a tier limit, not a permissions problem.
+- **Protocol-layer validation errors are readable** (T3, via
+  `mcp-secure-server` 0.0.20-security): a tools/call with missing/mistyped
+  arguments returns `Invalid arguments for tool get_model — provider:
+  Required; model_id: Required. Fix the named field(s) and retry` instead of
+  the MCP SDK's raw Zod dump. Proven end-to-end over stdio.
+- Zod-layer errors (`mapZodErrorToMcp`) carry `error_type`, `tool`, and a
+  suggestion. 401 guidance names the key-management page.
+
 ## [0.6.0] - 2026-08-23
 
 MCP tool-sweep batch 3 (mechanical tail). Pairs with registry API ≥0.55.0 and

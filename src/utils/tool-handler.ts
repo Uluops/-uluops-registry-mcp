@@ -97,6 +97,8 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
     normalized: NormalizedInput
   ) => Promise<unknown>,
   options?: {
+    /** Tool name for error context (RG5). Included in error envelopes so MCP clients can attribute failures. */
+    toolName?: string;
     /** Transform parsed input before normalization. Must be synchronous (MCP SDK constraint). Return McpToolResponse to short-circuit. */
     preProcess?: (input: TInput) => TInput | McpToolResponse;
     /** Transform SDK result before wrapping in success response. Use to trim large fields. */
@@ -177,9 +179,9 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
       );
 
       if (error instanceof z.ZodError) {
-        return mapZodErrorToMcp(error);
+        return mapZodErrorToMcp(error, options?.toolName);
       }
-      return mapSdkErrorToMcp(error);
+      return mapSdkErrorToMcp(error, options?.toolName);
     }
   };
 }

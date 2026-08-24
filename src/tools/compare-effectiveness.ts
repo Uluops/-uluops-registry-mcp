@@ -25,6 +25,6 @@ export function registerCompareEffectivenessTool(
     CompareEffectivenessInputSchema.shape,
     createToolHandler(CompareEffectivenessInputSchema, (n) =>
       registryClient.analytics.compare(n.type, n.name, n.versions)
-    )
+    , { toolName: 'compare_effectiveness' })
   );
 }

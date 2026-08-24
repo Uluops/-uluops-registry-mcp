@@ -48,6 +48,6 @@ export function registerGetLanguageTool(
           content: compactSchemaContent(language.schema.content),
         },
       };
-    })
+    }, { toolName: 'get_language' })
   );
 }

@@ -28,6 +28,6 @@ export function registerDiffVersionsTool(
     DiffVersionsInputSchema.shape,
     createToolHandler(DiffVersionsInputSchema, (n) =>
       registryClient.versions.diff(n.type, n.name, n.from, n.to, { full: n.full, format: n.format })
-    )
+    , { toolName: 'diff_versions' })
   );
 }

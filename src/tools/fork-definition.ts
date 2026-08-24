@@ -30,6 +30,6 @@ export function registerForkDefinitionTool(
         name: n.newName,
         ...(n.description !== undefined && { description: n.description }),
       })
-    )
+    , { toolName: 'fork_definition' })
   );
 }

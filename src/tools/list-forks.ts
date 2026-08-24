@@ -25,6 +25,6 @@ export function registerListForksTool(
     ListForksInputSchema.shape,
     createToolHandler(ListForksInputSchema, (n) =>
       registryClient.forks.list(n.type, n.name, n.version)
-    )
+    , { toolName: 'list_forks' })
   );
 }

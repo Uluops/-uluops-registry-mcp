@@ -19,6 +19,6 @@ export function registerListLanguagesTool(
     'list_languages',
     'List all definition languages (ADL, CDL, WDL, PDL) with current schema version info.',
     ListLanguagesInputSchema.shape,
-    createToolHandler(ListLanguagesInputSchema, () => registryClient.languages.list())
+    createToolHandler(ListLanguagesInputSchema, () => registryClient.languages.list(), { toolName: 'list_languages' })
   );
 }

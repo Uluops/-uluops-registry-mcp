@@ -29,6 +29,6 @@ export function registerGetExecutionStatsTool(
     GetExecutionStatsInputSchema.shape,
     createToolHandler(GetExecutionStatsInputSchema, (n) =>
       registryClient.executions.getStats(n.type, n.name, n.version, n.window === undefined ? undefined : n.window * 24 * 60)
-    )
+    , { toolName: 'get_execution_stats' })
   );
 }

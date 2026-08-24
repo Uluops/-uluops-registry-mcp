@@ -21,6 +21,6 @@ export function registerBatchUsersTool(
     'batch_users',
     'Batch lookup of public user profiles by IDs (max 100).',
     BatchUsersInputSchema.shape,
-    createToolHandler(BatchUsersInputSchema, (n) => registryClient.users.batch(n.ids))
+    createToolHandler(BatchUsersInputSchema, (n) => registryClient.users.batch(n.ids), { toolName: 'batch_users' })
   );
 }

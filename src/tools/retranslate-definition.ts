@@ -28,6 +28,6 @@ export function registerRetranslateDefinitionTool(
       const options: Record<string, unknown> = {};
       if (n.force !== undefined) options.createNewVersion = n.force;
       return registryClient.translation.retranslate(n.type, n.name, n.version, options);
-    })
+    }, { toolName: 'retranslate_definition' })
   );
 }

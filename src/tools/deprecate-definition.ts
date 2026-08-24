@@ -31,7 +31,7 @@ export function registerDeprecateDefinitionTool(
         reason: n.reason,
         ...(n.successor !== undefined && { successor: n.successor }),
       }),
-      { postProcess: trimDefinitionResponse }
+      { toolName: 'deprecate_definition', postProcess: trimDefinitionResponse }
     )
   );
 }

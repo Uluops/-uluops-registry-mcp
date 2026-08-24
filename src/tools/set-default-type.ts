@@ -28,7 +28,7 @@ export function registerSetDefaultTypeTool(server: McpServerToolRegistration): v
         return Promise.resolve(createSuccessResponse(getSessionState()));
       } catch (error) {
         if (error instanceof z.ZodError) {
-          return Promise.resolve(mapZodErrorToMcp(error));
+          return Promise.resolve(mapZodErrorToMcp(error, 'set_default_type'));
         }
         throw error;
       }

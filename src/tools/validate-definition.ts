@@ -33,6 +33,7 @@ export function registerValidateDefinitionTool(
     createToolHandler(ValidateDefinitionInputSchema, (n) =>
       registryClient.validation.validate(n.type, n.yaml),
       {
+        toolName: 'validate_definition',
         preProcess: (input) => resolveYamlInput(input, { required: true }),
       }
     )

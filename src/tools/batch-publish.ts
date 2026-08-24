@@ -70,9 +70,9 @@ export function registerBatchPublishTool(
         });
       } catch (error) {
         if (error instanceof z.ZodError) {
-          return mapZodErrorToMcp(error);
+          return mapZodErrorToMcp(error, 'batch_publish');
         }
-        return mapSdkErrorToMcp(error);
+        return mapSdkErrorToMcp(error, 'batch_publish');
       }
     }
   );

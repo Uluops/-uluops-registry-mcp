@@ -29,6 +29,6 @@ export function registerListVersionsTool(
         ...(n.limit !== undefined && { limit: n.limit }),
         ...(n.offset !== undefined && { offset: n.offset }),
       })
-    )
+    , { toolName: 'list_versions' })
   );
 }

@@ -25,6 +25,6 @@ export function registerGetEffectivenessTool(
     GetEffectivenessInputSchema.shape,
     createToolHandler(GetEffectivenessInputSchema, (n) =>
       registryClient.analytics.getEffectiveness(n.type, n.name, n.version)
-    )
+    , { toolName: 'get_effectiveness' })
   );
 }

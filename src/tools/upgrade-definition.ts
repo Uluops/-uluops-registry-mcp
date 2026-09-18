@@ -29,7 +29,7 @@ export function registerUpgradeDefinitionTool(
 ): void {
   server.tool(
     'upgrade_definition',
-    'Upgrade a definition from legacy format to the current schema version.',
+    'Upgrade a legacy definition without storage/translation metadata to a new major version. Current-format or already translated definitions refuse; use publish or retranslate as appropriate. If response validation fails after a write, read the definition and versions before retrying.',
     UpgradeDefinitionInputSchema.shape,
     createToolHandler(UpgradeDefinitionInputSchema, (n) =>
       registryClient.translation.upgradeDefinition(n.type, n.name, { yaml: n.yaml }),

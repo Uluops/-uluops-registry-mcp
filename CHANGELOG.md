@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.1] - 2026-09-18
+
+- Use registry-sdk 0.53.1; preserve upgrade refusal and uncertain-write diagnostics (F08). Refresh vulnerable runtime dependencies.
+
 ## [Unreleased]
 
 ## [0.8.0] - 2026-08-24

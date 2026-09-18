@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-09-18
+
+### Fixed
+
+- **`get_evolution` no longer fails on a `volatile` trend.** `@uluops/registry-sdk` 0.52.0 →
+  0.53.0: the SDK's `trend` enum lacked `volatile` (analytics 0.11.0 classifies the trend
+  from the slope confidence interval and emits it when the interval spans both dead-zone
+  edges), so the tool answered with a ZodError for any such definition. registry-api
+  currently maps the value to `stable` on the wire with a `trendNote`; once that mapping is
+  removed (tracker `b1be69f3`) this tool reports `volatile` directly, and its description
+  now lists all five values. `get_effectiveness` gains `effectiveness.declinedRate` (wontfix
+  share) and `compositionLift.statistics.estimand` / `degreesOfFreedom`, and its
+  `falsePositiveRate` / `resolutionRate` may be `null` when no issue is mature — they were
+  `0` before only because the SDK refused null (tracker `a6adcb00`).
+
 ## [0.8.0] - 2026-08-24
 
 ### Changed — MCP tool-sweep non-breaking batch (RG10, RG11, RG15)

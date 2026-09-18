@@ -20,7 +20,7 @@ export function registerGetEvolutionTool(
 ): void {
   server.tool(
     'get_evolution',
-    'Get version-over-version metrics timeline with trend detection (improving/declining/stable) and confidence level.',
+    'Get version-over-version metrics timeline with trend detection (improving/declining/stable/volatile/insufficient_data — read off the slope confidence interval; volatile = the interval spans both dead-zone edges, no direction supported) and confidence level.',
     GetEvolutionInputSchema.shape,
     createToolHandler(GetEvolutionInputSchema, (n) =>
       registryClient.analytics.getEvolution(n.type, n.name)

@@ -250,6 +250,27 @@ export function mapSdkErrorToMcp(error: unknown, toolName?: string): McpToolResp
     ...(suggestion != null ? { suggestion } : {}),
   };
 
+  if (toolName === 'upgrade_definition') {
+    const details = (error as { details?: Record<string, unknown> }).details;
+    if (causeCode === 'RESPONSE_VALIDATION') {
+      return buildErrorResponse('Upgrade response did not match the expected contract.', {
+        ...context,
+        applicationState: 'unknown',
+        suggestion: 'Read the definition and list its versions to verify whether the upgrade committed before retrying.',
+        fieldErrors: Array.isArray(details?.['issues'])
+          ? details['issues'].map((issue: { path?: unknown[]; message?: string }) => ({
+            path: issue.path, message: sanitizeErrorMessage(issue.message ?? 'Invalid response field'),
+          })) : [],
+      });
+    }
+    if (details?.['applicationState'] === 'not_applied') {
+      return buildErrorResponse(sanitizeErrorMessage(getErrorMessage(error, 'Upgrade refused')), {
+        ...context, applicationState: 'not_applied', reason: details['reason'],
+        suggestion: sanitizeErrorMessage(typeof details['recoveryAction'] === 'string' ? details['recoveryAction'] : 'Read the existing definition before choosing another operation.'),
+      });
+    }
+  }
+
   if (notFound) {
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Resource not found')),

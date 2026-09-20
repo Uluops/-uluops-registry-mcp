@@ -2,6 +2,29 @@ import { describe, it, expect, vi } from 'vitest';
 import { mapSdkErrorToMcp, mapZodErrorToMcp, sanitizeErrorMessage } from '../client/sdk-error-mapper.js';
 import { ZodError, ZodIssueCode } from 'zod';
 
+describe('upgrade recovery context', () => {
+  it('treats response mismatch as an uncertain write, not bad input', () => {
+    const error = Object.assign(new Error('response mismatch'), {
+      name: 'ResponseValidationError', code: 'RESPONSE_VALIDATION', statusCode: 0,
+      details: { issues: [{ path: ['previousVersion'], message: 'Required' }] },
+    });
+    const result = mapSdkErrorToMcp(error, 'upgrade_definition');
+    const data = JSON.parse(result.content[0]?.text ?? '{}');
+    expect(data).toMatchObject({ code: 'RESPONSE_VALIDATION', applicationState: 'unknown',
+      fieldErrors: [{ path: ['previousVersion'], message: 'Required' }] });
+    expect(data.suggestion).toContain('before retrying');
+  });
+
+  it('preserves a known pre-write refusal', () => {
+    const error = Object.assign(new Error('already translated'), {
+      code: 'CONFLICT', statusCode: 409,
+      details: { applicationState: 'not_applied', reason: 'ALREADY_TRANSLATED', recoveryAction: 'Use retranslate.' },
+    });
+    const data = JSON.parse(mapSdkErrorToMcp(error, 'upgrade_definition').content[0]?.text ?? '{}');
+    expect(data).toMatchObject({ applicationState: 'not_applied', reason: 'ALREADY_TRANSLATED', suggestion: 'Use retranslate.' });
+  });
+});
+
 // Mock the registry-sdk error type guards and classes
 vi.mock('@uluops/registry-sdk/errors', () => {
   class RegistryApiError extends Error {

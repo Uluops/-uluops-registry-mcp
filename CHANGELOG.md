@@ -2,9 +2,11 @@
 
 ## [Unreleased]
 
-## [0.8.1] - 2026-09-19
+## [0.8.1] - 2026-09-20
 
 ### Fixed
+
+- Preserve structured upgrade refusals (`applicationState: not_applied`, reason and recovery guidance). Distinguish a malformed response after an upgrade (`applicationState: unknown`) and direct callers to read the definition and versions before retrying.
 
 - **`get_evolution` no longer fails on a `volatile` trend.** `@uluops/registry-sdk` 0.52.0 →
   0.54.0 (0.53.0 was folded into it unpublished; `@uluops/sdk-core` 0.17.0 → 0.18.0 in the same
@@ -18,6 +20,11 @@
   share) and `compositionLift.statistics.estimand` / `degreesOfFreedom`, and its
   `falsePositiveRate` / `resolutionRate` may be `null` when no issue is mature — they were
   `0` before only because the SDK refused null (tracker `a6adcb00`).
+
+### Changed
+
+- Pin `@uluops/registry-sdk` 0.54.0, `@uluops/sdk-core` 0.18.0, and `mcp-secure-server` 0.0.22-security. Preserve API-specific error codes and details through the SDK and improve nested protocol validation diagnostics.
+- Require Node.js 20.3 or newer to match the SDK dependency; refresh runtime security overrides.
 
 ## [0.8.0] - 2026-08-24
 

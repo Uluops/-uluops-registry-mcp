@@ -1,10 +1,17 @@
 # Changelog
 
-## [0.8.1] - 2026-09-18
-
-- Use registry-sdk 0.53.1; preserve upgrade refusal and uncertain-write diagnostics (F08). Refresh vulnerable runtime dependencies.
-
 ## [Unreleased]
+
+## [0.8.1] - 2026-09-20
+
+### Fixed
+
+- Preserve structured upgrade refusals (`applicationState: not_applied`, reason and recovery guidance). Distinguish a malformed response after an upgrade (`applicationState: unknown`) and direct callers to read the definition and versions before retrying.
+
+### Changed
+
+- Pin `@uluops/registry-sdk` 0.54.0, `@uluops/sdk-core` 0.18.0, and `mcp-secure-server` 0.0.22-security. Preserve API-specific error codes and details through the SDK and improve nested protocol validation diagnostics.
+- Require Node.js 20.3 or newer to match the SDK dependency; refresh runtime security overrides.
 
 ## [0.8.0] - 2026-08-24
 

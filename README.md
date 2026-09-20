@@ -148,6 +148,11 @@ compare_effectiveness({ type: "agent", name: "code-validator", versions: ["1.0.0
 | `upgrade_definition` | Upgrade a definition from legacy format (accepts `yaml` or `file_path`) |
 | `get_translator_version` | Get current translator version |
 
+`upgrade_definition` applies to legacy definitions without storage/translation metadata and creates a new major version. Current-format drafts and already translated definitions return a structured refusal with `applicationState: not_applied`, a reason, and recovery guidance. Use publish or retranslate when indicated.
+
+If an upgrade response fails validation, the result carries `applicationState: unknown`: the write may already have committed. Read the definition and list its versions before retrying. Successful responses preserve the previous version and translated artifact metadata. These upgrade semantics require Registry API 0.59.4 or newer.
+
+
 ### Models & languages (P2)
 | Tool | Description |
 |------|-------------|
@@ -225,14 +230,14 @@ git clone git@github.com:Uluops/-uluops-registry-mcp.git
 cd -uluops-registry-mcp
 npm install
 npm run build
-npm test            # 354 tests
+npm test
 npm run typecheck
 npm run lint
 ```
 
 ## Requirements
 
-- **Node.js:** ≥ 18
+- **Node.js:** ≥ 20.3
 - **Platform:** Linux, macOS, or WSL2
 - **Auth:** UluOps API key ([get one here](https://app.uluops.ai/settings/api-keys))
 

@@ -7,7 +7,9 @@
 ### Fixed
 
 - **`get_evolution` no longer fails on a `volatile` trend.** `@uluops/registry-sdk` 0.52.0 →
-  0.53.0: the SDK's `trend` enum lacked `volatile` (analytics 0.11.0 classifies the trend
+  0.54.0 (0.53.0 was folded into it unpublished; `@uluops/sdk-core` 0.17.0 → 0.18.0 in the same
+  change, as the SDK pins it — one `SdkApiError` identity in the process): the SDK's `trend`
+  enum lacked `volatile` (analytics 0.11.0 classifies the trend
   from the slope confidence interval and emits it when the interval spans both dead-zone
   edges), so the tool answered with a ZodError for any such definition. registry-api
   currently maps the value to `stable` on the wire with a `trendNote`; once that mapping is

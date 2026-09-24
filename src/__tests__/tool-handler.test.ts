@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
 import { createToolHandler, extractFieldsParam, filterResponseFields , collectFieldUniverse } from '../utils/tool-handler.js';
 import { setDefaultType } from '../utils/session-state.js';
+import { toolRegistry } from '../config/tool-registry.js';
 
 describe('createToolHandler', () => {
   beforeEach(() => {
@@ -189,6 +190,49 @@ describe('createToolHandler', () => {
       expect(parsed).toEqual({ name: 'test', yaml: '[trimmed]' });
       expect(parsed).not.toHaveProperty('version');
     });
+  });
+});
+
+/**
+ * Tracker 14baaacc (2026-09-24): `fields` was validated against the RESPONSE after the SDK call,
+ * so an unknown field name on a write tool returned an error for a write that had already
+ * committed — retranslate_definition(kintsugi-explorer) wrote the new runtime_md and reported
+ * failure. A caller that retries a non-idempotent write on that error applies it twice.
+ * Reads keep the RG1 rejection: nothing happened, so rejecting is safe and informative.
+ */
+describe('fields parameter on write tools: a completed write is never reported as an error', () => {
+  const schema = z.object({ definition_type: z.string() });
+  const writeTools = toolRegistry.filter((t) => t.sideEffects === 'write').map((t) => t.name);
+
+  it('the write-tool census is non-empty (the invariant can fail)', () => {
+    expect(writeTools.length).toBeGreaterThan(0);
+  });
+
+  it.each(writeTools)('%s: unknown field -> write ran once, response not an error, unknown names warned', async (toolName) => {
+    const sdkCall = vi.fn().mockResolvedValue({ name: 'x', version: '1.0.0', changed: true });
+    const handler = createToolHandler(schema, sdkCall, { toolName });
+    const result = await handler({ definition_type: 'agent', fields: ['name', 'promptHash'] });
+    expect(sdkCall).toHaveBeenCalledTimes(1);
+    expect(result.isError).toBeUndefined();
+    expect(JSON.parse(result.content[0].text)).toEqual({ name: 'x' });
+    expect(result.content[1]?.text ?? '').toContain('promptHash');
+  });
+
+  it('write tool with ONLY unknown fields returns the full result, not an empty object', async () => {
+    const sdkCall = vi.fn().mockResolvedValue({ name: 'x', changed: true });
+    const handler = createToolHandler(schema, sdkCall, { toolName: 'retranslate_definition' });
+    const result = await handler({ definition_type: 'agent', fields: ['promptHash'] });
+    expect(result.isError).toBeUndefined();
+    expect(JSON.parse(result.content[0].text)).toEqual({ name: 'x', changed: true });
+    expect(result.content[1]?.text ?? '').toContain('promptHash');
+  });
+
+  it('read tool with an unknown field is still rejected (RG1 unchanged)', async () => {
+    const sdkCall = vi.fn().mockResolvedValue({ name: 'x' });
+    const handler = createToolHandler(schema, sdkCall, { toolName: 'get_definition' });
+    const result = await handler({ definition_type: 'agent', fields: ['promptHash'] });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Unknown field(s)');
   });
 });
 

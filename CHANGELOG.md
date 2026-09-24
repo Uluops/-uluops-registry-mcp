@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-09-24
+
+### Fixed
+
+- **An unknown name in `fields` no longer reports a completed write as failed** (tracker
+  `14baaacc`). The RG1 check (0.8.0) validates `fields` against the *response*, so it runs after
+  the SDK call — for a write tool the mutation had already committed when the error came back.
+  Observed 2026-09-24: `retranslate_definition` with `fields: [..., "promptHash"]` rewrote the
+  stored `runtime_md` and returned "Unknown field(s) in 'fields'"; the retry then correctly said
+  `changed: false`, which read as "nothing happened". A caller retrying a non-idempotent write
+  (`create_definition`, `publish_definition`) on that error would apply it twice.
+  - **Behaviour change, write tools only** (the 12 the security tool registry declares
+    `sideEffects: 'write'`): an unknown field returns a success response — the known fields
+    projected (the full result when none are known) in `content[0]`, and a `warning` naming the
+    unknown fields and the valid set in `content[1]`. `content[0]` keeps its meaning, so clients
+    that parse the first content item are unaffected.
+  - **Read tools unchanged:** unknown fields are still rejected with the valid set listed —
+    nothing happened, so rejecting is safe, and RG1's reason (silently dropped fields returned
+    rows with no identity) still holds.
+  - The test derives the write set from `toolRegistry` rather than listing names, so a new write
+    tool is covered by construction; it failed for all 12 against 0.8.1.
+
 ## [0.8.1] - 2026-09-20
 
 ### Fixed

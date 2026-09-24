@@ -10,6 +10,7 @@ import { mapSdkErrorToMcp, mapZodErrorToMcp, sanitizeErrorMessage } from '../cli
 import { normalizeKeys } from './normalize-keys.js';
 import { createSuccessResponse, createErrorResponse, type McpToolResponse } from '../types/index.js';
 import { getDefaultType } from './session-state.js';
+import { toolRegistry } from '../config/tool-registry.js';
 
 /**
  * Coerce string values to numbers for fields that the Zod schema expects as numeric.
@@ -58,6 +59,12 @@ function isMcpToolResponse(value: unknown): value is McpToolResponse {
     'content' in value &&
     Array.isArray((value as McpToolResponse).content)
   );
+}
+
+/** True when the security tool registry declares this tool as mutating (sideEffects: 'write'). */
+function isWriteTool(toolName: string | undefined): boolean {
+  if (toolName === undefined) return false;
+  return toolRegistry.some((t) => t.name === toolName && t.sideEffects === 'write');
 }
 
 /**
@@ -156,10 +163,27 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
         const universe = collectFieldUniverse(result);
         const unknown = fields.filter((f) => !universe.has(f));
         if (unknown.length > 0) {
-          return createErrorResponse(
+          const message =
             `Unknown field(s) in 'fields': ${unknown.join(', ')}. ` +
-            `Valid fields for this response: ${[...universe].sort().join(', ')}.`,
-          );
+            `Valid fields for this response: ${[...universe].sort().join(', ')}.`;
+          // Tracker 14baaacc: this check runs AFTER sdkCall. For a read, rejecting is safe
+          // (nothing happened). For a WRITE the mutation has already committed, so an error
+          // here would report a completed write as failed — and a caller retrying a
+          // non-idempotent write (create, publish) would apply it twice. Writes succeed:
+          // project the known fields (the full result if none are known) and warn.
+          if (isWriteTool(options?.toolName)) {
+            const known = fields.filter((f) => universe.has(f));
+            const projected = known.length > 0 ? filterResponseFields(result, known) : result;
+            const response = createSuccessResponse(projected);
+            response.content.push({
+              type: 'text',
+              text: JSON.stringify({
+                warning: `${message} The write completed; ${known.length > 0 ? 'the known fields are shown' : 'the full result is shown'}.`,
+              }),
+            });
+            return response;
+          }
+          return createErrorResponse(message);
         }
         result = filterResponseFields(result, fields);
       }

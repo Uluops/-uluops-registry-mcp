@@ -8,7 +8,7 @@
     },
     "create_definition": {
       "level": "STORAGE",
-      "relaxedFields": ["yaml", "description", "tags"],
+      "relaxedFields": ["yaml"],
       "description": "Creates definitions with YAML content that may contain code patterns"
     },
     "update_definition": {
@@ -23,7 +23,7 @@
     },
     "upgrade_definition": {
       "level": "STORAGE",
-      "relaxedFields": ["yaml", "source_format"],
+      "relaxedFields": ["yaml"],
       "description": "Upgrades legacy YAML format - may contain code patterns"
     },
     "deprecate_definition": {
@@ -48,7 +48,7 @@
     },
     "record_execution": {
       "level": "STORAGE",
-      "relaxedFields": ["idempotency_key"],
+      "relaxedFields": [],
       "description": "Records execution with idempotency key"
     },
     "get_user": {

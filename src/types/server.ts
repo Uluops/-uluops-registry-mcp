@@ -7,23 +7,21 @@ import type { McpToolResponse } from './mcp.js';
 
 export type ToolHandler = (args: unknown) => Promise<McpToolResponse>;
 
-export interface ResourceContent {
-  uri: string;
-  mimeType?: string;
-  text?: string;
-  blob?: string;
-}
+/** Exactly one of text or blob — the SDK's ReadResourceResult content union (typed since mcp-secure-server 0.0.24). */
+export type ResourceContent =
+  | { uri: string; mimeType?: string; text: string }
+  | { uri: string; mimeType?: string; blob: string };
 
-export interface ResourceResponse {
+export type ResourceResponse = {
   contents: ResourceContent[];
-}
+};
 
 export type ResourceHandler = () => Promise<ResourceResponse>;
 
-export interface ResourceMetadata {
+export type ResourceMetadata = {
   description?: string;
   mimeType?: string;
-}
+};
 
 export interface McpServerToolRegistration {
   tool: (name: string, description: string, schema: ZodRawShape, handler: ToolHandler) => void;

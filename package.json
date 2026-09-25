@@ -1,7 +1,7 @@
 {
   "name": "@uluops/registry-mcp",
-  "version": "0.8.2",
-  "description": "MCP server for the UluOps Registry API — definition management, versioning, and analytics",
+  "version": "0.8.3",
+  "description": "MCP server for the UluOps Registry API \u2014 definition management, versioning, and analytics",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -62,7 +62,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "@uluops/registry-sdk": "0.54.0",
+    "@uluops/registry-sdk": "0.54.1",
     "@uluops/sdk-core": "0.18.0",
     "mcp-secure-server": "0.0.25-security",
     "zod": "3.25.76"

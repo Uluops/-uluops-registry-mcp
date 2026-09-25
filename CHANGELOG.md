@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-09-24
+
+### Changed
+
+- Add opt-in `nullable-v1` comparison/diff quality contracts with capability negotiation, nullable agent gate rates and explicit run-weighted fraction/denominator metadata. Omitted selection preserves the legacy contract.
+
+
 ## [0.8.2] - 2026-09-24
 
 ### Fixed

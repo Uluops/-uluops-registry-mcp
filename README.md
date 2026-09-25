@@ -244,3 +244,7 @@ npm run lint
 ## License
 
 MIT
+
+## Quality metric contracts (F04)
+
+`compare_effectiveness` and `get_diff_impact` accept optional `quality_contract: "nullable-v1"`. Select it to preserve absent gate rates/deltas as null with run-weighted basis, gate denominator, and fraction units. Agent gate rates are null. Omission keeps legacy behavior. Requires the F04-capable Registry SDK and producer capability; unsupported selection returns `UNSUPPORTED_CONTRACT` instead of legacy numbers. Release the tolerant SDK and producer before enabling this option.

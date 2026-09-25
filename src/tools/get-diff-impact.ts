@@ -12,6 +12,7 @@ import { createToolHandler } from '../utils/tool-handler.js';
 export const GetDiffImpactInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
+  quality_contract: z.literal('nullable-v1').optional().describe('Preserve absent gate rates and deltas as null; requires advertised server support'),
   // RG14: diff_versions uses from/to; this tool used from_version/to_version —
   // same concept, adjacent tools, a coin-flip for callers. Both spellings are
   // accepted here; from/to win when both are present (they match the sibling).
@@ -30,10 +31,10 @@ export function registerGetDiffImpactTool(
 ): void {
   server.tool(
     'get_diff_impact',
-    'Get structural diff combined with metric deltas between two definition versions. Accepts from/to (matching diff_versions) or from_version/to_version. Deltas are observational, not causal — caveats are always included.',
+    'Get structural diff combined with metric deltas between two definition versions. Accepts from/to (matching diff_versions) or from_version/to_version. Deltas are observational, not causal — caveats are always included. Select quality_contract=nullable-v1 for null absent gate rates and deltas, with explicit denominator and fraction units.',
     (GetDiffImpactInputSchema as unknown as { innerType: () => z.ZodObject<z.ZodRawShape> }).innerType().shape,
     createToolHandler(GetDiffImpactInputSchema, (n) =>
-      registryClient.analytics.getDiffImpact(n.type, n.name, n.from ?? n.fromVersion, n.to ?? n.toVersion)
+      registryClient.analytics.getDiffImpact(n.type, n.name, n.from ?? n.fromVersion, n.to ?? n.toVersion, n.qualityContract === 'nullable-v1' ? { qualityContract: n.qualityContract } : undefined)
     , { toolName: 'get_diff_impact' })
   );
 }

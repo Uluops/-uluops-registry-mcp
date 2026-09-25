@@ -205,7 +205,7 @@ read_resource("registry://definition-types")
 
 ## Rate limiting
 
-This server uses [mcp-secure-server](https://github.com/aself101/mcp-secure-server) with configuration tuned for typical harness usage patterns. Source of truth: `src/index.ts` (global) and `src/config/tool-registry.ts` (per-tool).
+This server uses [mcp-secure-server](https://github.com/aself101/mcp-secure-server) with configuration tuned for typical harness usage patterns. Source of truth: `src/index.ts` (global), `src/config/limits.ts` (the shared envelope), `src/config/tool-registry.ts` (per-tool caps and quotas), and `tool-policies.json` (per-tool security level and relaxed fields — loaded explicitly since 0.8.2; `yaml` is not pattern-scanned at this layer, the registry API scans definitions at publish).
 
 | Setting | Value | Notes |
 |---------|-------|-------|
@@ -219,7 +219,7 @@ This server uses [mcp-secure-server](https://github.com/aself101/mcp-secure-serv
 | Burst window | 5000 ms | |
 | Automation detection | Disabled | The calling harness is trusted automation |
 
-The four size settings are stacked ceilings — a rejection names whichever fires first, so they are kept aligned at the envelope; the per-tool `maxArgsSize` in `tool-registry.ts` is the tool-scoped gate beneath them.
+The four size settings are stacked ceilings — a rejection names whichever fires first, so they share one value, `ENVELOPE_BYTES`; the per-tool `maxArgsSize` in `tool-registry.ts` is the tool-scoped gate beneath them (never above; exactly at it for the YAML tools). Each tool's `maxEgressBytes` is kept ≥ 16 × its `maxArgsSize`, because mcp-secure-server checks egress at request time as argument bytes × 16.
 
 Per-tool quotas are configured in `src/config/tool-registry.ts`. Read-heavy tools (list, get, search) allow up to 240 req/min. Write tools (create, update, publish) are 30–60 req/min.
 

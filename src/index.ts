@@ -8,14 +8,25 @@
 
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { SecureMcpServer } from 'mcp-secure-server';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { RegistryClient } from '@uluops/registry-sdk';
 
 import { loadConfig, validateConfig, VERSION } from './config/index.js';
 import { toolRegistry } from './config/tool-registry.js';
+import { ENVELOPE_BYTES } from './config/limits.js';
 import { registerAllTools } from './tools/index.js';
 import { registerAllResources } from './resources/index.js';
+import type { McpServerToolRegistration, McpServerResourceRegistration } from './types/index.js';
+
+// The bundled tool-policies.json (shipped in `files`). It MUST be passed explicitly:
+// mcp-secure-server's default lookup is TOOL_POLICIES_PATH -> <cwd>/tool-policies.json ->
+// ~/.config/mcp-secure-server/, and under an MCP host the cwd is the user's project, so
+// through 0.8.1 this file was never loaded and none of its relaxations were in effect.
+// Same resolution as @uluops/ops-mcp.
+const require = createRequire(import.meta.url);
+const TOOL_POLICIES_PATH = require.resolve('../tool-policies.json');
 import { createLogger } from './utils/logger.js';
 
 async function main(): Promise<void> {
@@ -60,23 +71,24 @@ async function main(): Promise<void> {
 
   const server = await SecureMcpServer.create(config.server, {
     securityLevel: 'basic',
+    toolPoliciesPath: TOOL_POLICIES_PATH,
     maxRequestsPerMinute: 120,
-    maxMessageSize: 500 * 1024,
+    maxMessageSize: ENVELOPE_BYTES,
     // Raise the per-string-parameter cap from the secure-server default (5000)
     // to the message ceiling. Definition tools (validate/create/update) carry
     // full YAML / runtime markdown in a single string field that routinely
-    // exceeds 5000 chars; the per-tool maxArgsSize already allows 500KB–1MB,
+    // exceeds 5000 chars; the yaml tools' maxArgsSize is set to this same envelope,
     // so the default string cap was the artificial bottleneck. Requires
     // mcp-secure-server >= 0.0.17, which exposes maxStringLength at create time.
-    maxStringLength: 500 * 1024,
+    maxStringLength: ENVELOPE_BYTES,
     maxParamCount: 500,
     // Raise the Layer 2 serialized-params cap (default 50000 bytes) and the
     // Layer 3 suspicious-message block (basic preset: 50000 bytes) to the
     // message ceiling — definition YAML payloads routinely exceed 50KB and
-    // the per-tool maxArgsSize already allows 500KB-1MB. Requires
+    // the yaml tools' maxArgsSize is set to this same envelope. Requires
     // mcp-secure-server >= 0.0.19-security (maxParamBytes).
-    maxParamBytes: 500 * 1024,
-    suspiciousMessageSize: 500 * 1024,
+    maxParamBytes: ENVELOPE_BYTES,
+    suspiciousMessageSize: ENVELOPE_BYTES,
 
     burstThreshold: 15,
     burstWindowMs: 5000,
@@ -102,8 +114,25 @@ async function main(): Promise<void> {
     logPerformanceMetrics: config.security.logPerformanceMetrics,
   });
 
-  registerAllTools(server, registryClient);
-  registerAllResources(server, registryClient);
+  // mcp-secure-server 0.0.24+ types SecureMcpServer's registration methods as the SDK's own
+  // overloads, which the package's narrow (name, description, shape, handler) interfaces no longer
+  // match structurally. Adapt them onto registerTool()/registerResource() — the SDK's current API
+  // (tool()/resource() are @deprecated) — in one place instead of across 41 tool files.
+  // SecureMcpServer wraps registerTool handlers for Layer 5 exactly as it did tool(). Same
+  // precedent as @uluops/ops-mcp 0.21.3.
+  const registration: McpServerToolRegistration & McpServerResourceRegistration = {
+    tool: (name, description, schema, handler) => {
+      server.registerTool(name, { description, inputSchema: schema }, handler);
+    },
+    resource: (name, uri, metadataOrHandler, handler) => {
+      const metadata = typeof metadataOrHandler === 'function' ? {} : metadataOrHandler;
+      const read = typeof metadataOrHandler === 'function' ? metadataOrHandler : handler;
+      if (read === undefined) throw new Error(`resource ${name}: no read handler`);
+      server.registerResource(name, uri, metadata, read);
+    },
+  };
+  registerAllTools(registration, registryClient);
+  registerAllResources(registration, registryClient);
 
   const shutdown = (signal: string): void => {
     logger.info(`Received ${signal}, shutting down gracefully`);

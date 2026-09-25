@@ -23,6 +23,44 @@
     rows with no identity) still holds.
   - The test derives the write set from `toolRegistry` rather than listing names, so a new write
     tool is covered by construction; it failed for all 12 against 0.8.1.
+- **The bundled `tool-policies.json` is loaded — it never was.** It shipped in `files`, but
+  `src/index.ts` never passed `toolPoliciesPath`, and mcp-secure-server's default lookup
+  (`TOOL_POLICIES_PATH` env → `<cwd>/tool-policies.json` → `~/.config/…`) cannot find it under an
+  MCP host whose cwd is the user's project. None of its relaxations were ever in effect: inline
+  YAML was pattern-scanned as content, and an 84 KB ADL was refused as "Path traversal detected"
+  because its JSON-serialized form contains `\"...\"`, where `..\` matches the traversal
+  pattern. Now passed explicitly (`require.resolve('../tool-policies.json')`, as @uluops/ops-mcp
+  does). **Behaviour change:** the file's STORAGE-level `yaml` relaxation takes effect — YAML
+  content is no longer pattern-scanned at the MCP layer (the registry API's publish-time
+  definition safety scanner covers it); non-relaxed fields are still scanned (control: `../` in
+  `create_definition.name` stays blocked). Four stale entries removed before loading
+  (`create_definition.description`/`tags`, `upgrade_definition.source_format`,
+  `record_execution.idempotency_key` — fields those tools do not accept); a new
+  `tool-policy-fields.test.ts` binds the file to the input shapes.
+- **Per-tool size caps re-derived** (`tool-registry.ts`). mcp-secure-server evaluates
+  `maxEgressBytes` at REQUEST time as `argsBytes × 16`, so every tool whose egress was below
+  16 × `maxArgsSize` had egress/16 as its real argument cap — observed: `set_default_type("workflow")`
+  refused (18 B × 16 > 256) while `"agent"` passed; `validate_definition` capped near 6.4 KB;
+  `create`/`update`/`update_and_publish` near 64 KB; `record_execution` and `delete_definition` at
+  640 B. Every egress is now ≥ 16 × `maxArgsSize`; every tool allows ≥ 1 KB (the universal
+  `fields` parameter); the five YAML tools' cap is exactly the shared 500 KB request envelope
+  (new `config/limits.ts` `ENVELOPE_BYTES`, also feeding the four stacked envelope settings), so
+  the tool gate neither binds first nor sits dead above it. `tool-registry-caps.test.ts` derives
+  the rules from the Zod shapes; it failed 29 checks against 0.8.1's registry.
+
+### Changed
+
+- **mcp-secure-server `0.0.22-security` → `0.0.25-security` (exact pin).** Brings: `maxArgsSize`
+  enforced on every tool and measured in UTF-8 bytes (0.0.23), non-object arguments refused
+  (0.0.23), registration methods typed as the SDK's own (0.0.24), call-shaped patterns anchored
+  against word suffixes (0.0.25). Registration now goes through `registerTool()` /
+  `registerResource()` (the SDK marks `tool()` / `resource()` deprecated) via one adapter in
+  `src/index.ts`; `McpToolResponse` and the resource types are `type` aliases and
+  `ResourceContent` is the SDK's text-xor-blob union (types only, no runtime change).
+- Verified over stdio against a dead registry URL, 0.8.1 vs this build:
+  `set_default_type("workflow")` and an inline 84 KB `validate_definition` now pass the security
+  layer (both refused on 0.8.1); `set_default_type` padded past 1 KB and `../` in a non-relaxed
+  `name` are still refused.
 
 ## [0.8.1] - 2026-09-20
 

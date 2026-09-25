@@ -2,15 +2,15 @@
  * MCP-specific types for tool responses
  */
 
-export interface McpTextContent {
+export type McpTextContent = {
   type: 'text';
   text: string;
-}
+};
 
-export interface McpToolResponse {
+export type McpToolResponse = {
   content: McpTextContent[];
   isError?: boolean;
-}
+};
 
 /** JSON replacer that converts BigInt to string to prevent serialization errors. */
 function safeReplacer(_key: string, value: unknown): unknown {

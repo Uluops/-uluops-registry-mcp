@@ -248,3 +248,12 @@ MIT
 ## Quality metric contracts (F04)
 
 `compare_effectiveness` and `get_diff_impact` accept optional `quality_contract: "nullable-v1"`. Select it to preserve absent gate rates/deltas as null with run-weighted basis, gate denominator, and fraction units. Agent gate rates are null. Omission keeps legacy behavior. Requires the F04-capable Registry SDK and producer capability; unsupported selection returns `UNSUPPORTED_CONTRACT` instead of legacy numbers. Release the tolerant SDK and producer before enabling this option.
+
+### Applicable unified diffs
+
+Call `diff_versions` with `format: "unified"` and `diff_contract: "combined-v1"`.
+Add `full: true` to receive exact `sourceYaml`/`targetYaml` alongside `unified`.
+An unchanged pair returns an empty patch. The SDK negotiates support and refuses
+unsupported servers without falling back. Legacy omission keeps `full=true`
+precedence (raw `fromYaml`/`toYaml`, no patch) until a future major release with
+at least 90 days notice.

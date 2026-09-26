@@ -16,6 +16,7 @@ export const DiffVersionsInputSchema = z.object({
   to: z.string().min(1),
   full: z.boolean().default(false),
   format: z.enum(['sections', 'fields', 'unified']).default('sections'),
+  diff_contract: z.literal('combined-v1').optional().describe('Opt-in applicable unified patch; requires format=unified. With full=true also returns exact sourceYaml/targetYaml.'),
 });
 
 export function registerDiffVersionsTool(
@@ -24,10 +25,10 @@ export function registerDiffVersionsTool(
 ): void {
   server.tool(
     'diff_versions',
-    'Compare two versions of a definition. Returns a section-level summary by default — note that for ADL agents everything nests under one "agent" section, so sectionsModified is always ["agent"]; prefer format="fields" for anything ADL. format="fields" gives a field-level structural diff with classification; its valueDiff entries use diff-match-patch opcodes: [0,"…"]=unchanged, [-1,"…"]=removed, [1,"…"]=added. format="unified" gives a git-style line diff. Pass full=true for raw YAML content.',
+    'Compare two versions of a definition. Returns a section-level summary by default — note that for ADL agents everything nests under one "agent" section, so sectionsModified is always ["agent"]; prefer format="fields" for anything ADL. format="fields" gives a field-level structural diff with classification; its valueDiff entries use diff-match-patch opcodes: [0,"…"]=unchanged, [-1,"…"]=removed, [1,"…"]=added. format="unified" gives a git-style line diff. Select diff_contract="combined-v1" with format="unified" for an applicable patch (empty string for no changes); full=true additionally returns exact sourceYaml/targetYaml. Without the selector, full=true returns raw fromYaml/toYaml and overrides format.',
     DiffVersionsInputSchema.shape,
     createToolHandler(DiffVersionsInputSchema, (n) =>
-      registryClient.versions.diff(n.type, n.name, n.from, n.to, { full: n.full, format: n.format })
+      registryClient.versions.diff(n.type, n.name, n.from, n.to, { full: n.full, format: n.format, ...(n.diffContract !== undefined && { diffContract: n.diffContract }) })
     , { toolName: 'diff_versions' })
   );
 }

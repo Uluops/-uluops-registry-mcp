@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-27
+
+### Changed
+
+- `render_definition` keeps the current stored-profile behavior when `render_profile` is omitted and returns an advisory recommending explicit `core`. The next major release will default omission to `core`; existing full-profile callers should pass `render_profile="uluops-full"`.
+
 ## [0.9.0] - 2026-09-26
 
 ### Added

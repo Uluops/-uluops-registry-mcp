@@ -33,9 +33,9 @@ export const RenderDefinitionInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   version: z.string().min(1).default('latest'),
-  renderProfile: z
+  render_profile: z
     .enum(['core', 'uluops-full'])
-    .describe("Render profile. 'core' (default) is a clean prompt with no UluOps-specific sections. 'uluops-full' adds the failure taxonomy reference, failure-code guidance, tracker frontmatter, and JSON output block where the agent role supports them.")
+    .describe("Render profile. Omission retains the Registry's stored profile (currently 'uluops-full'). Pass 'core' explicitly for a clean prompt with no UluOps-specific sections. Omission will select 'core' in the next major release.")
     .optional(),
   target: z
     .string()
@@ -62,13 +62,22 @@ export function registerRenderDefinitionTool(
   server: McpServerToolRegistration,
   registryClient: RegistryClient
 ): void {
-  const baseHandler = createToolHandler(RenderDefinitionInputSchema, (n) =>
-    registryClient.render.get(n.type, n.name, n.version, {
+  const baseHandler = createToolHandler(RenderDefinitionInputSchema, async (n) => {
+    const profileWasOmitted = n.renderProfile === undefined;
+    const effectiveRenderProfile = n.renderProfile ?? 'uluops-full';
+    const result = await registryClient.render.get(n.type, n.name, n.version, {
       target: n.target,
       model: n.model,
-      renderProfile: n.renderProfile,
-    })
-  , { toolName: 'render_definition' });
+      renderProfile: effectiveRenderProfile,
+    });
+    return {
+      ...result,
+      renderProfile: result.renderProfile ?? effectiveRenderProfile,
+      ...(profileWasOmitted && {
+        advisory: "Omitted render_profile used 'uluops-full'. Pass render_profile='core' for a clean prompt; omission will select core in the next major release.",
+      }),
+    };
+  }, { toolName: 'render_definition' });
 
   server.tool(
     'render_definition',
@@ -139,7 +148,7 @@ export function registerRenderDefinitionTool(
           resolvedType,
           parsed.data.name,
           parsed.data.version,
-          { target: parsed.data.target, model: parsed.data.model, renderProfile: parsed.data.renderProfile },
+          { target: parsed.data.target, model: parsed.data.model, renderProfile: parsed.data.render_profile ?? 'uluops-full' },
         );
 
         // SDK RenderResult guarantees markdown: string
@@ -157,6 +166,10 @@ export function registerRenderDefinitionTool(
           success: true,
           output_path: absPath,
           bytes: Buffer.byteLength(markdown, 'utf-8'),
+          renderProfile: result.renderProfile ?? parsed.data.render_profile ?? 'uluops-full',
+          ...(parsed.data.render_profile === undefined && {
+            advisory: "Omitted render_profile used 'uluops-full'. Pass render_profile='core' for a clean prompt; omission will select core in the next major release.",
+          }),
         });
       } catch (error) {
         if (error instanceof z.ZodError) {

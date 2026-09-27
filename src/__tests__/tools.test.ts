@@ -1548,6 +1548,7 @@ describe('Tool Registration & SDK Calls', () => {
       expect(client.render.get).toHaveBeenCalledWith('agent', 'test', '1.0.0', {
         target: undefined,
         model: undefined,
+        renderProfile: 'uluops-full',
       });
     });
 
@@ -1557,6 +1558,19 @@ describe('Tool Registration & SDK Calls', () => {
       expect(result.isError).toBeUndefined();
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.markdown).toBe('# Test');
+      expect(parsed.renderProfile).toBe('uluops-full');
+      expect(parsed.advisory).toContain("Omitted render_profile used 'uluops-full'");
+    });
+
+    it('omits the advisory when the caller selects core explicitly', async () => {
+      registerRenderDefinitionTool(server, client);
+      const result = await getHandler(server)({ type: 'agent', name: 'test', render_profile: 'core' });
+      const parsed = JSON.parse(result.content[0].text);
+      expect(client.render.get).toHaveBeenCalledWith('agent', 'test', 'latest', {
+        target: undefined, model: undefined, renderProfile: 'core',
+      });
+      expect(parsed.advisory).toBeUndefined();
+      expect(parsed.renderProfile).toBe('core');
     });
 
     it('rejects output_path that escapes base directory', async () => {
@@ -1618,6 +1632,8 @@ describe('Tool Registration & SDK Calls', () => {
         expect(parsed.success).toBe(true);
         expect(parsed.output_path).toBe('/tmp/test-output/rendered.md');
         expect(parsed.bytes).toBe(Buffer.byteLength('# Test', 'utf-8'));
+        expect(parsed.renderProfile).toBe('uluops-full');
+        expect(parsed.advisory).toContain("Omitted render_profile used 'uluops-full'");
       } finally {
         if (origBase === undefined) {
           delete process.env['OUTPUT_BASE_DIR'];

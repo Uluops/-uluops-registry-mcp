@@ -1,12 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
 ## [0.9.0] - 2026-09-26
 
 ### Added
 
 - `diff_versions.diff_contract="combined-v1"` selects applicable unified patches with exact source/target YAML when `full=true`. Updated SDK negotiates support; omitted selectors retain legacy full precedence.
-
-## [Unreleased]
 
 ## [0.8.3] - 2026-09-24
 

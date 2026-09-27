@@ -88,7 +88,7 @@ update_and_publish({ type: "agent", name: "my-agent", version: "1.1.0", yaml: ".
 // Compare versions in three different formats
 diff_versions({ type: "agent", name: "code-validator", from: "1.0.0", to: "1.1.0" })                  // section summary
 diff_versions({ type: "agent", name: "code-validator", from: "1.0.0", to: "1.1.0", format: "fields" })  // structural diff + suggested bump
-diff_versions({ type: "agent", name: "code-validator", from: "1.0.0", to: "1.1.0", format: "unified" }) // git-style diff
+diff_versions({ type: "agent", name: "code-validator", from: "1.0.0", to: "1.1.0", format: "unified", diff_contract: "combined-v1", full: true }) // patch + exact YAML
 
 // Analytics
 get_effectiveness({ type: "agent", name: "code-validator", version: "1.1.0" })
@@ -128,7 +128,7 @@ compare_effectiveness({ type: "agent", name: "code-validator", versions: ["1.0.0
 | Tool | Description |
 |------|-------------|
 | `list_versions` | List all versions of a definition |
-| `diff_versions` | Compare two versions. `format`: `sections` (default), `fields` (structural + suggested bump), `unified` (git-style) |
+| `diff_versions` | Compare two versions. `format`: `sections` (default), `fields` (structural + suggested bump), `unified`. Select `diff_contract="combined-v1"` for an applicable patch; `full=true` adds exact YAML. |
 | `get_dependencies` | Forward dependency graph |
 | `get_dependents` | Reverse dependency graph |
 | `get_execution_stats` | Execution statistics for a definition version |

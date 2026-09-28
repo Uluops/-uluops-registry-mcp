@@ -35,7 +35,7 @@ export const RenderDefinitionInputSchema = z.object({
   version: z.string().min(1).default('latest'),
   render_profile: z
     .enum(['core', 'uluops-full'])
-    .describe("Render profile. Omission retains the Registry's stored profile (currently 'uluops-full'). Pass 'core' explicitly for a clean prompt with no UluOps-specific sections. Omission will select 'core' in the next major release.")
+    .describe("Render profile. Defaults to 'uluops-full', including UluOps-specific sections. Pass 'core' explicitly to render without them.")
     .optional(),
   target: z
     .string()
@@ -63,7 +63,6 @@ export function registerRenderDefinitionTool(
   registryClient: RegistryClient
 ): void {
   const baseHandler = createToolHandler(RenderDefinitionInputSchema, async (n) => {
-    const profileWasOmitted = n.renderProfile === undefined;
     const effectiveRenderProfile = n.renderProfile ?? 'uluops-full';
     const result = await registryClient.render.get(n.type, n.name, n.version, {
       target: n.target,
@@ -73,9 +72,6 @@ export function registerRenderDefinitionTool(
     return {
       ...result,
       renderProfile: result.renderProfile ?? effectiveRenderProfile,
-      ...(profileWasOmitted && {
-        advisory: "Omitted render_profile used 'uluops-full'. Pass render_profile='core' for a clean prompt; omission will select core in the next major release.",
-      }),
     };
   }, { toolName: 'render_definition' });
 
@@ -167,9 +163,6 @@ export function registerRenderDefinitionTool(
           output_path: absPath,
           bytes: Buffer.byteLength(markdown, 'utf-8'),
           renderProfile: result.renderProfile ?? parsed.data.render_profile ?? 'uluops-full',
-          ...(parsed.data.render_profile === undefined && {
-            advisory: "Omitted render_profile used 'uluops-full'. Pass render_profile='core' for a clean prompt; omission will select core in the next major release.",
-          }),
         });
       } catch (error) {
         if (error instanceof z.ZodError) {

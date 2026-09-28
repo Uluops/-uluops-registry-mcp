@@ -1559,18 +1559,23 @@ describe('Tool Registration & SDK Calls', () => {
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.markdown).toBe('# Test');
       expect(parsed.renderProfile).toBe('uluops-full');
-      expect(parsed.advisory).toContain("Omitted render_profile used 'uluops-full'");
+      expect(parsed.advisory).toBeUndefined();
     });
 
-    it('omits the advisory when the caller selects core explicitly', async () => {
+    it.each([
+      ['core', undefined],
+      ['core', './output/explicit.md'],
+      ['uluops-full', undefined],
+      ['uluops-full', './output/explicit.md'],
+    ] as const)('preserves explicit %s with output_path=%s', async (render_profile, output_path) => {
+      (client.render.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ markdown: '# Explicit', renderProfile: render_profile });
       registerRenderDefinitionTool(server, client);
-      const result = await getHandler(server)({ type: 'agent', name: 'test', render_profile: 'core' });
-      const parsed = JSON.parse(result.content[0].text);
-      expect(client.render.get).toHaveBeenCalledWith('agent', 'test', 'latest', {
-        target: undefined, model: undefined, renderProfile: 'core',
-      });
-      expect(parsed.advisory).toBeUndefined();
-      expect(parsed.renderProfile).toBe('core');
+      const result = await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0', render_profile, output_path });
+      expect(client.render.get).toHaveBeenCalledWith('agent', 'test', '1.0.0', { target: undefined, model: undefined, renderProfile: render_profile });
+      expect(JSON.parse(result.content[0].text).renderProfile).toBe(render_profile);
+      if (output_path !== undefined) {
+        expect(mockWriteFile).toHaveBeenCalledWith(expect.stringContaining('/output/explicit.md'), '# Explicit', 'utf-8');
+      }
     });
 
     it('rejects output_path that escapes base directory', async () => {
@@ -1633,7 +1638,10 @@ describe('Tool Registration & SDK Calls', () => {
         expect(parsed.output_path).toBe('/tmp/test-output/rendered.md');
         expect(parsed.bytes).toBe(Buffer.byteLength('# Test', 'utf-8'));
         expect(parsed.renderProfile).toBe('uluops-full');
-        expect(parsed.advisory).toContain("Omitted render_profile used 'uluops-full'");
+        expect(parsed.advisory).toBeUndefined();
+        expect(client.render.get).toHaveBeenCalledWith('agent', 'test', '1.0.0', {
+          target: undefined, model: undefined, renderProfile: 'uluops-full',
+        });
       } finally {
         if (origBase === undefined) {
           delete process.env['OUTPUT_BASE_DIR'];

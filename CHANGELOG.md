@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-09-28
+
+### Changed
+
+- `render_definition` defaults to `uluops-full` for both inline and file output. Pass `render_profile="core"` explicitly to omit UluOps-specific content. The planned core-default major release is canceled; the transition advisory is removed and the input description now matches the full default.
+
 ## [0.10.0] - 2026-09-27
 
 ### Changed

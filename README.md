@@ -108,10 +108,9 @@ compare_effectiveness({ type: "agent", name: "code-validator", versions: ["1.0.0
 | `validate_definition` | Validate YAML without storing (accepts `yaml` or `file_path`) |
 | `render_definition` | Get rendered markdown for a definition. `output_path` writes directly to a file |
 
-For a portable prompt, pass `render_profile: "core"` explicitly. Until the
-next major release, omitting `render_profile` retains the Registry's stored
-profile and returns an advisory; the next major will default omission to
-`core`. Pass `render_profile: "uluops-full"` to keep the full-profile behavior.
+`render_definition` uses the `uluops-full` render profile when `render_profile` is
+omitted, including UluOps-specific content. Pass `render_profile: "core"` explicitly
+to render without that content; both inline and file-write results report the effective profile.
 
 ### Definition management (P1)
 | Tool | Description |

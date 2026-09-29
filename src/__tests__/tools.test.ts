@@ -59,6 +59,7 @@ const mockLstat = vi.fn().mockRejectedValue(new Error('ENOENT'));
 const mockAccess = vi.fn().mockRejectedValue(new Error('ENOENT'));
 
 vi.mock('node:fs/promises', () => ({
+  realpath: (path: string): Promise<string> => Promise.resolve(path),
   writeFile: (...args: unknown[]): Promise<void> => mockWriteFile(...args) as Promise<void>,
   mkdir: (...args: unknown[]): Promise<void> => mockMkdir(...args) as Promise<void>,
   lstat: (...args: unknown[]): Promise<unknown> => mockLstat(...args) as Promise<unknown>,
@@ -1574,7 +1575,7 @@ describe('Tool Registration & SDK Calls', () => {
       expect(client.render.get).toHaveBeenCalledWith('agent', 'test', '1.0.0', { target: undefined, model: undefined, renderProfile: render_profile });
       expect(JSON.parse(result.content[0].text).renderProfile).toBe(render_profile);
       if (output_path !== undefined) {
-        expect(mockWriteFile).toHaveBeenCalledWith(expect.stringContaining('/output/explicit.md'), '# Explicit', 'utf-8');
+        expect(mockWriteFile).toHaveBeenCalledWith(expect.stringContaining('/output/explicit.md'), '# Explicit', { encoding: 'utf-8', flag: 'wx' });
       }
     });
 
@@ -1631,7 +1632,7 @@ describe('Tool Registration & SDK Calls', () => {
         expect(mockWriteFile).toHaveBeenCalledWith(
           '/tmp/test-output/rendered.md',
           '# Test',
-          'utf-8'
+          { encoding: 'utf-8', flag: 'wx' }
         );
         const parsed = JSON.parse(result.content[0].text);
         expect(parsed.success).toBe(true);

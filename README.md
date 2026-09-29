@@ -112,6 +112,27 @@ compare_effectiveness({ type: "agent", name: "code-validator", versions: ["1.0.0
 omitted, including UluOps-specific content. Pass `render_profile: "core"` explicitly
 to render without that content; both inline and file-write results report the effective profile.
 
+`output_path` writes on the **MCP server host**, within `OUTPUT_BASE_DIR` (default:
+server process cwd). Relative paths resolve from that cwd, even when a different
+root is configured. The root must exist; missing directories below it are created.
+Paths outside the root, traversal escaping it, and symlinks in the file or directories
+below the root are refused. Existing files require `overwrite: true`. Remote clients
+should omit `output_path` and consume `markdown` inline.
+
+File responses retain the inline rendering metadata (`target`, `renderProfile`,
+`promptHash`, `warnings`, and any SDK metadata when supplied) alongside `success`,
+`output_path`, and UTF-8 `bytes`; `markdown` is written to disk. Warnings and optional
+metadata have the same presence and values as inline output.
+
+```jsonc
+// Inline output for remote clients
+render_definition({ type: "agent", name: "code-validator", target: "codex" })
+// Write beneath the server cwd (or use an absolute path inside OUTPUT_BASE_DIR)
+render_definition({ type: "agent", name: "code-validator", target: "codex", output_path: "output/code-validator.toml" })
+// Explicit replacement retains rendering diagnostics
+render_definition({ type: "agent", name: "code-validator", target: "codex", output_path: "output/code-validator.toml", overwrite: true })
+```
+
 ### Definition management (P1)
 | Tool | Description |
 |------|-------------|

@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- File rendering retains inline metadata and warnings alongside path/byte receipts, with the full-profile default preserved.
+- File output verifies physical containment against the configured root and uses an exclusive create when overwrite is omitted.
+
+### Changed
+
+- Document server-host output paths, `OUTPUT_BASE_DIR`/cwd resolution, symlink refusal and explicit overwrite in the tool schema and examples.
+
 ## [0.10.1] - 2026-09-28
 
 ### Changed

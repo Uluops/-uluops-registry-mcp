@@ -6,7 +6,7 @@
  */
 
 import { getDefaultType } from '../utils/session-state.js';
-import { writeFile, mkdir, lstat, access } from 'node:fs/promises';
+import { writeFile, mkdir, lstat, access, realpath } from 'node:fs/promises';
 import { dirname, resolve, relative } from 'node:path';
 import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
@@ -50,7 +50,7 @@ export const RenderDefinitionInputSchema = z.object({
   output_path: z
     .string()
     .min(1)
-    .describe('Write rendered output to this file path instead of returning it in the response. Written on the MCP server host\'s filesystem, not the caller\'s — remote callers should omit this and take the rendered output from the response.')
+    .describe('Write rendered output to this file path instead of returning it in the response. Written on the MCP server host\'s filesystem, not the caller\'s. Must stay within OUTPUT_BASE_DIR (defaults to the server process cwd); relative paths resolve from that cwd. Symlink paths are refused. Remote callers should omit this and take the rendered output from the response.')
     .optional(),
   overwrite: z
     .boolean()
@@ -77,7 +77,7 @@ export function registerRenderDefinitionTool(
 
   server.tool(
     'render_definition',
-    'Get the rendered runtime output for a definition version. Use target to render for a specific harness (opencode, codex, gemini). Use output_path to write directly to a file.',
+    'Get the rendered runtime output for a definition version. Use target to render for a specific harness (opencode, codex, gemini). Use output_path to write on the MCP server host within OUTPUT_BASE_DIR (default: server cwd); omit it for inline output. File results retain rendering metadata and warnings.',
     RenderDefinitionInputSchema.shape,
     async (args: unknown) => {
       const parsed = RenderDefinitionInputSchema.safeParse(args);
@@ -93,53 +93,57 @@ export function registerRenderDefinitionTool(
         return baseHandler(args);
       }
 
-      // Validate output_path stays within OUTPUT_BASE_DIR
-      const outputBaseDir = getOutputBaseDir();
-      const absPath = resolve(parsed.data.output_path);
-      if (!absPath.startsWith(outputBaseDir + '/') && absPath !== outputBaseDir) {
-        return createErrorResponse(
-          `output_path must resolve within ${outputBaseDir} — got ${absPath}`
-        );
-      }
-
-      // Reject symlinks in output path to prevent symlink-following writes (CWE-59)
-      const pathStat = await lstat(absPath).catch(() => null);
-      if (pathStat?.isSymbolicLink() === true) {
-        return createErrorResponse('output_path must not be a symbolic link');
-      }
-
-      // Refuse to silently overwrite an existing regular file unless the
-      // caller has opted in with overwrite: true. Default-deny matches
-      // `cp --no-clobber` semantics and prevents agent-driven hallucinated
-      // paths from destroying user work without a clear signal.
-      if (!parsed.data.overwrite) {
-        const exists = await access(absPath).then(() => true).catch(() => false);
-        if (exists) {
+      try {
+        // Validate output_path stays within OUTPUT_BASE_DIR
+        const outputBaseDir = getOutputBaseDir();
+        const absPath = resolve(parsed.data.output_path);
+        if (!absPath.startsWith(outputBaseDir + '/') && absPath !== outputBaseDir) {
           return createErrorResponse(
-            `output_path '${absPath}' already exists. Pass overwrite: true to replace it.`,
+            `output_path must resolve within ${outputBaseDir} — got ${absPath}`
           );
         }
-      }
 
-      // Verify no symlink in ancestor directories resolves outside the base dir
-      const rel = relative(outputBaseDir, absPath);
-      const segments = rel.split('/');
-      let walkPath = outputBaseDir;
-      for (const seg of segments.slice(0, -1)) {
-        walkPath = resolve(walkPath, seg);
-        const segStat = await lstat(walkPath).catch(() => null);
-        if (segStat?.isSymbolicLink() === true) {
-          return createErrorResponse('output_path contains a symbolic link in its directory path');
+        // The configured root may itself use a host alias (e.g., /tmp on macOS).
+        // Compare physical paths against that root after creating the parent.
+        const realBaseDir = await realpath(outputBaseDir);
+
+        // Reject symlinks in output path to prevent symlink-following writes (CWE-59)
+        const pathStat = await lstat(absPath).catch(() => null);
+        if (pathStat?.isSymbolicLink() === true) {
+          return createErrorResponse('output_path must not be a symbolic link');
         }
-      }
 
-      // Narrow for the compiler: undefined resolvedType was either rejected
-      // above (no session default) or delegated to baseHandler (parse failure).
-      if (resolvedType === undefined) {
-        return baseHandler(args);
-      }
+        // Refuse to silently overwrite an existing regular file unless the
+        // caller has opted in with overwrite: true. Default-deny matches
+        // `cp --no-clobber` semantics and prevents agent-driven hallucinated
+        // paths from destroying user work without a clear signal.
+        if (!parsed.data.overwrite) {
+          const exists = await access(absPath).then(() => true).catch(() => false);
+          if (exists) {
+            return createErrorResponse(
+              `output_path '${absPath}' already exists. Pass overwrite: true to replace it.`,
+            );
+          }
+        }
 
-      try {
+        // Verify no symlink in ancestor directories resolves outside the base dir
+        const rel = relative(outputBaseDir, absPath);
+        const segments = rel.split('/');
+        let walkPath = outputBaseDir;
+        for (const seg of segments.slice(0, -1)) {
+          walkPath = resolve(walkPath, seg);
+          const segStat = await lstat(walkPath).catch(() => null);
+          if (segStat?.isSymbolicLink() === true) {
+            return createErrorResponse('output_path contains a symbolic link in its directory path');
+          }
+        }
+
+        // Narrow for the compiler: undefined resolvedType was either rejected
+        // above (no session default) or delegated to baseHandler (parse failure).
+        if (resolvedType === undefined) {
+          return await baseHandler(args);
+        }
+
         const result = await registryClient.render.get(
           resolvedType,
           parsed.data.name,
@@ -148,7 +152,7 @@ export function registerRenderDefinitionTool(
         );
 
         // SDK RenderResult guarantees markdown: string
-        const { markdown } = result;
+        const { markdown, ...metadata } = result;
         if (typeof markdown !== 'string') {
           return createErrorResponse(
             'Render result missing markdown field — cannot write to file.'
@@ -156,15 +160,24 @@ export function registerRenderDefinitionTool(
         }
 
         await mkdir(dirname(absPath), { recursive: true });
-        await writeFile(absPath, markdown, 'utf-8');
+        const realParent = await realpath(dirname(absPath));
+        const realOutput = resolve(realParent, relative(dirname(absPath), absPath));
+        if (!realOutput.startsWith(realBaseDir + '/') && realOutput !== realBaseDir) {
+          return createErrorResponse('output_path resolves outside the allowed root via symlink');
+        }
+        await writeFile(absPath, markdown, { encoding: 'utf-8', flag: parsed.data.overwrite ? 'w' : 'wx' });
 
         return createSuccessResponse({
+          ...metadata,
           success: true,
           output_path: absPath,
           bytes: Buffer.byteLength(markdown, 'utf-8'),
           renderProfile: result.renderProfile ?? parsed.data.render_profile ?? 'uluops-full',
         });
       } catch (error) {
+        if (error instanceof Error && 'code' in error && error.code === 'EEXIST') {
+          return createErrorResponse('output_path already exists. Pass overwrite: true to replace it.');
+        }
         if (error instanceof z.ZodError) {
           return mapZodErrorToMcp(error);
         }

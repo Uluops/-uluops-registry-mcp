@@ -17,6 +17,7 @@ describe('render_definition file acceptance', () => {
   const markdown = 'model = "gpt-5.3"\n# Résumé 🐢\n';
   const metadata = {
     target: 'codex',
+    selectedModel: 'gpt-5.3',
     promptHash: `sha256:${createHash('sha256').update(markdown).digest('hex')}`,
     warnings: [{ field: 'model', reason: 'Fixture fallback warning', level: 'warn' }],
     metadata: { fixture: 'diagnostics' },

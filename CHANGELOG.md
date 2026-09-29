@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- File rendering retains inline metadata and warnings alongside path/byte receipts, with the full-profile default preserved.
+- File rendering retains inline metadata, including selected model, and warnings alongside path/byte receipts, with the full-profile default preserved.
 - File output verifies physical containment against the configured root and uses an exclusive create when overwrite is omitted.
 
 ### Changed

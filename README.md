@@ -115,12 +115,12 @@ to render without that content; both inline and file-write results report the ef
 `output_path` writes on the **MCP server host**, within `OUTPUT_BASE_DIR` (default:
 server process cwd). Relative paths resolve from that cwd, even when a different
 root is configured. The root must exist; missing directories below it are created.
-Paths outside the root, traversal escaping it, and symlinks in the file or directories
-below the root are refused. Existing files require `overwrite: true`. Remote clients
+Paths outside the root and traversal escaping it are refused. Existing symlinks in
+the file or directories below the root are checked and refused before rendering. Existing files require `overwrite: true`. Remote clients
 should omit `output_path` and consume `markdown` inline.
 
 File responses retain the inline rendering metadata (`target`, `renderProfile`,
-`promptHash`, `warnings`, and any SDK metadata when supplied) alongside `success`,
+`selectedModel`, `promptHash`, `warnings`, and any SDK metadata when supplied) alongside `success`,
 `output_path`, and UTF-8 `bytes`; `markdown` is written to disk. Warnings and optional
 metadata have the same presence and values as inline output.
 

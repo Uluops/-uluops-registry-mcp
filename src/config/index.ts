@@ -172,7 +172,7 @@ export function validateConfig(config: RegistryMcpConfig): { warnings: string[] 
   }
 
   if (config.api.apiKey === undefined || config.api.apiKey === '') {
-    throw new Error('API key is required. Set ULUOPS_API_KEY');
+    throw new Error('Authentication is required. Set ULUOPS_API_KEY to an ulr_ API key from https://app.uluops.ai/settings/api-keys or to a session token.');
   }
 
   if (config.api.timeout <= 0) {

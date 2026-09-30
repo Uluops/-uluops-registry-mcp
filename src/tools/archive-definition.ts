@@ -23,7 +23,7 @@ export function registerArchiveDefinitionTool(
 ): void {
   server.tool(
     'archive_definition',
-    'Archive a deprecated definition. Terminal state — removes from discovery, keeps record resolvable by ID.',
+    'Archive a deprecated definition. Published definitions must be deprecated first; an invalid transition returns allowedTransitions. Archived is terminal — removed from discovery, still resolvable by ID.',
     ArchiveDefinitionInputSchema.shape,
     createToolHandler(ArchiveDefinitionInputSchema, (n) =>
       registryClient.definitions.archive(n.type, n.name, n.version),

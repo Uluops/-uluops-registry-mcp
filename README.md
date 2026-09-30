@@ -12,15 +12,17 @@
 
 MCP (Model Context Protocol) server for the [UluOps](https://uluops.ai) Registry API. Provides **44 tools** and **4 resources** that let Claude Code, OpenCode, Gemini CLI, and other MCP-compatible harnesses browse, create, validate, version, and analyze AI workflow definitions (agents, commands, workflows, pipelines).
 
+Requires Node.js 20.3 or newer. Create an API key at [app.uluops.ai/settings/api-keys](https://app.uluops.ai/settings/api-keys); API keys begin with `ulr_`.
+
 ## Quick start
 
-The recommended way to install this is via [@uluops/setup](https://www.npmjs.com/package/@uluops/setup), which writes the MCP config for you:
+To check the package without changing your harness configuration, run:
 
 ```bash
-npx @uluops/setup
+npx -y @uluops/registry-mcp --version
 ```
 
-If you'd rather wire it up by hand, add this block to your harness's MCP config (e.g. `~/.claude.json` for Claude Code, `~/.config/opencode/opencode.json` for OpenCode):
+To connect the server, add this block to your harness's MCP config (e.g. `~/.claude.json` for Claude Code, `~/.config/opencode/opencode.json` for OpenCode):
 
 ```json
 {
@@ -29,14 +31,14 @@ If you'd rather wire it up by hand, add this block to your harness's MCP config 
       "command": "npx",
       "args": ["-y", "@uluops/registry-mcp"],
       "env": {
-        "ULUOPS_API_KEY": "your-api-key"
+        "ULUOPS_API_KEY": "ulr_your-api-key"
       }
     }
   }
 }
 ```
 
-Get an API key at [app.uluops.ai/settings/api-keys](https://app.uluops.ai/settings/api-keys), then restart your harness.
+Replace the example value with your API key, then restart your harness. To have your harness configuration written for you, use [@uluops/setup](https://www.npmjs.com/package/@uluops/setup): `npx @uluops/setup`.
 
 ## Configuration
 
@@ -44,7 +46,7 @@ All configuration is passed via environment variables in the `env` block. No `.e
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `ULUOPS_API_KEY` | API authentication key | Yes | — |
+| `ULUOPS_API_KEY` | API key (`ulr_` prefix) from [API key settings](https://app.uluops.ai/settings/api-keys), or a session token | Yes | — |
 | `ULUOPS_ORG_SLUG` | Organization slug for scoped requests | No | — |
 | `ULUOPS_REGISTRY_TIMEOUT` | Request timeout (ms) | No | `30000` |
 | `ULUOPS_REGISTRY_RETRIES` | Retry attempts | No | `3` |
@@ -141,7 +143,7 @@ render_definition({ type: "agent", name: "code-validator", target: "codex", outp
 | `publish_definition` | Publish a draft definition |
 | `deprecate_definition` | Deprecate with reason and optional successor |
 | `archive_definition` | Archive a deprecated definition (terminal lifecycle state) |
-| `delete_definition` | Delete a draft (published definitions cannot be deleted) |
+| `delete_definition` | Delete a definition version, including published, deprecated, or archived versions when no dependents or forks block deletion. A blocked delete returns `DELETE_BLOCKED` with a recovery action; hidden references are not disclosed |
 
 ### Composite workflows (P1)
 | Tool | Description |
@@ -176,6 +178,8 @@ render_definition({ type: "agent", name: "code-validator", target: "codex", outp
 `upgrade_definition` applies to legacy definitions without storage/translation metadata and creates a new major version. Current-format drafts and already translated definitions return a structured refusal with `applicationState: not_applied`, a reason, and recovery guidance. Use publish or retranslate when indicated.
 
 If an upgrade response fails validation, the result carries `applicationState: unknown`: the write may already have committed. Read the definition and list its versions before retrying. Successful responses preserve the previous version and translated artifact metadata. These upgrade semantics require Registry API 0.59.4 or newer.
+
+Lifecycle refusals now carry `allowedTransitions`; blocked deletion carries `blockingResources: { present: true }` and a specific recovery action without exposing hidden references. A bad render target lists available targets once. For any write whose SDK response validation fails, `applicationState: unknown` means read current state before retrying.
 
 
 ### Models & languages (P2)
@@ -259,12 +263,6 @@ npm test
 npm run typecheck
 npm run lint
 ```
-
-## Requirements
-
-- **Node.js:** ≥ 20.3
-- **Platform:** Linux, macOS, or WSL2
-- **Auth:** UluOps API key ([get one here](https://app.uluops.ai/settings/api-keys))
 
 ## License
 

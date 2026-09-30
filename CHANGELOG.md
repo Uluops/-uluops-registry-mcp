@@ -1,6 +1,15 @@
 # Changelog
 
-## [Unreleased]
+## [0.10.3] - Unreleased
+
+### Fixed
+
+- Map Registry SDK recovery details to MCP errors: lifecycle refusals include allowed transitions, blocked deletion gives a recovery action without exposing hidden references, invalid render targets list available targets, and malformed write responses warn that application state is unknown.
+- Missing-key startup errors now identify the expected API key prefix and the key settings page.
+
+### Changed
+
+- Document guarded deletion of published, deprecated, and archived definitions, and put Node.js requirements and a package-local version check before the optional config-writing setup command.
 
 ## [0.10.2] - 2026-09-29
 

@@ -18,6 +18,7 @@ import {
 import { sanitizeString } from '@uluops/sdk-core';
 import type { ZodError } from 'zod';
 import type { McpToolResponse } from '../types/index.js';
+import { toolRegistry } from '../config/tool-registry.js';
 
 /**
  * Sanitize an error message for safe client exposure.
@@ -25,6 +26,19 @@ import type { McpToolResponse } from '../types/index.js';
  * and truncation.
  */
 export const sanitizeErrorMessage = sanitizeString;
+
+function responseFieldErrors(details: Record<string, unknown> | undefined): Array<{ path: Array<string | number>; message: string }> {
+  const issues = details?.['issues'];
+  if (!Array.isArray(issues)) return [];
+  return issues.slice(0, 20).filter((issue): issue is Record<string, unknown> =>
+    typeof issue === 'object' && issue !== null,
+  ).map((issue) => ({
+    path: Array.isArray(issue['path'])
+      ? issue['path'].slice(0, 10).filter((part): part is string | number => typeof part === 'string' || typeof part === 'number').map((part) => typeof part === 'string' ? sanitizeErrorMessage(part) : part)
+      : [],
+    message: sanitizeErrorMessage(typeof issue['message'] === 'string' ? issue['message'] : 'Invalid response field'),
+  }));
+}
 
 /** Safely extract a message from an unknown error value */
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -242,10 +256,12 @@ export function mapSdkErrorToMcp(error: unknown, toolName?: string): McpToolResp
   // Pass the API's cause code through so clients can branch on cause, not
   // just HTTP status (tracker T20 pattern).
   const causeCode = (error as { code?: string }).code;
+  const requestId = (error as { requestId?: unknown }).requestId;
   const context: Record<string, unknown> = {
     ...(statusCode !== undefined ? { status: statusCode } : {}),
     error_type: errorType,
     ...(typeof causeCode === 'string' ? { code: causeCode } : {}),
+    ...(typeof requestId === 'string' ? { request_id: sanitizeErrorMessage(requestId) } : {}),
     ...(toolName != null ? { tool: toolName } : {}),
     ...(suggestion != null ? { suggestion } : {}),
   };
@@ -257,10 +273,7 @@ export function mapSdkErrorToMcp(error: unknown, toolName?: string): McpToolResp
         ...context,
         applicationState: 'unknown',
         suggestion: 'Read the definition and list its versions to verify whether the upgrade committed before retrying.',
-        fieldErrors: Array.isArray(details?.['issues'])
-          ? details['issues'].map((issue: { path?: unknown[]; message?: string }) => ({
-            path: issue.path, message: sanitizeErrorMessage(issue.message ?? 'Invalid response field'),
-          })) : [],
+        fieldErrors: responseFieldErrors(details),
       });
     }
     if (details?.['applicationState'] === 'not_applied') {
@@ -269,6 +282,32 @@ export function mapSdkErrorToMcp(error: unknown, toolName?: string): McpToolResp
         suggestion: sanitizeErrorMessage(typeof details['recoveryAction'] === 'string' ? details['recoveryAction'] : 'Read the existing definition before choosing another operation.'),
       });
     }
+  }
+
+  if (causeCode === 'RESPONSE_VALIDATION') {
+    const details = (error as { details?: Record<string, unknown> }).details;
+    const isWrite = toolName !== undefined && toolRegistry.some((spec) => spec.name === toolName && spec.sideEffects === 'write');
+    return buildErrorResponse('The server answered, but its response did not match the SDK schema.', {
+      ...context,
+      applicationState: isWrite ? 'unknown' : 'not_applied',
+      fieldErrors: responseFieldErrors(details),
+      suggestion: isWrite
+        ? 'Do not retry this write blind. Read the current definition state first, then report the API/SDK schema mismatch to the operator.'
+        : 'Report the API/SDK schema mismatch to the operator; retrying this read will likely fail the same way.',
+    });
+  }
+
+  if (causeCode === 'INVALID_TRANSITION') {
+    const details = (error as { details?: Record<string, unknown> }).details;
+    const allowedTransitions = Array.isArray(details?.['allowedTransitions'])
+      ? details['allowedTransitions'].filter((value): value is string => typeof value === 'string').slice(0, 10).map((value) => sanitizeErrorMessage(value))
+      : [];
+    return buildErrorResponse(sanitizeErrorMessage(getErrorMessage(error, 'Invalid lifecycle transition')), {
+      ...context, applicationState: 'not_applied', allowedTransitions,
+      suggestion: allowedTransitions.length > 0
+        ? `This lifecycle transition is unavailable. The allowed next status is ${allowedTransitions.join(' or ')}.`
+        : 'This definition is in a terminal lifecycle state; no further transition is available.',
+    });
   }
 
   if (notFound) {
@@ -290,9 +329,26 @@ export function mapSdkErrorToMcp(error: unknown, toolName?: string): McpToolResp
   }
 
   if (isValidationError(error)) {
+    const details = (error as { details?: Record<string, unknown> }).details;
+    const rawErrors = details?.['errors'];
+    const fieldErrors = Array.isArray(rawErrors)
+      ? rawErrors.slice(0, 20).filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+          .map((item) => ({
+            path: sanitizeErrorMessage(typeof item['path'] === 'string' ? item['path'] : '?'),
+            message: sanitizeErrorMessage(typeof item['message'] === 'string' ? item['message'] : 'invalid'),
+          }))
+      : details !== undefined
+        ? Object.entries(details).flatMap(([path, messages]) =>
+            Array.isArray(messages)
+              ? messages.filter((value): value is string => typeof value === 'string').map((value) => ({ path: sanitizeErrorMessage(path), message: sanitizeErrorMessage(value) }))
+              : [],
+          ).slice(0, 20)
+        : [];
+    const message = sanitizeErrorMessage(getErrorMessage(error, 'Invalid request parameters'));
+    const missing = fieldErrors.map((item) => `${item.path}: ${item.message}`).filter((line) => !message.includes(line));
     return buildErrorResponse(
-      sanitizeErrorMessage(getErrorMessage(error, 'Invalid request parameters')),
-      context,
+      message + (missing.length > 0 ? `: ${missing.join('; ')}` : ''),
+      { ...context, ...(fieldErrors.length > 0 ? { field_errors: fieldErrors } : {}) },
     );
   }
 
@@ -389,6 +445,15 @@ export function mapSdkErrorToMcp(error: unknown, toolName?: string): McpToolResp
       ? (error as { details?: Record<string, unknown> }).details
       : undefined;
     const nextAvailable = details?.nextAvailable;
+    if (causeCode === 'DELETE_BLOCKED' || details?.['reason'] === 'definition_has_blockers') {
+      const recoveryAction = typeof details?.['recoveryAction'] === 'string'
+        ? sanitizeErrorMessage(details['recoveryAction'])
+        : 'Read the definition state and resolve its references before deleting it.';
+      return buildErrorResponse(sanitizeErrorMessage(getErrorMessage(error, 'Definition delete blocked')), {
+        ...context, applicationState: 'not_applied', blockingResources: { present: true },
+        suggestion: recoveryAction,
+      });
+    }
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Resource conflict')),
       {
@@ -399,6 +464,12 @@ export function mapSdkErrorToMcp(error: unknown, toolName?: string): McpToolResp
   }
 
   if (isUnprocessableError(error)) {
+    if (toolName === 'render_definition' && /Unknown target\b/i.test(getErrorMessage(error, ''))) {
+      return buildErrorResponse(sanitizeErrorMessage(getErrorMessage(error, 'Unknown render target')), {
+        ...context,
+        suggestion: 'Choose a render target from the available targets listed in the error.',
+      });
+    }
     return buildErrorResponse(
       sanitizeErrorMessage(getErrorMessage(error, 'Unprocessable request')),
       context,

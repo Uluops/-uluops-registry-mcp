@@ -21,7 +21,7 @@ export function registerDeleteDefinitionTool(
 ): void {
   server.tool(
     'delete_definition',
-    'Delete a definition version. Blocked only if other definitions fork from or depend on it.',
+    'Delete a definition version. A published, deprecated or archived version with dependents or forks returns DELETE_BLOCKED and a recovery action. The response discloses blocker presence only, never hidden identities or counts.',
     DeleteDefinitionInputSchema.shape,
     createToolHandler(DeleteDefinitionInputSchema, (n) =>
       registryClient.definitions.delete(n.type, n.name, n.version)

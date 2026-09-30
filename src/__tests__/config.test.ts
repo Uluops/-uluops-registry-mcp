@@ -176,7 +176,7 @@ describe('validateConfig', () => {
           api: { baseUrl: 'http://localhost:3001', apiKey: undefined, timeout: 30000, retries: 3 },
         })
       )
-    ).toThrow('API key is required');
+    ).toThrow('Set ULUOPS_API_KEY to an ulr_ API key from https://app.uluops.ai/settings/api-keys or to a session token');
   });
 
   it('throws when apiKey is empty string', () => {
@@ -186,7 +186,7 @@ describe('validateConfig', () => {
           api: { baseUrl: 'http://localhost:3001', apiKey: '', timeout: 30000, retries: 3 },
         })
       )
-    ).toThrow('API key is required');
+    ).toThrow('Set ULUOPS_API_KEY to an ulr_ API key from https://app.uluops.ai/settings/api-keys or to a session token');
   });
 
   it('throws when timeout is zero', () => {

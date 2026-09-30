@@ -25,6 +25,68 @@ describe('upgrade recovery context', () => {
   });
 });
 
+describe('F16 domain recovery', () => {
+  it('uses allowed lifecycle transitions instead of parameter advice', () => {
+    const error = Object.assign(new Error('Cannot archive a published definition'), {
+      code: 'INVALID_TRANSITION', statusCode: 400, requestId: 'f16-request',
+      details: { allowedTransitions: ['deprecated'], applicationState: 'not_applied' },
+    });
+    const payload = parseErrorPayload(mapSdkErrorToMcp(error, 'archive_definition'));
+    expect(payload).toMatchObject({ code: 'INVALID_TRANSITION', allowedTransitions: ['deprecated'], request_id: 'f16-request' });
+    expect(payload.suggestion).toContain('deprecated');
+    expect(payload.suggestion).not.toContain('parameter');
+  });
+
+  it('does not suggest publishing for a blocked delete or expose hidden blockers', () => {
+    const error = Object.assign(new ConflictError('Cannot delete published definition while it has dependents or forks. Deprecate it first.'), {
+      code: 'DELETE_BLOCKED',
+      details: { reason: 'definition_has_blockers', blockingResources: { present: true }, recoveryAction: 'Deprecate it first.' },
+    });
+    const payload = parseErrorPayload(mapSdkErrorToMcp(error, 'delete_definition'));
+    expect(payload).toMatchObject({ code: 'DELETE_BLOCKED', blockingResources: { present: true }, suggestion: 'Deprecate it first.' });
+    expect(payload.suggestion).not.toContain('publish that version');
+    expect(JSON.stringify(payload)).not.toContain('fork-1');
+  });
+
+  it('gives render-target guidance without duplicating the available list', () => {
+    const error = new UnprocessableError('Unknown target "wrong". Available targets: codex, claude-code');
+    const payload = parseErrorPayload(mapSdkErrorToMcp(error, 'render_definition'));
+    expect(payload.error).toBe('Unknown target "wrong". Available targets: codex, claude-code');
+    expect(payload.suggestion).toContain('render target');
+    expect(payload.suggestion).not.toContain('lifecycle');
+  });
+
+  it('marks response parsing after a different write uncertain and bounds issue paths', () => {
+    const error = Object.assign(new Error('response mismatch'), {
+      name: 'ResponseValidationError', code: 'RESPONSE_VALIDATION', statusCode: 0,
+      details: { issues: [{ path: ['definition'], message: 'Required' }] },
+    });
+    const payload = parseErrorPayload(mapSdkErrorToMcp(error, 'publish_definition'));
+    expect(payload).toMatchObject({ applicationState: 'unknown', fieldErrors: [{ path: ['definition'], message: 'Required' }] });
+    expect(payload.suggestion).toContain('Do not retry this write blind');
+  });
+
+  it('retains validation field paths without repeating message text', () => {
+    const error = Object.assign(new ValidationError('Validation failed: name: Required'), {
+      details: { errors: [{ path: 'name', message: 'Required' }] },
+    });
+    const payload = parseErrorPayload(mapSdkErrorToMcp(error, 'create_definition'));
+    expect((payload.error as string).match(/name: Required/g)).toHaveLength(1);
+    expect(payload.field_errors).toEqual([{ path: 'name', message: 'Required' }]);
+  });
+
+  it('retains Registry API Zod field records', () => {
+    const error = Object.assign(new ValidationError('Request validation failed'), {
+      details: { name: ['Required'], 'schema.version': ['Invalid version'] },
+    });
+    const payload = parseErrorPayload(mapSdkErrorToMcp(error, 'create_definition'));
+    expect(payload.field_errors).toEqual([
+      { path: 'name', message: 'Required' },
+      { path: 'schema.version', message: 'Invalid version' },
+    ]);
+  });
+});
+
 // Mock the registry-sdk error type guards and classes
 vi.mock('@uluops/registry-sdk/errors', () => {
   class RegistryApiError extends Error {

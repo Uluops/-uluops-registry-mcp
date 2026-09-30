@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-09-29
+
 ### Fixed
 
 - File rendering retains inline metadata, including selected model, and warnings alongside path/byte receipts, with the full-profile default preserved.

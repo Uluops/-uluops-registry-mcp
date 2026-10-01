@@ -270,7 +270,7 @@ describe('Tool Registration & SDK Calls', () => {
       (client.definitions.list as ReturnType<typeof vi.fn>).mockResolvedValue({
         definitions: [
           {
-            type: 'agent', name: 'test', version: '1.0.0', status: 'published',
+            type: 'agent', name: 'test', namespace: '@acme/test', version: '1.0.0', status: 'published',
             visibility: 'public', description: 'A test', executionCount: 5,
             riskLevel: 'none', tags: ['a'], createdAt: '2026-01-01',
           },
@@ -283,7 +283,7 @@ describe('Tool Registration & SDK Calls', () => {
       };
       expect(parsed.format).toBe('compact');
       expect(parsed.definitions[0]).toEqual({
-        type: 'agent', name: 'test', version: '1.0.0', status: 'published',
+        type: 'agent', name: 'test', namespace: '@acme/test', version: '1.0.0', status: 'published',
         visibility: 'public', description: 'A test',
       });
       expect(parsed.total).toBe(1);

@@ -47,7 +47,7 @@ All configuration is passed via environment variables in the `env` block. No `.e
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
 | `ULUOPS_API_KEY` | API key (`ulr_` prefix) from [API key settings](https://app.uluops.ai/settings/api-keys), or a session token | Yes | — |
-| `ULUOPS_ORG_SLUG` | Organization slug for scoped requests | No | — |
+| `ULUOPS_ORG_SLUG` | Org for **definition writes**: sent as `X-Org-Slug` on create, update, publish, deprecate, archive, delete, retranslate, upgrade, and fork (the org the fork goes into), where it says which org's definition a name means. Reads and other calls (validate, render, record execution, user lookups) never carry it (since 0.11.0), so the marketplace stays readable; your org's private definitions still appear by membership. **A bare name on a read means the org that first published it**, so for a name another org published first, a read and a write of it mean different rows — check `namespace` (now in the compact list output) before writing back what you read. | No | — |
 | `ULUOPS_REGISTRY_TIMEOUT` | Request timeout (ms) | No | `30000` |
 | `ULUOPS_REGISTRY_RETRIES` | Retry attempts | No | `3` |
 | `LOG_LEVEL` | Logging level (`error`, `warn`, `info`, `debug`) | No | `info` |

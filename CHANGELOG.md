@@ -1,6 +1,33 @@
 # Changelog
 
-## [0.10.3] - Unreleased
+## [0.11.0] - 2026-10-01
+
+### Changed
+
+- **Reads are no longer scoped to `ULUOPS_ORG_SLUG`** (registry-sdk 0.56.2 → 0.57.0; definition
+  visibility spec v0.5.1 I-3, phase 1b-iv). The SDK used to send `X-Org-Slug` on every request, and
+  the registry treats a verified org header as a hard scope on reads — so with `ULUOPS_ORG_SLUG` set,
+  `get_definition`, `list_definitions`, `list_versions`, `diff_versions` and the other read tools
+  could not see any other org's public definitions (live, 2026-10-01: reading `system`'s public
+  `safety-test-malicious` with `ULUOPS_ORG_SLUG=ulu-labs` → 404 on 0.10.x, 200 on 0.11.0). The
+  header now goes on writes only, where it qualifies which org's row a name means. **What changes
+  for you:** read tools return the marketplace view — your own org's private definitions still
+  appear, by membership — and a bare name on a read means the org that first published it.
+  `render_definition` was never header-scoped and is unchanged.
+- **For a name another org published first, a read and a write of it now mean different rows.**
+  Reads mean the org that published the name first; writes (`update_definition`,
+  `update_and_publish`, `publish_definition`, …) mean `ULUOPS_ORG_SLUG`'s copy. A get → edit →
+  update sequence on such a name would copy the other org's YAML onto yours without any error, so
+  check `namespace` on what you read before writing it back. **Lost until qualified addressing (spec
+  I-4, Phase 3):** reading your own org's copy of such a name — 0.10.x reached it because the header
+  scoped every read. Nothing in prod is affected today (578 of 579 public definitions are
+  `ulu-labs`, which published first).
+- `list_definitions` compact output includes `namespace`, so rows of one name from different orgs
+  are distinguishable.
+- The SDK sends the header on definition writes only — not on validate, render preview, recording
+  an execution or user lookups (it sent it on every non-GET in the first 0.57.0 candidate).
+
+## [0.10.3] - 2026-10-01
 
 ### Fixed
 

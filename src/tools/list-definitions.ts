@@ -27,6 +27,10 @@ import { createToolHandler } from '../utils/tool-handler.js';
 export const COMPACT_LIST_FIELDS = [
   'type',
   'name',
+  // Which org the row belongs to (`@org/name`). Since 0.11.0 lists are not
+  // narrowed by ULUOPS_ORG_SLUG, so two orgs' rows of one name can appear
+  // together; without this they are indistinguishable (review run #219).
+  'namespace',
   'version',
   'status',
   'visibility',

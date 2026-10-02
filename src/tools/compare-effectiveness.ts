@@ -8,6 +8,7 @@ import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
+import { CROSS_VERSION_CAVEAT } from './cross-version-caveat.js';
 
 export const CompareEffectivenessInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
@@ -22,7 +23,7 @@ export function registerCompareEffectivenessTool(
 ): void {
   server.tool(
     'compare_effectiveness',
-    'Compare effectiveness metrics across 2-5 definition versions side-by-side: pass rate, avg score, run count, health score, and translator version. Select quality_contract=nullable-v1 for truthful absent gate rates; agent gate rates are null and scores remain a separate metric.',
+    'Compare effectiveness metrics across 2-5 definition versions side-by-side: pass rate, avg score, run count, health score, and translator version. Select quality_contract=nullable-v1 for truthful absent gate rates; agent gate rates are null and scores remain a separate metric.' + ' ' + CROSS_VERSION_CAVEAT,
     CompareEffectivenessInputSchema.shape,
     createToolHandler(CompareEffectivenessInputSchema, (n) =>
       registryClient.analytics.compare(n.type, n.name, n.versions, n.qualityContract === 'nullable-v1' ? { qualityContract: n.qualityContract } : undefined)

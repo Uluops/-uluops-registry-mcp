@@ -8,6 +8,7 @@ import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
+import { CROSS_VERSION_CAVEAT } from './cross-version-caveat.js';
 
 export const GetTranslationAnalyticsInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
@@ -20,7 +21,7 @@ export function registerGetTranslationAnalyticsTool(
 ): void {
   server.tool(
     'get_translation_analytics',
-    'Get definition versions grouped by translator version with aggregate metrics (pass rate, score, run count). Shows translator impact on definition quality.',
+    'Get definition versions grouped by translator version with aggregate metrics (pass rate, score, run count). Shows translator impact on definition quality.' + ' ' + CROSS_VERSION_CAVEAT,
     GetTranslationAnalyticsInputSchema.shape,
     createToolHandler(GetTranslationAnalyticsInputSchema, (n) =>
       registryClient.analytics.getTranslation(n.type, n.name)

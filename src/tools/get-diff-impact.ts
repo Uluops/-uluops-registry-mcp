@@ -8,6 +8,7 @@ import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
+import { CROSS_VERSION_CAVEAT } from './cross-version-caveat.js';
 
 export const GetDiffImpactInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
@@ -31,7 +32,7 @@ export function registerGetDiffImpactTool(
 ): void {
   server.tool(
     'get_diff_impact',
-    'Get structural diff combined with metric deltas between two definition versions. Accepts from/to (matching diff_versions) or from_version/to_version. Deltas are observational, not causal — caveats are always included. Select quality_contract=nullable-v1 for null absent gate rates and deltas, with explicit denominator and fraction units.',
+    'Get structural diff combined with metric deltas between two definition versions. Accepts from/to (matching diff_versions) or from_version/to_version. Deltas are observational, not causal — caveats are always included. Select quality_contract=nullable-v1 for null absent gate rates and deltas, with explicit denominator and fraction units.' + ' ' + CROSS_VERSION_CAVEAT,
     (GetDiffImpactInputSchema as unknown as { innerType: () => z.ZodObject<z.ZodRawShape> }).innerType().shape,
     createToolHandler(GetDiffImpactInputSchema, (n) =>
       registryClient.analytics.getDiffImpact(n.type, n.name, n.from ?? n.fromVersion, n.to ?? n.toVersion, n.qualityContract === 'nullable-v1' ? { qualityContract: n.qualityContract } : undefined)

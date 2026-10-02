@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.1] - 2026-10-02
+
+### Changed
+
+- **Cross-version caveat on five tool descriptions:** `get_lineage`, `get_evolution`, `compare_effectiveness`, `get_diff_impact` and `get_translation_analytics` now end with: "Cross-version figures here are observational: each version ran in its own period, on its own artifacts, and its findings were triaged under the process of that time. Differences between versions are not evidence that an edit made the definition better or worse; do not rank versions or recommend one from these figures alone." **Why:** these tools return quality figures for several versions side by side, and `get_lineage` names a `highestEffectiveness` version and `get_evolution` a trend; a model asked "did my edit help?" reads them as the answer, and the data cannot support it (definition-version-dispositions spec v0.7.0, §4.1). **What changes for you:** description text only; inputs, outputs and ToolSpecs are unchanged. A test pins the caveat on each of the five tools; the same sentence ships in `@uluops/ops-mcp` on `get_agent_lifecycle`.
+
 ## [0.11.0] - 2026-10-01
 
 ### Changed

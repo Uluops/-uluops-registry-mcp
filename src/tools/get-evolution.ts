@@ -25,6 +25,6 @@ export function registerGetEvolutionTool(
     GetEvolutionInputSchema.shape,
     createToolHandler(GetEvolutionInputSchema, (n) =>
       registryClient.analytics.getEvolution(n.type, n.name)
-    , { toolName: 'get_evolution' })
+    , { toolName: 'get_evolution', responseNote: CROSS_VERSION_CAVEAT })
   );
 }

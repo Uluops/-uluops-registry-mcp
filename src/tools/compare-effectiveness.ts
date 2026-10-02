@@ -27,6 +27,6 @@ export function registerCompareEffectivenessTool(
     CompareEffectivenessInputSchema.shape,
     createToolHandler(CompareEffectivenessInputSchema, (n) =>
       registryClient.analytics.compare(n.type, n.name, n.versions, n.qualityContract === 'nullable-v1' ? { qualityContract: n.qualityContract } : undefined)
-    , { toolName: 'compare_effectiveness' })
+    , { toolName: 'compare_effectiveness', responseNote: CROSS_VERSION_CAVEAT })
   );
 }

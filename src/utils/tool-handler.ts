@@ -110,6 +110,12 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
     preProcess?: (input: TInput) => TInput | McpToolResponse;
     /** Transform SDK result before wrapping in success response. Use to trim large fields. */
     postProcess?: (result: unknown) => unknown;
+    /**
+     * Appended to every success response as a separate `{ caveat }` text block. Used for
+     * the cross-version caveats (dvc spec §4.1, AH): a model reads the response, not the
+     * description, when it writes its answer.
+     */
+    responseNote?: string;
   }
 ): (args: unknown) => Promise<McpToolResponse> {
   return async (args: unknown): Promise<McpToolResponse> => {
@@ -188,7 +194,11 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
         result = filterResponseFields(result, fields);
       }
 
-      return createSuccessResponse(result);
+      const response = createSuccessResponse(result);
+      if (options?.responseNote !== undefined) {
+        response.content.push({ type: 'text', text: JSON.stringify({ caveat: options.responseNote }) });
+      }
+      return response;
     } catch (error) {
       // Log errors to stderr for debugging (MCP transport uses stdout).
       // Sanitize through the same credential-redaction filter used for MCP

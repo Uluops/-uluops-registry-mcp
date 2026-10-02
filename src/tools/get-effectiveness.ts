@@ -8,6 +8,7 @@ import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
+import { POOLED_VERSIONS_CAVEAT } from './cross-version-caveat.js';
 
 export const GetEffectivenessInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
@@ -21,10 +22,10 @@ export function registerGetEffectivenessTool(
 ): void {
   server.tool(
     'get_effectiveness',
-    'Get effectiveness metrics for a definition: pass rate, scores, taxonomy distribution, health score, and composition lift. Version defaults to latest. Quality numbers (passRate/runAvgScore) are VOTER-WEIGHTED: one actor, one vote — a single account cannot dominate them with run volume. metrics.provenance reports who stands behind them: actorCount/voterCount (windowed), confidence (provisional until 3+ qualifying actors). Once qualifying executions exist it ALSO carries the independent vs selfReported split — then provenance.independent is the headline figure to quote (selfReported is the author rating their own definition); at zero executions those two fields are absent, and there is no headline figure to quote. uniqueUsers is the all-time distinct-actor count. For AGENTS, quality is participation-based (snapshot scores across every run the agent appears in, constituent or standalone) and passRate is null by design — a run-level gate result cannot be attributed to one constituent.',
+    'Get effectiveness metrics for a definition: pass rate, scores, taxonomy distribution, health score, and composition lift. Version defaults to latest. Quality numbers (passRate/runAvgScore) are VOTER-WEIGHTED: one actor, one vote — a single account cannot dominate them with run volume. metrics.provenance reports who stands behind them: actorCount/voterCount (windowed), confidence (provisional until 3+ qualifying actors). Once qualifying executions exist it ALSO carries the independent vs selfReported split — then provenance.independent is the headline figure to quote (selfReported is the author rating their own definition); at zero executions those two fields are absent, and there is no headline figure to quote. uniqueUsers is the all-time distinct-actor count. For AGENTS, quality is participation-based (snapshot scores across every run the agent appears in, constituent or standalone) and passRate is null by design — a run-level gate result cannot be attributed to one constituent.' + ' ' + POOLED_VERSIONS_CAVEAT,
     GetEffectivenessInputSchema.shape,
     createToolHandler(GetEffectivenessInputSchema, (n) =>
       registryClient.analytics.getEffectiveness(n.type, n.name, n.version)
-    , { toolName: 'get_effectiveness' })
+    , { toolName: 'get_effectiveness', responseNote: POOLED_VERSIONS_CAVEAT })
   );
 }

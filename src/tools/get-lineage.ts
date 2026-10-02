@@ -25,6 +25,6 @@ export function registerGetLineageTool(
     GetLineageInputSchema.shape,
     createToolHandler(GetLineageInputSchema, (n) =>
       registryClient.analytics.getLineage(n.type, n.name)
-    , { toolName: 'get_lineage' })
+    , { toolName: 'get_lineage', responseNote: CROSS_VERSION_CAVEAT })
   );
 }

@@ -2,7 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import type { McpServerToolRegistration } from '../types/index.js';
 import { registerAllTools } from '../tools/index.js';
-import { CROSS_VERSION_CAVEAT, CROSS_VERSION_TOOLS } from '../tools/cross-version-caveat.js';
+import {
+  CROSS_VERSION_CAVEAT,
+  CROSS_VERSION_TOOLS,
+  POOLED_VERSIONS_CAVEAT,
+  POOLED_VERSIONS_TOOLS,
+} from '../tools/cross-version-caveat.js';
 
 vi.mock('@uluops/registry-sdk/errors', () => ({
   isRegistryApiError: (): boolean => false,
@@ -15,33 +20,63 @@ vi.mock('@uluops/registry-sdk/errors', () => ({
   ForbiddenError: class extends Error {},
 }));
 
-function registeredDescriptions(): Map<string, string> {
+type Handler = (args: unknown) => Promise<{ content: { type: string; text: string }[] }>;
+
+function registered(): { descriptions: Map<string, string>; handlers: Map<string, Handler> } {
   const descriptions = new Map<string, string>();
+  const handlers = new Map<string, Handler>();
   const server = {
-    tool(name: string, description: string): void {
+    tool(name: string, description: string, _shape: unknown, handler: Handler): void {
       descriptions.set(name, description);
+      handlers.set(name, handler);
     },
   } as unknown as McpServerToolRegistration;
-  const client = new Proxy({} as RegistryClient, { get: vi.fn(), apply: vi.fn() });
+  // Every SDK method resolves to an empty object, so each handler reaches its success path.
+  const method = (): Promise<object> => Promise.resolve({});
+  const namespace = new Proxy({}, { get: () => method });
+  const client = new Proxy({} as RegistryClient, { get: () => namespace });
   registerAllTools(server, client);
-  return descriptions;
+  return { descriptions, handlers };
 }
 
-describe('cross-version caveat (dvc spec §4.1, amendment AC)', () => {
-  const descriptions = registeredDescriptions();
+// Pinned here, independently of the arrays under test: removing a tool from
+// CROSS_VERSION_TOOLS or POOLED_VERSIONS_TOOLS must fail this file (A31 TA-3 — the
+// 0.11.1 test iterated the array it was checking, so shrinking it passed).
+const EXPECTED_CROSS = ['compare_effectiveness', 'get_diff_impact', 'get_evolution', 'get_lineage', 'get_translation_analytics'];
+const EXPECTED_POOLED = ['get_effectiveness', 'get_health'];
 
-  it('captures registered descriptions (guards against a vacuous pass)', () => {
-    expect(descriptions.size).toBeGreaterThan(CROSS_VERSION_TOOLS.length);
+describe('cross-version caveats (dvc spec \u00a74.1, amendments AC and AH)', () => {
+  const { descriptions, handlers } = registered();
+
+  it('the tool lists match the pinned sets', () => {
+    expect([...CROSS_VERSION_TOOLS].sort()).toEqual(EXPECTED_CROSS);
+    expect([...POOLED_VERSIONS_TOOLS].sort()).toEqual(EXPECTED_POOLED);
   });
 
-  it.each(CROSS_VERSION_TOOLS)('%s carries the caveat', (name) => {
-    const description = descriptions.get(name);
-    expect(description, `${name} is not registered`).toBeDefined();
-    expect(description).toContain(CROSS_VERSION_CAVEAT);
+  it.each(EXPECTED_CROSS)('%s carries the cross-version caveat in description and response', async (name) => {
+    expect(descriptions.get(name), `${name} is not registered`).toContain(CROSS_VERSION_CAVEAT);
+    const response = await handlers.get(name)!({ type: 'agent', name: 'x', version: '1.0.0', versions: ['1.0.0', '1.1.0'], from_version: '1.0.0', to_version: '1.1.0' });
+    expect(response.content.map((c) => c.text)).toContain(JSON.stringify({ caveat: CROSS_VERSION_CAVEAT }));
   });
 
-  it('single-version tools do not carry it', () => {
-    expect(descriptions.get('get_effectiveness')).not.toContain(CROSS_VERSION_CAVEAT);
-    expect(descriptions.get('get_fork_lineage')).not.toContain(CROSS_VERSION_CAVEAT);
+  it.each(EXPECTED_POOLED)('%s carries the pooled-versions caveat in description and response', async (name) => {
+    expect(descriptions.get(name), `${name} is not registered`).toContain(POOLED_VERSIONS_CAVEAT);
+    const response = await handlers.get(name)!({ type: 'agent', name: 'x', version: '1.0.0' });
+    expect(response.content.map((c) => c.text)).toContain(JSON.stringify({ caveat: POOLED_VERSIONS_CAVEAT }));
+  });
+
+  it('tools outside both sets carry neither caveat', () => {
+    const covered = new Set([...EXPECTED_CROSS, ...EXPECTED_POOLED]);
+    const others = [...descriptions].filter(([name]) => !covered.has(name));
+    expect(others.length).toBeGreaterThan(10);
+    for (const [name, description] of others) {
+      expect(description, name).not.toContain(CROSS_VERSION_CAVEAT);
+      expect(description, name).not.toContain(POOLED_VERSIONS_CAVEAT);
+    }
+  });
+
+  it('the wording does not license ranking with a second source', () => {
+    expect(CROSS_VERSION_CAVEAT).not.toMatch(/figures alone\./);
+    expect(CROSS_VERSION_CAVEAT).toContain('alone or combined with other figures');
   });
 });

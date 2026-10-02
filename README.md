@@ -201,8 +201,8 @@ Lifecycle refusals now carry `allowedTransitions`; blocked deletion carries `blo
 ### Analytics (P3)
 | Tool | Description |
 |------|-------------|
-| `get_effectiveness` | Effectiveness metrics: voter-weighted quality (one actor, one vote) with the `provenance` block — `independent` vs `selfReported` split, confidence label. Agents are score-only (`passRate: null`) |
-| `get_health` | Health grade and issue profile for a definition; the pass-rate factor requires 3+ qualifying actors |
+| `get_effectiveness` | Effectiveness metrics: voter-weighted quality (one actor, one vote) with the `provenance` block — `independent` vs `selfReported` split, confidence label. Agents are score-only (`passRate: null`). **Pools every version** run in the window, whatever `version` you pass; the description and each response carry a pooled-versions caveat |
+| `get_health` | Health grade and issue profile for a definition; the pass-rate factor requires 3+ qualifying actors. Derived from `get_effectiveness`, so it **pools every version** too |
 | `get_ecosystem_overview` | Ecosystem-wide analytics overview |
 | `get_lineage` | Lineage graph for a definition (versions + forks as a tree) |
 | `get_evolution` | Version-over-version metrics with trend detection |

@@ -21,10 +21,10 @@ export function registerGetTranslationAnalyticsTool(
 ): void {
   server.tool(
     'get_translation_analytics',
-    'Get definition versions grouped by translator version with aggregate metrics (pass rate, score, run count). Shows translator impact on definition quality.' + ' ' + CROSS_VERSION_CAVEAT,
+    'Get definition versions grouped by translator version with aggregate metrics (pass rate, score, run count).' + ' ' + CROSS_VERSION_CAVEAT,
     GetTranslationAnalyticsInputSchema.shape,
     createToolHandler(GetTranslationAnalyticsInputSchema, (n) =>
       registryClient.analytics.getTranslation(n.type, n.name)
-    , { toolName: 'get_translation_analytics' })
+    , { toolName: 'get_translation_analytics', responseNote: CROSS_VERSION_CAVEAT })
   );
 }

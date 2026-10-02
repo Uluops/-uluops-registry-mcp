@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.11.2] - 2026-10-02
+
+### Changed
+
+- **Cross-version caveat reworded: "from these figures alone" is gone.** It now ends "do not rank versions or recommend one on the basis of these figures, alone or combined with other figures", and adds that pass rates and scores are the agent's own grades, so an edit that changes leniency moves them without changing quality. **Why:** the 0.11.1 qualifier licensed a ranking as soon as a model added any second source — a dispositions record, a user's impression — which is the reading the caveat exists to stop (definition-version-dispositions A31 review, tracker run #65, two independent HIGH findings).
+- **`get_effectiveness` and `get_health` now carry a pooled-versions caveat.** Both take a `version`, but the registry computes them over every version of the definition (`getEffectiveness` queries the tracker by name only; `getHealth` derives from it). **What changes for you:** a figure you read for `foo@1.2.0` was always the definition's figure across all its versions; the description and response now say so. Comparing these figures across versions compares one pooled number with itself.
+- **`get_translation_analytics` no longer says it "shows translator impact on definition quality"**, which contradicted its own caveat.
+
+### Added
+
+- **The caveat now rides in the response, not only the description.** The seven tools above append a second content block, `{"caveat": "..."}`, to every success response. **Why:** a model reads the description when it picks a tool and the payload when it writes the answer, and these payloads carry `highestEffectiveness`, trends and retranslate recommendations. **What changes for you:** `content` has two text blocks on these tools; the data block is still `content[0]`.
+
+### Fixed
+
+- **The caveat test could pass with a tool silently removed.** It iterated `CROSS_VERSION_TOOLS`, the array it was checking, so deleting an entry passed (A31 test-architect, a demonstrated surviving mutation). The expected sets are now pinned in the test, and every other registered tool is asserted caveat-free. Controls run: removing a tool from either list, or the response note or description caveat from any tool, fails the suite.
+
 ## [0.11.1] - 2026-10-02
 
 ### Changed

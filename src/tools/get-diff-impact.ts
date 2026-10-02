@@ -36,6 +36,6 @@ export function registerGetDiffImpactTool(
     (GetDiffImpactInputSchema as unknown as { innerType: () => z.ZodObject<z.ZodRawShape> }).innerType().shape,
     createToolHandler(GetDiffImpactInputSchema, (n) =>
       registryClient.analytics.getDiffImpact(n.type, n.name, n.from ?? n.fromVersion, n.to ?? n.toVersion, n.qualityContract === 'nullable-v1' ? { qualityContract: n.qualityContract } : undefined)
-    , { toolName: 'get_diff_impact' })
+    , { toolName: 'get_diff_impact', responseNote: CROSS_VERSION_CAVEAT })
   );
 }

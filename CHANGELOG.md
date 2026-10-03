@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.11.4] - 2026-10-03
+
+### Changed
+
+- **Both caveats no longer say the pooled figures pool every version.** 0.11.3 said health, failure-domain and taxonomy figures "pool every version of the definition", and the pooled-versions caveat on `get_effectiveness` and `get_health` said "these figures pool every version". The issue-derived figures do not: registry-api `getEffectiveness` filters issues to the `definitionId` of whichever run carries one first (tracker `7ed97aa5`), so the false-positive, declined and resolution rates, the taxonomy, and the health factors built from them come from one version that need not be the one requested; and its runs carry no org filter (definition-version-dispositions A35 review, tracker run #67, amendment AS). The fix for `7ed97aa5` is not chosen, so the new wording uses "may" and "possibly" and stays true before and after it. Execution counts are now named among the figures that are not per-version (amendment AN). **What changes for you:** description and response-block text only.
+
+### Fixed
+
+- **The pooled-versions caveat is now pinned word for word**, like the cross-version one (it was asserted only by `toContain` against descriptions and responses, which a reworded constant passes).
+
 ## [0.11.3] - 2026-10-02
 
 ### Changed

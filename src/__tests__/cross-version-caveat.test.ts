@@ -85,15 +85,28 @@ describe('cross-version caveats (dvc spec \u00a74.1, amendments AC and AH)', () 
 
   it('pins the shared sentence word for word (the same literal is pinned in @uluops/ops-mcp)', () => {
     expect(CROSS_VERSION_CAVEAT).toBe(
-    'Cross-version figures here are observational. Some are not per-version at all: health, failure-domain and ' +
-    'taxonomy figures, where present, pool every version of the definition and are re-stamped onto a version whenever ' +
-    'it is recomputed, so a difference between versions there only reflects when each was recomputed. Pass rates and ' +
-    'scores, where per-version, come from each version\'s own runs in its own period, on its own artifacts, and are the ' +
-    'agent\'s own assessments of those artifacts, so an edit that changes how lenient it is moves them without changing ' +
-    'quality. No difference between versions here is evidence that an edit made the definition better or worse; do not ' +
-    'rank versions or recommend one on the basis of these figures, alone or combined with other figures.',
+      'Cross-version figures here are observational. Some may not be per-version at all: health, failure-domain, ' +
+      'taxonomy and execution-count figures, where present, may be computed for the definition rather than the ' +
+      'version they are shown under (pooling its runs across versions, and possibly across orgs, or taking ' +
+      'issue-derived parts from a single version that need not be the one shown) and are stored against a version ' +
+      'whenever it is recomputed, so a difference between versions there can reflect when and how each was recomputed ' +
+      'rather than the versions. Pass rates and scores, where per-version, come from each version\'s own runs in its ' +
+      'own period, on its own artifacts, and are the agent\'s own assessments of those artifacts, so an edit that ' +
+      'changes how lenient it is moves them without changing quality. No difference between versions here is evidence ' +
+      'that an edit made the definition better or worse; do not rank versions or recommend one on the basis of these ' +
+      'figures, alone or combined with other figures.',
     );
     expect(CROSS_VERSION_CAVEAT).not.toMatch(/\bgrades?\b/);
+  });
+
+  it('pins the pooled-versions sentence word for word (A35, amendment AS)', () => {
+    expect(POOLED_VERSIONS_CAVEAT).toBe(
+      'These figures are not specific to the requested version: run-based figures pool every version of the ' +
+      'definition run in the window (possibly across orgs), and issue-derived figures (false-positive, declined and ' +
+      'resolution rates, taxonomy, and the parts of health built from them) may come from a single version that need ' +
+      'not be the one requested. They cannot show whether one version differs from another. Do not compare these ' +
+      'figures across versions, and do not report them as the requested version\'s.',
+    );
   });
 
   it('the wording does not license ranking with a second source', () => {

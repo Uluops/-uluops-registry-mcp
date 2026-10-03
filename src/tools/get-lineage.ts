@@ -21,7 +21,7 @@ export function registerGetLineageTool(
 ): void {
   server.tool(
     'get_lineage',
-    'Get the lineage graph for a definition: versions and forks as a tree with health scores per node.' + ' ' + CROSS_VERSION_CAVEAT,
+    'Get the lineage graph for a definition: versions and forks as a tree with health scores per node.',
     GetLineageInputSchema.shape,
     createToolHandler(GetLineageInputSchema, (n) =>
       registryClient.analytics.getLineage(n.type, n.name)

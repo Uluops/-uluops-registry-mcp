@@ -50,7 +50,7 @@ export const POOLED_VERSIONS_CAVEAT =
   'These figures are not specific to the requested version: run-based figures pool every version of the ' +
   'definition run in the window (possibly across orgs), and issue-derived figures (false-positive, declined and ' +
   'resolution rates, taxonomy, and the parts of health built from them) may come from a single version that need ' +
-  'not be the one requested. They cannot show whether one version differs from another. Do not compare these ' +
+  'not be the one requested. They cannot prove whether one version differs from another. Do not compare these ' +
   'figures across versions, and do not report them as the requested version\'s.';
 
 /** Tools whose descriptions and responses must carry CROSS_VERSION_CAVEAT. */

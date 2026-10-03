@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.11.3] - 2026-10-02
+
+### Changed
+
+- **Cross-version caveat reworded again: it no longer says every figure is per-version.** 0.11.2 said "each version ran in its own period, on its own artifacts" of every figure in `get_lineage`, `get_evolution`, `compare_effectiveness`, `get_diff_impact` and `get_translation_analytics`. Health, failure-domain and taxonomy figures are not per-version: the registry computes them over every version and persists them under whichever version was requested, so lineage, evolution and compare lay one pooled figure, stamped per version, side by side, and a difference there reflects when each version was last recomputed (definition-version-dispositions A33 review, tracker run #66; verified in registry-api `getEffectiveness` and `definition-analytics-service`). The new sentence says so, keeps the per-version clause for pass rates and scores, and drops "grades", which the dispositions spec reserves for another sense. **What changes for you:** description and response-block text only.
+
+### Fixed
+
+- **The test now pins the full sentence**, and `@uluops/ops-mcp`'s test pins the same literal, so a one-word drift in either package fails (A33 test-architect: "artifacts" → "artifact" survived 0.11.2's partial pin).
+
 ## [0.11.2] - 2026-10-02
 
 ### Changed

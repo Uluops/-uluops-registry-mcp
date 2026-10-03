@@ -74,11 +74,26 @@ describe('cross-version caveats (dvc spec \u00a74.1, amendments AC and AH)', () 
   it('tools outside both sets carry neither caveat', () => {
     const covered = new Set([...EXPECTED_CROSS, ...EXPECTED_POOLED]);
     const others = [...descriptions].filter(([name]) => !covered.has(name));
+    // Guards against a vacuous pass: registerAllTools must have registered the rest of the server's tools,
+    // so the loop below actually checks something. The server registers ~45; 10 is a floor, not a count.
     expect(others.length).toBeGreaterThan(10);
     for (const [name, description] of others) {
       expect(description, name).not.toContain(CROSS_VERSION_CAVEAT);
       expect(description, name).not.toContain(POOLED_VERSIONS_CAVEAT);
     }
+  });
+
+  it('pins the shared sentence word for word (the same literal is pinned in @uluops/ops-mcp)', () => {
+    expect(CROSS_VERSION_CAVEAT).toBe(
+    'Cross-version figures here are observational. Some are not per-version at all: health, failure-domain and ' +
+    'taxonomy figures, where present, pool every version of the definition and are re-stamped onto a version whenever ' +
+    'it is recomputed, so a difference between versions there only reflects when each was recomputed. Pass rates and ' +
+    'scores, where per-version, come from each version\'s own runs in its own period, on its own artifacts, and are the ' +
+    'agent\'s own assessments of those artifacts, so an edit that changes how lenient it is moves them without changing ' +
+    'quality. No difference between versions here is evidence that an edit made the definition better or worse; do not ' +
+    'rank versions or recommend one on the basis of these figures, alone or combined with other figures.',
+    );
+    expect(CROSS_VERSION_CAVEAT).not.toMatch(/\bgrades?\b/);
   });
 
   it('the wording does not license ranking with a second source', () => {

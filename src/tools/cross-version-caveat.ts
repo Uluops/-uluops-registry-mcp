@@ -63,4 +63,4 @@ export const CROSS_VERSION_TOOLS = [
 ] as const;
 
 /** Tools whose descriptions and responses must carry POOLED_VERSIONS_CAVEAT. */
-export const POOLED_VERSIONS_TOOLS = ['get_effectiveness', 'get_health'] as const;
+export const POOLED_VERSIONS_TOOLS = ['get_effectiveness'] as const;

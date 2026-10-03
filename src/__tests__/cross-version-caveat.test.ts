@@ -45,6 +45,12 @@ function registered(): { descriptions: Map<string, string>; handlers: Map<string
 const EXPECTED_CROSS = ['compare_effectiveness', 'get_diff_impact', 'get_evolution', 'get_lineage', 'get_translation_analytics'];
 const EXPECTED_POOLED = ['get_effectiveness', 'get_health'];
 
+function handlerFor(handlers: Map<string, Handler>, name: string): Handler {
+  const handler = handlers.get(name);
+  if (handler === undefined) throw new Error(`${name} is not registered`);
+  return handler;
+}
+
 describe('cross-version caveats (dvc spec \u00a74.1, amendments AC and AH)', () => {
   const { descriptions, handlers } = registered();
 
@@ -55,13 +61,13 @@ describe('cross-version caveats (dvc spec \u00a74.1, amendments AC and AH)', () 
 
   it.each(EXPECTED_CROSS)('%s carries the cross-version caveat in description and response', async (name) => {
     expect(descriptions.get(name), `${name} is not registered`).toContain(CROSS_VERSION_CAVEAT);
-    const response = await handlers.get(name)!({ type: 'agent', name: 'x', version: '1.0.0', versions: ['1.0.0', '1.1.0'], from_version: '1.0.0', to_version: '1.1.0' });
+    const response = await handlerFor(handlers, name)({ type: 'agent', name: 'x', version: '1.0.0', versions: ['1.0.0', '1.1.0'], from_version: '1.0.0', to_version: '1.1.0' });
     expect(response.content.map((c) => c.text)).toContain(JSON.stringify({ caveat: CROSS_VERSION_CAVEAT }));
   });
 
   it.each(EXPECTED_POOLED)('%s carries the pooled-versions caveat in description and response', async (name) => {
     expect(descriptions.get(name), `${name} is not registered`).toContain(POOLED_VERSIONS_CAVEAT);
-    const response = await handlers.get(name)!({ type: 'agent', name: 'x', version: '1.0.0' });
+    const response = await handlerFor(handlers, name)({ type: 'agent', name: 'x', version: '1.0.0' });
     expect(response.content.map((c) => c.text)).toContain(JSON.stringify({ caveat: POOLED_VERSIONS_CAVEAT }));
   });
 

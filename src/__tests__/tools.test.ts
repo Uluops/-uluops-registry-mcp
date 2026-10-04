@@ -1912,3 +1912,71 @@ describe('Tool Registration & SDK Calls', () => {
     });
   });
 });
+
+function setupSearchControls(register: typeof registerListDefinitionsTool): { handler: Parameters<McpServerToolRegistration['tool']>[3]; call: ReturnType<typeof vi.fn>; response: { definitions: { name: string; relevance: number; executionCount: number }[]; total: number } } {
+  const response = { definitions: [{ name: 'example', relevance: 1.5, executionCount: 7 }], total: 1 };
+  const call = vi.fn().mockResolvedValue(response);
+  const client = { definitions: { list: call } } as unknown as RegistryClient;
+  let handler: Parameters<McpServerToolRegistration['tool']>[3] | undefined;
+  const server: McpServerToolRegistration = { tool: (_name, _description, _schema, registered): void => { handler = registered; } };
+  register(server, client);
+  if (!handler) throw new Error('Tool was not registered');
+  return { handler, call, response };
+}
+
+describe('definition search controls', () => {
+  it.each([
+    { register: registerListDefinitionsTool, input: { name: 'probe', match: 'exact' }, tool: 'list_definitions' },
+    { register: registerSearchDefinitionsTool, input: { query: 'probe', match: 'prefix' }, tool: 'search_definitions' },
+  ])('preserves actionable unsupported capability refusal for $tool', async ({ register, input, tool }) => {
+    const { handler, call } = setupSearchControls(register);
+    const { UnsupportedDefinitionSearchContractError } = await vi.importActual<typeof import('@uluops/registry-sdk/errors')>('@uluops/registry-sdk/errors');
+    call.mockRejectedValue(new UnsupportedDefinitionSearchContractError());
+    const result = await handler(input);
+    expect(result.isError).toBe(true);
+    expect(JSON.parse((result.content[0] as { text: string }).text)).toMatchObject({
+      error_type: 'UnsupportedDefinitionSearchContractError',
+      code: 'UNSUPPORTED_DEFINITION_SEARCH_CONTRACT',
+      tool, applicationState: 'not_applied',
+      error: expect.stringContaining('name-v1'),
+      suggestion: expect.stringContaining('No keyword fallback was performed'),
+    });
+    expect(call).toHaveBeenCalledTimes(1);
+  });
+  it.each(['exact', 'prefix', undefined])('list forwards normalized literal name (%s)', async (match) => {
+    const { handler, call } = setupSearchControls(registerListDefinitionsTool);
+    expect((await handler({ name: " A%_\\'B ", match, tags: ['code'] })).isError).not.toBe(true);
+    expect(call).toHaveBeenCalledWith({ name: "a%_\\'b", ...(match !== undefined ? { match } : {}), tag: ['code'] });
+  });
+  it.each([{ name: '\nprobe' }, { name: 'probe\n' }, { name: ' '.repeat(100) + 'a' }, { match: 'text', search: '\nprobe' }, { match: 'text', search: 'probe\n' }, { match: 'text', search: ' '.repeat(100) + 'a' }, { match: 'text', search: 'é' }, { name: 'test', search: 'test' }, { name: 'test', match: 'text' }, { match: 'exact' }, { match: 'prefix' }, { match: 'text', search: ' ' }, { name: 'é' }, { name: 'a\nb' }, { name: 'a'.repeat(101) }, { name: ' ' }, { match: 'future' }])('list rejects invalid mode %j before SDK', async (input) => {
+    const { handler, call } = setupSearchControls(registerListDefinitionsTool);
+    expect((await handler(input)).isError).toBe(true);
+    expect(call).not.toHaveBeenCalled();
+  });
+  it('pins API limit50 when list page supplied and preserves relevance in compact output', async () => {
+    const { handler, call } = setupSearchControls(registerListDefinitionsTool);
+    const result = await handler({ page: '3' });
+    expect(call).toHaveBeenCalledWith({ offset: 100, limit: 50 });
+    expect(JSON.parse((result.content[0] as { text: string }).text).definitions).toEqual([{ name: 'example', relevance: 1.5 }]);
+  });
+  it.each(['exact', 'prefix'])('search maps query to name for %s with pagination and sort', async (match) => {
+    const { handler, call, response } = setupSearchControls(registerSearchDefinitionsTool);
+    const result = await handler({ query: " A%_\\'B ", match, page: 3, sort: 'name', order: 'desc', tags: ['code'] });
+    expect(result.isError).not.toBe(true);
+    expect(call).toHaveBeenCalledWith(expect.objectContaining({ name: "a%_\\'b", match, offset: 40, limit: 20, sortBy: 'name', sortOrder: 'desc', tag: ['code'] }));
+    expect(call.mock.calls[0][0]).not.toHaveProperty('search');
+    expect(JSON.parse((result.content[0] as { text: string }).text)).toEqual(response);
+  });
+  it.each([undefined, 'text'])('search keeps keyword behavior (%s)', async (match) => {
+    const { handler, call } = setupSearchControls(registerSearchDefinitionsTool);
+    await handler({ query: ' Validate! ', match, page: 2, limit: 7 });
+    expect(call).toHaveBeenCalledWith(expect.objectContaining({ search: ' Validate! ', offset: 7, limit: 7, ...(match !== undefined ? { match } : {}) }));
+    expect(call.mock.calls[0][0]).not.toHaveProperty('name');
+    if (match === undefined) expect(call.mock.calls[0][0]).not.toHaveProperty('match');
+  });
+  it.each([{ query: '\nprobe', match: 'exact' }, { query: 'probe\n', match: 'prefix' }, { query: ' '.repeat(100) + 'a', match: 'exact' }, { query: '\nprobe', match: 'text' }, { query: 'probe\n', match: 'text' }, { query: ' '.repeat(100) + 'a', match: 'text' }, { query: 'é', match: 'text' }, { query: ' ', match: 'exact' }, { query: 'é', match: 'prefix' }, { query: 'a'.repeat(101), match: 'exact' }, { query: ' ', match: 'text' }, { query: 'test', match: 'future' }, { query: 'test', page: 0 }, { query: 'test', limit: 101 }])('search rejects invalid %j before SDK', async (input) => {
+    const { handler, call } = setupSearchControls(registerSearchDefinitionsTool);
+    expect((await handler(input)).isError).toBe(true);
+    expect(call).not.toHaveBeenCalled();
+  });
+});

@@ -75,6 +75,8 @@ get_definition({ type: "agent", name: "code-validator", include_yaml: true })
 
 // Search across all definition types
 search_definitions({ query: "validation", type: "agent" })
+search_definitions({ query: "code-validator", match: "exact" })
+search_definitions({ query: "code-", match: "prefix", page: 2, limit: 10, sort: "name", order: "asc" })
 
 // Validate YAML before publishing (inline or by file path)
 validate_definition({ type: "agent", yaml: "..." })
@@ -102,9 +104,9 @@ compare_effectiveness({ type: "agent", name: "code-validator", versions: ["1.0.0
 ### Core tools (P0)
 | Tool | Description |
 |------|-------------|
-| `list_definitions` | List definitions with filters (type, status, domain, visibility, search, tags, pagination). `format`: `compact` (default — type, name, version, status, visibility, description per item), `full` (all catalog fields) |
+| `list_definitions` | List definitions with filters (type, status, domain, visibility, search, name, match, tags, pagination). `format`: `compact` (default — type, name, namespace, version, status, visibility, description and optional relevance per item), `full` (all catalog fields) |
 | `get_definition` | Get a single definition by type + name, optionally with YAML / runtime / refs |
-| `search_definitions` | Search definitions by keyword |
+| `search_definitions` | Keyword search by default; `match`: `exact`, `prefix`, or `text`. Supports page, limit (default 20, max 100), sort and order |
 | `list_models` | List AI models with optional filters |
 | `resolve_alias` | Resolve an alias (e.g. `sonnet`) to provider + modelId |
 | `validate_definition` | Validate YAML without storing (accepts `yaml` or `file_path`) |
@@ -280,3 +282,23 @@ An unchanged pair returns an empty patch. The SDK negotiates support and refuses
 unsupported servers without falling back. Legacy omission keeps `full=true`
 precedence (raw `fromYaml`/`toYaml`, no patch) until a future major release with
 at least 90 days notice.
+
+### Definition search semantics
+
+`list_definitions({ name: 'code-validator' })` defaults to exact identifier matching;
+`match: 'prefix'` selects a literal prefix. Identifiers are trimmed and lowercased,
+with 1–100 printable ASCII characters before trimming; punctuation, quotes, `%`, `_`, and
+backslashes are preserved. `name` cannot combine with `search` or `match: 'text'`.
+For `search_definitions`, exact/prefix modes use the required `query` as the name.
+Omitting `match` retains existing keyword behavior; explicit `match: 'text'`
+requires a nonblank search/query of 1–100 printable ASCII characters before trimming. New name or explicit match requests negotiate
+the server's `name-v1` capability and refuse unsupported servers without fallback.
+
+Keyword terms of at least three characters after sanitization use FULLTEXT over
+`name`, `display_name`, and `description`. Short original searches fall back to
+`name`/`display_name`; longer searches whose sanitized terms are shorter than
+three characters also fall back across `description`. Tags filter independently
+by OR-any and are not keyword searched. Actual FULLTEXT rows may include numeric
+`relevance`, retained in compact list output. Search responses retain the full
+list rows. A list request with `page` and no `limit` explicitly uses limit 50,
+matching the API's default; MCP limits remain capped at 100.

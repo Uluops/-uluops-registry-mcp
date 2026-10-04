@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Unsupported `name-v1` capability errors retain their code/tool context and explain that no keyword fallback was performed.
+- Exact-name and literal-prefix discovery with `name`/`match` on `list_definitions` and `match` on `search_definitions`; existing keyword searches retain their behavior.
+- Page, sort, and order on `search_definitions`, and optional FULLTEXT relevance in compact list rows.
+
+### Fixed
+
+- List page requests without a limit now explicitly send limit 50, keeping offset calculation and server page size aligned.
+- Numeric parameter coercion remains available for schemas with search combination refinements.
+
 ## [0.11.4] - 2026-10-03
 
 ### Changed

@@ -266,6 +266,14 @@ export function mapSdkErrorToMcp(error: unknown, toolName?: string): McpToolResp
     ...(suggestion != null ? { suggestion } : {}),
   };
 
+  if (causeCode === 'UNSUPPORTED_DEFINITION_SEARCH_CONTRACT') {
+    return buildErrorResponse(sanitizeErrorMessage(getErrorMessage(error, 'Definition search contract unavailable')), {
+      ...context,
+      applicationState: 'not_applied',
+      suggestion: 'Use a Registry API that advertises definitionSearch name-v1. No keyword fallback was performed; keep the requested match mode and org context.',
+    });
+  }
+
   if (toolName === 'upgrade_definition') {
     const details = (error as { details?: Record<string, unknown> }).details;
     if (causeCode === 'RESPONSE_VALIDATION') {

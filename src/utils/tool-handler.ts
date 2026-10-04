@@ -19,6 +19,8 @@ import { toolRegistry } from '../config/tool-registry.js';
  */
 function coerceNumericFields(args: unknown, schema: z.ZodSchema): unknown {
   if (typeof args !== 'object' || args === null) return args;
+  // Refined object schemas still need the same numeric coercion as plain ones.
+  while (schema instanceof z.ZodEffects) schema = schema.innerType();
   if (!(schema instanceof z.ZodObject)) return args;
 
   const shape = schema.shape as Record<string, z.ZodTypeAny>;

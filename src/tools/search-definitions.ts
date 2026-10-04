@@ -13,12 +13,19 @@ import {
   AgentTypeSchema,
   VisibilitySchema,
   AuthorshipTypeSchema,
+  SortFieldSchema,
+  SortOrderSchema,
   type McpServerToolRegistration,
 } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
 
 export const SearchDefinitionsInputSchema = z.object({
   query: z.string().min(1),
+  match: z.enum(['exact', 'prefix', 'text']).optional()
+    .describe('Omit for legacy keyword search. exact/prefix match a literal identifier, trimmed and lowercased.'),
+  page: z.number().int().positive().optional(),
+  sort: SortFieldSchema.optional(),
+  order: SortOrderSchema.optional(),
   type: DefinitionTypeSchema.optional(),
   status: DefinitionStatusSchema.optional(),
   domain: DomainSchema.optional(),
@@ -36,11 +43,22 @@ export function registerSearchDefinitionsTool(
 ): void {
   server.tool(
     'search_definitions',
-    'Search definitions by keyword with optional type, status, domain, agent_type, visibility, and tags filters.',
+    'Search definitions by keyword (default), exact identifier, or literal identifier prefix. Keyword searches sanitized terms of at least 3 characters across name, display_name, description using FULLTEXT; short original searches use name/display_name, and longer searches sanitized below 3 characters also use description. Tags filter independently by OR-any and are not keyword searched. Supports page, limit, sort and order.',
     SearchDefinitionsInputSchema.shape,
-    createToolHandler(SearchDefinitionsInputSchema, (n) =>
+    createToolHandler(SearchDefinitionsInputSchema.superRefine((value, ctx) => {
+      if ((value.match === 'exact' || value.match === 'prefix') && (!/^[\x20-\x7e]+$/.test(value.query) || value.query.length > 100 || value.query.trim().length === 0)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Identifier must contain 1-100 printable ASCII characters before trimming and be nonblank', path: ['query'] });
+      }
+      if (value.match === 'text' && (!/^[\x20-\x7e]+$/.test(value.query) || value.query.length > 100 || value.query.trim().length === 0)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Text search requires a nonblank query of 1-100 printable ASCII characters before trimming', path: ['query'] });
+      }
+    }), (n) =>
       registryClient.definitions.list({
-        search: n.query,
+        ...(n.match === 'exact' || n.match === 'prefix' ? { name: (n.query as string).trim().toLowerCase() } : { search: n.query }),
+        ...(n.match !== undefined ? { match: n.match } : {}),
+        ...(n.page !== undefined ? { offset: (n.page - 1) * n.limit } : {}),
+        ...(n.sort !== undefined ? { sortBy: n.sort } : {}),
+        ...(n.order !== undefined ? { sortOrder: n.order } : {}),
         type: n.type,
         status: n.status,
         domain: n.domain,

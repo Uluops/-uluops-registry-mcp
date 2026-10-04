@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- Resolve the SDK consumer lockfile against npmjs and refresh the existing sdk-core integrity for cold installs.
+
 - List page requests without a limit now explicitly send limit 50, keeping offset calculation and server page size aligned.
 - Numeric parameter coercion remains available for schemas with search combination refinements.
 

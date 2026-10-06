@@ -4,6 +4,8 @@
 
 ### Added
 
+- `batch_users` accepts `format: 'envelope'` to expose validated found/missing user IDs, with canonical lowercase UUIDs deduplicated in request order. Default map output is preserved.
+
 - Unsupported `name-v1` capability errors retain their code/tool context and explain that no keyword fallback was performed.
 - Exact-name and literal-prefix discovery with `name`/`match` on `list_definitions` and `match` on `search_definitions`; existing keyword searches retain their behavior.
 - Page, sort, and order on `search_definitions`, and optional FULLTEXT relevance in compact list rows.
@@ -14,6 +16,9 @@
 
 - List page requests without a limit now explicitly send limit 50, keeping offset calculation and server page size aligned.
 - Numeric parameter coercion remains available for schemas with search combination refinements.
+
+### Security
+- Update the Hono override to 4.13.7 and resolve proxy-addr 2.0.8 to clear inherited production advisories before the F19 release.
 
 ## [0.11.4] - 2026-10-03
 

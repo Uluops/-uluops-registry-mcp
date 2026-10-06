@@ -198,7 +198,7 @@ Lifecycle refusals now carry `allowedTransitions`; blocked deletion carries `blo
 |------|-------------|
 | `record_execution` | Record a definition execution (idempotent). Admin-only — executions are recorded automatically by the runtime; user keys get a 403 explaining this |
 | `get_user` | Get public user profile |
-| `batch_users` | Batch user lookup (max 100) |
+| `batch_users` | Batch user lookup (max 100); optional `format: 'envelope'` returns `{data,foundIds,missingIds}` |
 
 ### Analytics (P3)
 | Tool | Description |
@@ -302,3 +302,10 @@ by OR-any and are not keyword searched. Actual FULLTEXT rows may include numeric
 `relevance`, retained in compact list output. Search responses retain the full
 list rows. A list request with `page` and no `limit` explicitly uses limit 50,
 matching the API's default; MCP limits remain capped at 100.
+
+`batch_users` defaults to the existing map (`format: 'map'` is also accepted).
+With `format: 'envelope'`, UUID inputs are normalized to lowercase and deduplicated
+in request order; both ID arrays use that order and canonical spelling. Unknown,
+deleted, and null profiles appear in `missingIds`. The 100-input limit applies
+before deduplication. The SDK requires consistent producer `found`/`notFound`
+metadata and returns a response-validation error when it is absent or invalid.

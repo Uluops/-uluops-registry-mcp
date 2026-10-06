@@ -1746,6 +1746,38 @@ describe('Tool Registration & SDK Calls', () => {
       expect(client.users.batch).toHaveBeenCalledWith(['user-1', 'user-2', 'user-3']);
     });
 
+    it('returns envelope metadata unchanged and passes the opt-in to the SDK', async () => {
+      const envelope = { data: { 'user-1': { id: 'user-1' } }, foundIds: ['user-1'], missingIds: ['user-2'] };
+      (client.users.batch as ReturnType<typeof vi.fn>).mockResolvedValue(envelope);
+      registerBatchUsersTool(server, client);
+      const result = await getHandler(server)({ ids: ['user-2', 'user-1'], format: 'envelope' });
+      expect(client.users.batch).toHaveBeenCalledWith(['user-2', 'user-1'], { format: 'envelope' });
+      expect(parseResult(result)).toEqual(envelope);
+    });
+
+    it('preserves explicit map format and rejects unsupported formats before SDK calls', async () => {
+      (client.users.batch as ReturnType<typeof vi.fn>).mockResolvedValue({ 'user-1': { id: 'user-1' } });
+      registerBatchUsersTool(server, client);
+      const map = await getHandler(server)({ ids: ['user-1'], format: 'map' });
+      expect(parseResult(map)).toEqual({ 'user-1': { id: 'user-1' } });
+      expect(client.users.batch).toHaveBeenCalledWith(['user-1']);
+      const result = await getHandler(server)({ ids: ['user-1'], format: 'unsupported' });
+      expect(result.isError).toBe(true);
+      expect(client.users.batch).toHaveBeenCalledTimes(1);
+    });
+
+    it('surfaces envelope validation failure without a legacy retry', async () => {
+      const error = Object.assign(new Error('users.batch: invalid response metadata'), {
+        name: 'ResponseValidationError', statusCode: 0, code: 'RESPONSE_VALIDATION',
+      });
+      (client.users.batch as ReturnType<typeof vi.fn>).mockRejectedValue(error);
+      registerBatchUsersTool(server, client);
+      const result = await getHandler(server)({ ids: ['user-1'], format: 'envelope' });
+      expect(result.isError).toBe(true);
+      expect(parseResult(result)).toMatchObject({ code: 'RESPONSE_VALIDATION', tool: 'batch_users', applicationState: 'not_applied' });
+      expect(client.users.batch).toHaveBeenCalledTimes(1);
+    });
+
     it('rejects empty ids array', async () => {
       registerBatchUsersTool(server, client);
       const result = await getHandler(server)({ ids: [] });

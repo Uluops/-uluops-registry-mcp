@@ -10,6 +10,10 @@
 - Exact-name and literal-prefix discovery with `name`/`match` on `list_definitions` and `match` on `search_definitions`; existing keyword searches retain their behavior.
 - Page, sort, and order on `search_definitions`, and optional FULLTEXT relevance in compact list rows.
 
+### Changed
+
+- Pin `@uluops/registry-sdk` to 0.60.0 from public npm for the F19 response contract; replace the local Verdaccio SDK lock resolution for cold consumer installs.
+
 ### Fixed
 
 - Resolve the SDK consumer lockfile against npmjs and refresh the existing sdk-core integrity for cold installs.

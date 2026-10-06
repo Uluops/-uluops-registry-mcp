@@ -16,6 +16,8 @@
 
 ### Fixed
 
+- Envelope `batch_users` field selection projects public profiles while retaining user keys and both found/missing ID arrays; all-missing batches accept public profile fields.
+
 - Resolve the SDK consumer lockfile against npmjs and refresh the existing sdk-core integrity for cold installs.
 
 - List page requests without a limit now explicitly send limit 50, keeping offset calculation and server page size aligned.

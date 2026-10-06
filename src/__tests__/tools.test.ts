@@ -1766,6 +1766,44 @@ describe('Tool Registration & SDK Calls', () => {
       expect(client.users.batch).toHaveBeenCalledTimes(1);
     });
 
+    it('projects envelope profiles while preserving identity keys and exact found/missing metadata', async () => {
+      const envelope = { data: { 'user-1': { id: 'user-1', name: 'One' }, 'user-2': null }, foundIds: ['user-1'], missingIds: ['user-2'] };
+      (client.users.batch as ReturnType<typeof vi.fn>).mockResolvedValue(envelope);
+      registerBatchUsersTool(server, client);
+      const result = await getHandler(server)({ ids: ['user-2', 'user-1'], format: 'envelope', fields: ['id'] });
+      expect(result.isError).not.toBe(true);
+      expect(parseResult(result)).toEqual({ ...envelope, data: { 'user-1': { id: 'user-1' }, 'user-2': null } });
+    });
+
+    it('keeps whole envelope data when selected and retains metadata for metadata-only selection', async () => {
+      const envelope = { data: { 'user-1': { id: 'user-1', name: 'One' } }, foundIds: ['user-1'], missingIds: [] };
+      (client.users.batch as ReturnType<typeof vi.fn>).mockResolvedValue(envelope);
+      registerBatchUsersTool(server, client);
+      expect(parseResult(await getHandler(server)({ ids: ['user-1'], format: 'envelope', fields: ['data'] }))).toEqual(envelope);
+      expect(parseResult(await getHandler(server)({ ids: ['user-1'], format: 'envelope', fields: ['missingIds'] }))).toEqual({ ...envelope, data: { 'user-1': {} } });
+    });
+
+    it('accepts public profile fields for an all-missing envelope and rejects unknown fields', async () => {
+      const envelope = { data: {}, foundIds: [], missingIds: ['user-1'] };
+      (client.users.batch as ReturnType<typeof vi.fn>).mockResolvedValue(envelope);
+      registerBatchUsersTool(server, client);
+      const result = await getHandler(server)({ ids: ['user-1'], format: 'envelope', fields: ['id', 'username', 'name', 'bio', 'websiteUrl', 'avatar', 'avatarMimeType'] });
+      expect(result.isError).not.toBe(true);
+      expect(parseResult(result)).toEqual(envelope);
+      const unknown = await getHandler(server)({ ids: ['user-1'], format: 'envelope', fields: ['privateEmail'] });
+      expect(unknown.isError).toBe(true);
+      expect(parseResult(unknown).error).toContain('privateEmail');
+    });
+
+    it('preserves default and explicit map profile projection', async () => {
+      (client.users.batch as ReturnType<typeof vi.fn>).mockResolvedValue({ 'user-1': { id: 'user-1', name: 'One' } });
+      registerBatchUsersTool(server, client);
+      for (const format of [undefined, 'map']) {
+        const result = await getHandler(server)({ ids: ['user-1'], format, fields: ['id'] });
+        expect(parseResult(result)).toEqual({ 'user-1': { id: 'user-1' } });
+      }
+    });
+
     it('surfaces envelope validation failure without a legacy retry', async () => {
       const error = Object.assign(new Error('users.batch: invalid response metadata'), {
         name: 'ResponseValidationError', statusCode: 0, code: 'RESPONSE_VALIDATION',

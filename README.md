@@ -309,3 +309,10 @@ in request order; both ID arrays use that order and canonical spelling. Unknown,
 deleted, and null profiles appear in `missingIds`. The 100-input limit applies
 before deduplication. The SDK requires consistent producer `found`/`notFound`
 metadata and returns a response-validation error when it is absent or invalid.
+In envelope format, `fields` selects public profile fields inside `data` while
+retaining user keys and both `foundIds` and `missingIds`. For example,
+`fields: ['id']` trims profiles to their IDs; `fields: ['data']` keeps complete
+profiles. Public profile fields remain selectable for all-missing batches, and
+unknown fields are rejected. Selecting only metadata leaves empty profile
+objects under their user keys. Default map field selection retains its existing
+behavior.

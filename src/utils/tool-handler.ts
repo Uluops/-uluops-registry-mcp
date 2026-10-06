@@ -112,6 +112,11 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
     preProcess?: (input: TInput) => TInput | McpToolResponse;
     /** Transform SDK result before wrapping in success response. Use to trim large fields. */
     postProcess?: (result: unknown) => unknown;
+    /** Per-tool response projection for payloads with a specialized container shape. */
+    fieldProjection?: {
+      collect: (result: unknown, input: TInput) => Set<string>;
+      filter: (result: unknown, fields: string[], input: TInput) => unknown;
+    };
     /**
      * Appended to every success response as a separate `{ caveat }` text block. Used for
      * the cross-version caveats (dvc spec §4.1, AH): a model reads the response, not the
@@ -168,7 +173,12 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
       // are now REJECTED with the valid set listed, and single-object payloads
       // are projected instead of dropped.
       if (fields) {
-        const universe = collectFieldUniverse(result);
+        const universe = options?.fieldProjection
+          ? options.fieldProjection.collect(result, input)
+          : collectFieldUniverse(result);
+        const project = (selected: string[]): unknown => options?.fieldProjection
+          ? options.fieldProjection.filter(result, selected, input)
+          : filterResponseFields(result, selected);
         const unknown = fields.filter((f) => !universe.has(f));
         if (unknown.length > 0) {
           const message =
@@ -181,7 +191,7 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
           // project the known fields (the full result if none are known) and warn.
           if (isWriteTool(options?.toolName)) {
             const known = fields.filter((f) => universe.has(f));
-            const projected = known.length > 0 ? filterResponseFields(result, known) : result;
+            const projected = known.length > 0 ? project(known) : result;
             const response = createSuccessResponse(projected);
             response.content.push({
               type: 'text',
@@ -193,7 +203,7 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
           }
           return createErrorResponse(message);
         }
-        result = filterResponseFields(result, fields);
+        result = project(fields);
       }
 
       const response = createSuccessResponse(result);

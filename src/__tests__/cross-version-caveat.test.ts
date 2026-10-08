@@ -133,7 +133,7 @@ describe('cross-version caveats (dvc spec \u00a74.1, amendments AC and AH)', () 
 
   it('pins the unversioned-figures sentence word for word (the same literal is pinned in @uluops/ops-mcp)', () => {
     expect(UNVERSIONED_FIGURES_CAVEAT).toBe(
-      'Figures here are not evidence about any one version, including those shown with a version: the response does ' +
+      'Figures here that carry no definition version are not evidence about any one version: the response does ' +
       'not show that the version was checked against the registry, and it may have been filled in by the server. Each ' +
       'may pool every version of the agent or definition it describes (some also span several definitions or orgs), ' +
       'even when the request named a version, or may come from a single version. Do not attribute such a figure to a ' +

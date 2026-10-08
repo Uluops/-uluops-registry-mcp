@@ -7,6 +7,8 @@ import {
   CROSS_VERSION_TOOLS,
   POOLED_VERSIONS_CAVEAT,
   POOLED_VERSIONS_TOOLS,
+  UNVERSIONED_FIGURES_CAVEAT,
+  UNVERSIONED_FIGURES_TOOLS,
 } from '../tools/cross-version-caveat.js';
 
 vi.mock('@uluops/registry-sdk/errors', () => ({
@@ -44,6 +46,7 @@ function registered(): { descriptions: Map<string, string>; handlers: Map<string
 // 0.11.1 test iterated the array it was checking, so shrinking it passed).
 const EXPECTED_CROSS = ['compare_effectiveness', 'get_diff_impact', 'get_evolution', 'get_lineage', 'get_translation_analytics'];
 const EXPECTED_POOLED = ['get_effectiveness', 'get_health'];
+const EXPECTED_UNVERSIONED = ['get_ecosystem_overview', 'get_execution_stats'];
 
 function handlerFor(handlers: Map<string, Handler>, name: string): Handler {
   const handler = handlers.get(name);
@@ -57,6 +60,7 @@ describe('cross-version caveats (dvc spec \u00a74.1, amendments AC and AH)', () 
   it('the tool lists match the pinned sets', () => {
     expect([...CROSS_VERSION_TOOLS].sort()).toEqual(EXPECTED_CROSS);
     expect([...POOLED_VERSIONS_TOOLS].sort()).toEqual(EXPECTED_POOLED);
+    expect([...UNVERSIONED_FIGURES_TOOLS].sort()).toEqual(EXPECTED_UNVERSIONED);
   });
 
   it.each(EXPECTED_CROSS)('%s carries the cross-version caveat in description and response', async (name) => {
@@ -71,8 +75,25 @@ describe('cross-version caveats (dvc spec \u00a74.1, amendments AC and AH)', () 
     expect(response.content.map((c) => c.text)).toContain(JSON.stringify({ caveat: POOLED_VERSIONS_CAVEAT }));
   });
 
-  it('tools outside both sets carry neither caveat', () => {
-    const covered = new Set([...EXPECTED_CROSS, ...EXPECTED_POOLED]);
+  it.each(EXPECTED_UNVERSIONED)('%s carries the unversioned-figures caveat in description and response (CM, P0m-3)', async (name) => {
+    expect(descriptions.get(name), `${name} is not registered`).toContain(UNVERSIONED_FIGURES_CAVEAT);
+    const response = await handlerFor(handlers, name)({ type: 'agent', name: 'x', version: '1.0.0' });
+    expect(response.content.map((c) => c.text)).toContain(JSON.stringify({ caveat: UNVERSIONED_FIGURES_CAVEAT }));
+  });
+
+  it('each set\'s tools carry only their own caveat', () => {
+    const sets: Array<[readonly string[], string]> = [
+      [EXPECTED_CROSS, CROSS_VERSION_CAVEAT], [EXPECTED_POOLED, POOLED_VERSIONS_CAVEAT], [EXPECTED_UNVERSIONED, UNVERSIONED_FIGURES_CAVEAT],
+    ];
+    for (const [names, own] of sets) {
+      for (const name of names) {
+        for (const [, other] of sets) if (other !== own) expect(descriptions.get(name), name).not.toContain(other);
+      }
+    }
+  });
+
+  it('tools outside every set carry no caveat', () => {
+    const covered = new Set([...EXPECTED_CROSS, ...EXPECTED_POOLED, ...EXPECTED_UNVERSIONED]);
     const others = [...descriptions].filter(([name]) => !covered.has(name));
     // Guards against a vacuous pass: registerAllTools must have registered the rest of the server's tools,
     // so the loop below actually checks something. The server registers ~45; 10 is a floor, not a count.
@@ -80,6 +101,7 @@ describe('cross-version caveats (dvc spec \u00a74.1, amendments AC and AH)', () 
     for (const [name, description] of others) {
       expect(description, name).not.toContain(CROSS_VERSION_CAVEAT);
       expect(description, name).not.toContain(POOLED_VERSIONS_CAVEAT);
+      expect(description, name).not.toContain(UNVERSIONED_FIGURES_CAVEAT);
     }
   });
 
@@ -106,6 +128,16 @@ describe('cross-version caveats (dvc spec \u00a74.1, amendments AC and AH)', () 
       'resolution rates, taxonomy, and the parts of health built from them) may come from a single version that need ' +
       'not be the one requested. They cannot show whether one version differs from another. Do not compare these ' +
       'figures across versions, and do not report them as the requested version\'s.',
+    );
+  });
+
+  it('pins the unversioned-figures sentence word for word (the same literal is pinned in @uluops/ops-mcp)', () => {
+    expect(UNVERSIONED_FIGURES_CAVEAT).toBe(
+      'Figures here that carry no definition version are not evidence about any one version: each may pool every ' +
+      'version of the agent or definition it describes (some also span several definitions or orgs), even when the ' +
+      'request named a version, or may come from a single version the response does not name. Do not attribute such a ' +
+      'figure to a version, compare it with a version\'s own figures, or read a change in it as evidence that an edit ' +
+      'made a definition better or worse.',
     );
   });
 

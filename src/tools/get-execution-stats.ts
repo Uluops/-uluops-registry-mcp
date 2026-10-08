@@ -8,6 +8,7 @@ import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
+import { UNVERSIONED_FIGURES_CAVEAT } from './cross-version-caveat.js';
 
 export const GetExecutionStatsInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
@@ -25,10 +26,10 @@ export function registerGetExecutionStatsTool(
 ): void {
   server.tool(
     'get_execution_stats',
-    "Get execution statistics for a definition version. Omit version to use the latest published version. Optional window parameter in DAYS (converted to the API's minute-denominated window; the response echoes windowMinutes).",
+    "Get execution statistics for a definition. The version argument (default: the latest published version) selects the route; the counts are not limited to it. Optional window parameter in DAYS (converted to the API's minute-denominated window; the response echoes windowMinutes)." + ' ' + UNVERSIONED_FIGURES_CAVEAT,
     GetExecutionStatsInputSchema.shape,
     createToolHandler(GetExecutionStatsInputSchema, (n) =>
       registryClient.executions.getStats(n.type, n.name, n.version, n.window === undefined ? undefined : n.window * 24 * 60)
-    , { toolName: 'get_execution_stats' })
+    , { toolName: 'get_execution_stats', responseNote: UNVERSIONED_FIGURES_CAVEAT })
   );
 }

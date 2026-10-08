@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Pooled-figure caveat on `get_execution_stats` and `get_ecosystem_overview`** (definition-version-dispositions spec v0.11.2 §4.1, amendment CM; P0m-3). Both now carry the new `UNVERSIONED_FIGURES_CAVEAT` in their description **and** as a `{"caveat": …}` content block on every success response. The sentence is pinned word for word here and in `@uluops/ops-mcp`. `UNVERSIONED_FIGURES_TOOLS` is pinned independently of the array. **Why:** AK (2026-10-02) had left figures with no version identity uncaveated; CM withdrew it. `get_execution_stats` takes a version but returns a count over every version and org whose body names none. **Consumers:** each success response gains one trailing text block.
 - `batch_users` accepts `format: 'envelope'` to expose validated found/missing user IDs, with canonical lowercase UUIDs deduplicated in request order. Default map output is preserved.
 
 - Unsupported `name-v1` capability errors retain their code/tool context and explain that no keyword fallback was performed.
@@ -12,6 +13,7 @@
 
 ### Changed
 
+- `get_execution_stats` description no longer says "for a definition version": the version argument selects the route, and the counts are not limited to it (inventory row "Total runs, execution stats", tracker `7bf0d517`). Behaviour is unchanged.
 - Pin `@uluops/registry-sdk` to 0.60.0 from public npm for the F19 response contract; replace the local Verdaccio SDK lock resolution for cold consumer installs.
 
 ### Fixed
@@ -24,6 +26,7 @@
 - Numeric parameter coercion remains available for schemas with search combination refinements.
 
 ### Security
+- `@modelcontextprotocol/sdk` `^1.30.0` → `^1.32.1`: clears GHSA-6qxp-vccf-f47h (high; 1.12.0–1.30.1, OAuth client could send credentials to a server-chosen authorization server), which failed the `npm audit --audit-level=high` step of `prepublishOnly`. Neither this package's `src/` nor `mcp-secure-server`'s `dist/` imports `@modelcontextprotocol/sdk/client` (searched 2026-10-08), so the OAuth client path is not reached; the bump clears the audit gate. Full suite and the lint/test/audit/build chain re-run on 1.32.1.
 - Update the Hono override to 4.13.7 and resolve proxy-addr 2.0.8 to clear inherited production advisories before the F19 release.
 
 ## [0.11.4] - 2026-10-03

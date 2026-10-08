@@ -98,6 +98,5 @@ export const UNVERSIONED_FIGURES_CAVEAT =
 
 /** Tools whose descriptions and responses must carry UNVERSIONED_FIGURES_CAVEAT. */
 export const UNVERSIONED_FIGURES_TOOLS = [
-  'get_execution_stats',
   'get_ecosystem_overview',
 ] as const;

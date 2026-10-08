@@ -18,7 +18,7 @@ export function registerGetEcosystemOverviewTool(
 ): void {
   server.tool(
     'get_ecosystem_overview',
-    'Get ecosystem-wide overview: definition counts, aggregate health scores, top performers, and definitions needing attention.' + ' ' + UNVERSIONED_FIGURES_CAVEAT,
+    'Get ecosystem-wide overview: definition counts, aggregate health scores, top performers, and definitions needing attention.',
     GetEcosystemOverviewInputSchema.shape,
     createToolHandler(GetEcosystemOverviewInputSchema, () =>
       registryClient.analytics.getEcosystemOverview()

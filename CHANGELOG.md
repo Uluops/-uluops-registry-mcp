@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-08
+
+### Changed
+
+- **`@uluops/registry-sdk` 0.60.0 → 0.61.0** (exact, from npmjs). `get_model` and `list_models` now return
+  `capabilities.reasoning` — the name the registry serves, which SDK ≤ 0.60.0 stripped — and
+  `capabilities.extendedThinking`, now filled from it (it was always absent). **The field keeps its name and
+  changes meaning:** a consumer reading `extendedThinking` sees `true` on reasoning models and `false` on
+  others, where it saw nothing (thinking-capability-restore spec v0.7.1 §4.4). Verified with a live
+  `get_model` call through the built server: `anthropic/claude-sonnet-4-5` → `reasoning: true`,
+  `extendedThinking: true`; the 0.14.0 server returns neither. No tool or policy change.
+
+## [0.12.0] – [0.14.0] - 2026-10-04 – 2026-10-08
+
+*Published as 0.12.0 (2026-10-04), 0.13.0 (2026-10-06) and 0.14.0 (2026-10-08) without per-version headings;
+the entries below were recorded under `[Unreleased]` and are grouped here as shipped. 0.14.0 contains every
+entry (its tarball carries the P0m-3 caveat, checked 2026-10-08).*
+
 ### Added
 
 - **Pooled-figure caveat on `get_execution_stats` and `get_ecosystem_overview`** (definition-version-dispositions spec v0.11.2 §4.1, amendment CM; P0m-3). Both now carry the new `UNVERSIONED_FIGURES_CAVEAT` in their description **and** as a `{"caveat": …}` content block on every success response. The sentence is pinned word for word here and in `@uluops/ops-mcp`. `UNVERSIONED_FIGURES_TOOLS` is pinned independently of the array. **Why:** AK (2026-10-02) had left figures with no version identity uncaveated; CM withdrew it. `get_execution_stats` takes a version but returns a count over every version and org whose body names none. **Consumers:** each success response gains a `{"caveat": …}` text block after the context block; `content[0]` is unchanged. **The sentence is keyed on provenance, not presence** (CL): it covers figures shown with a version too, since a version on the wire is not evidence it was checked, and it forbids recommending a definition's current version on these figures.

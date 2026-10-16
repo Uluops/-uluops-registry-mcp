@@ -113,8 +113,18 @@ compare_effectiveness({ type: "agent", name: "code-validator", versions: ["1.0.0
 | `render_definition` | Get rendered markdown for a definition. `output_path` writes directly to a file |
 
 `render_definition` uses the `uluops-full` render profile when `render_profile` is
-omitted, including UluOps-specific content. Pass `render_profile: "core"` explicitly
-to render without that content; both inline and file-write results report the effective profile.
+omitted: the full prompt the registry stores. `render_profile: "core"` is **declared-only**
+(registry on definition-factory ≥ 0.81.0): only what the definition declares, with no
+factory-supplied output contract, scoring instruction or tone. Before that factory, `core`
+meant the full prompt minus the UluOps blocks. Inline and file-write results report the
+effective profile.
+
+Since 0.16.0 (registry-sdk 0.62.0) results also carry the renderer fields:
+- `factoryVersion` and `renderStack` (`{ factory, nunjucks, yaml }`);
+- for agents, `resolvedProfile`, `scaffolding` and `declaredOutputShape`.
+
+Pin a `core` hash on the definition version plus `renderStack`. `scaffolding: false` means
+the render is declared-only.
 
 `output_path` writes on the **MCP server host**, within `OUTPUT_BASE_DIR` (default:
 server process cwd). Relative paths resolve from that cwd, even when a different

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-16
+
+### Changed
+
+- **`@uluops/registry-sdk` 0.61.0 → 0.62.0 (exact).** `render_definition` results now carry the renderer fields registry-api returns: `factoryVersion`, `renderStack` (`{ factory, nunjucks, yaml }`), and for agents `resolvedProfile`, `scaffolding` and `declaredOutputShape`. SDK 0.61.0 stripped them silently. Live-checked over a real stdio session against production: the 0.15.0 server returns all five as `undefined`; this build returns them. Applies inline and with `output_path`.
+- **`render_profile` describes `core` as declared-only** (definition-factory spec 25 D5; run #68 N21). The registry runs factory 0.81.0, so `core` renders only what the definition declares, with no factory-supplied output contract, scoring instruction or tone. The old description ("render without UluOps-specific sections") was the pre-0.81.0 meaning. Test: the description test fails against the old wording.
+
 ## [0.15.0] - 2026-10-08
 
 ### Changed

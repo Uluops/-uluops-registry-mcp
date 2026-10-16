@@ -44,7 +44,7 @@ import { registerGetTranslatorVersionTool } from '../tools/get-translator-versio
 import { registerUpgradeDefinitionTool } from '../tools/upgrade-definition.js';
 // Validation & Render
 import { registerValidateDefinitionTool } from '../tools/validate-definition.js';
-import { registerRenderDefinitionTool } from '../tools/render-definition.js';
+import { registerRenderDefinitionTool, RenderDefinitionInputSchema } from '../tools/render-definition.js';
 // Users
 import { registerGetUserTool } from '../tools/get-user.js';
 import { registerBatchUsersTool } from '../tools/batch-users.js';
@@ -1577,6 +1577,29 @@ describe('Tool Registration & SDK Calls', () => {
       if (output_path !== undefined) {
         expect(mockWriteFile).toHaveBeenCalledWith(expect.stringContaining('/output/explicit.md'), '# Explicit', { encoding: 'utf-8', flag: 'wx' });
       }
+    });
+
+    it('passes the spec 25 renderer fields through, inline and with output_path', async () => {
+      const facts = {
+        markdown: '# Core', renderProfile: 'core', factoryVersion: '0.81.0',
+        renderStack: { factory: '0.81.0', nunjucks: '3.2.4', yaml: '2.9.0' },
+        resolvedProfile: 'core', scaffolding: false, declaredOutputShape: false,
+      };
+      for (const output_path of [undefined, './output/facts.md']) {
+        (client.render.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ...facts });
+        registerRenderDefinitionTool(server, client);
+        const result = await getHandler(server)({ type: 'agent', name: 'test', version: '1.0.0', render_profile: 'core', output_path });
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.renderStack).toEqual(facts.renderStack);
+        expect(parsed.factoryVersion).toBe('0.81.0');
+        expect(parsed).toMatchObject({ resolvedProfile: 'core', scaffolding: false, declaredOutputShape: false });
+      }
+    });
+
+    it("describes 'core' as declared-only (spec 25 D5, run #68 N21)", () => {
+      const desc = RenderDefinitionInputSchema.shape.render_profile.description ?? '';
+      expect(desc).toContain('declared-only');
+      expect(desc).not.toContain('UluOps-specific');
     });
 
     it('rejects output_path that escapes base directory', async () => {

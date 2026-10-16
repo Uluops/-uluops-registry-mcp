@@ -35,7 +35,7 @@ export const RenderDefinitionInputSchema = z.object({
   version: z.string().min(1).default('latest'),
   render_profile: z
     .enum(['core', 'uluops-full'])
-    .describe("Render profile. Defaults to 'uluops-full', including UluOps-specific sections. Pass 'core' explicitly to render without them.")
+    .describe("Render profile. Defaults to 'uluops-full', the full prompt the registry stores. 'core' is declared-only: it renders only what the definition declares, with no factory-supplied output contract, scoring instruction or tone (registry on definition-factory >= 0.81.0). The result reports renderStack and, for agents, resolvedProfile, scaffolding and declaredOutputShape.")
     .optional(),
   target: z
     .string()

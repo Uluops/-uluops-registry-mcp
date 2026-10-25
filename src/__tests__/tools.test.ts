@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import type { McpServerToolRegistration } from '../types/index.js';
@@ -1597,7 +1598,8 @@ describe('Tool Registration & SDK Calls', () => {
     });
 
     it("describes 'core' as declared-only (spec 25 D5, run #68 N21)", () => {
-      const desc = RenderDefinitionInputSchema.shape.render_profile.description ?? '';
+      // Advertised JSON Schema (zod 4 keeps the description on the inner schema, not the optional wrapper).
+      const desc = (z.toJSONSchema(RenderDefinitionInputSchema, { io: 'input' }) as { properties: Record<string, { description?: string }> }).properties['render_profile']?.description ?? '';
       expect(desc).toContain('declared-only');
       expect(desc).not.toContain('UluOps-specific');
     });

@@ -33,7 +33,9 @@ export function registerGetDiffImpactTool(
   server.tool(
     'get_diff_impact',
     'Get structural diff combined with metric deltas between two definition versions. Accepts from/to (matching diff_versions) or from_version/to_version. Deltas are observational, not causal — caveats are always included. Select quality_contract=nullable-v1 for null absent gate rates and deltas, with explicit denominator and fraction units.' + ' ' + CROSS_VERSION_CAVEAT,
-    (GetDiffImpactInputSchema as unknown as { innerType: () => z.ZodObject<z.ZodRawShape> }).innerType().shape,
+    // zod 4: .refine() keeps the ZodObject (zod 3 wrapped it in ZodEffects, reached through a cast
+    // to innerType() that tsc could not check), so the shape is read directly.
+    GetDiffImpactInputSchema.shape,
     createToolHandler(GetDiffImpactInputSchema, (n) =>
       registryClient.analytics.getDiffImpact(n.type, n.name, n.from ?? n.fromVersion, n.to ?? n.toVersion, n.qualityContract === 'nullable-v1' ? { qualityContract: n.qualityContract } : undefined)
     , { toolName: 'get_diff_impact', responseNote: CROSS_VERSION_CAVEAT })

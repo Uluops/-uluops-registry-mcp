@@ -18,12 +18,13 @@ import {
   type McpServerToolRegistration,
 } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
+import { toolInteger } from '../utils/tool-integer.js';
 
 export const SearchDefinitionsInputSchema = z.object({
   query: z.string().min(1),
   match: z.enum(['exact', 'prefix', 'text']).optional()
     .describe('Omit for legacy keyword search. exact/prefix match a literal identifier, trimmed and lowercased.'),
-  page: z.number().int().positive().optional(),
+  page: toolInteger().positive().optional(),
   sort: SortFieldSchema.optional(),
   order: SortOrderSchema.optional(),
   type: DefinitionTypeSchema.optional(),
@@ -47,10 +48,10 @@ export function registerSearchDefinitionsTool(
     SearchDefinitionsInputSchema.shape,
     createToolHandler(SearchDefinitionsInputSchema.superRefine((value, ctx) => {
       if ((value.match === 'exact' || value.match === 'prefix') && (!/^[\x20-\x7e]+$/.test(value.query) || value.query.length > 100 || value.query.trim().length === 0)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Identifier must contain 1-100 printable ASCII characters before trimming and be nonblank', path: ['query'] });
+        ctx.addIssue({ code: 'custom', message: 'Identifier must contain 1-100 printable ASCII characters before trimming and be nonblank', path: ['query'] });
       }
       if (value.match === 'text' && (!/^[\x20-\x7e]+$/.test(value.query) || value.query.length > 100 || value.query.trim().length === 0)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Text search requires a nonblank query of 1-100 printable ASCII characters before trimming', path: ['query'] });
+        ctx.addIssue({ code: 'custom', message: 'Text search requires a nonblank query of 1-100 printable ASCII characters before trimming', path: ['query'] });
       }
     }), (n) =>
       registryClient.definitions.list({

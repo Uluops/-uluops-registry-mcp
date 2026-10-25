@@ -502,11 +502,24 @@ export function mapSdkErrorToMcp(error: unknown, toolName?: string): McpToolResp
  * Map a Zod validation error to an MCP tool response.
  * Shows all validation errors with field paths and expected values.
  */
+/**
+ * zod 4 exports two error classes: `ZodError`, which does NOT extend `Error`, and `ZodRealError`,
+ * which does and is what `.parse()` throws. A hand-built `new ZodError([...])` is therefore not
+ * `instanceof Error`; it carries zod's trait set instead (same recognition as the APIs'
+ * `utils/zod-errors.ts`, zod-4 train T5a).
+ */
+function isZodErrorShape(error: unknown): error is ZodError {
+  if (typeof error !== 'object' || error === null || !('issues' in error)) return false;
+  if (error instanceof Error) return true;
+  const traits = (error as { _zod?: { traits?: unknown } })._zod?.traits;
+  return traits instanceof Set && traits.has('ZodError');
+}
+
 export function mapZodErrorToMcp(error: unknown, toolName?: string): McpToolResponse {
   let message = 'Invalid input parameters';
 
-  if (error instanceof Error && 'issues' in error) {
-    const zodError = error as ZodError<unknown>;
+  if (isZodErrorShape(error)) {
+    const zodError = error;
     const details = zodError.issues
       .map((e) => `${e.path.join('.')}: ${e.message}`)
       .join('; ');

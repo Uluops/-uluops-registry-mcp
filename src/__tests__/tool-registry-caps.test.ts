@@ -12,12 +12,14 @@
  * 256) while "agent" passed; validate_definition's real cap was ~6.4 KB (100 KB / 16), and
  * create/update/update_and_publish's ~64 KB — an 86 KB ADL could only go through file_path.
  */
+import { z } from 'zod';
 import { describe, it, expect, vi } from 'vitest';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import type { McpServerToolRegistration } from '../types/index.js';
 import { registerAllTools } from '../tools/index.js';
 import { toolRegistry } from '../config/tool-registry.js';
 import { ENVELOPE_BYTES } from '../config/limits.js';
+import { toolInteger } from '../utils/tool-integer.js';
 
 vi.mock('@uluops/registry-sdk/errors', () => ({
   isRegistryApiError: (): boolean => false,
@@ -30,18 +32,21 @@ vi.mock('@uluops/registry-sdk/errors', () => ({
   ForbiddenError: class extends Error {},
 }));
 
-/** Largest `.max()` on any top-level string parameter, from the Zod shape (unwrapping optional). */
+/**
+ * Largest `.max()` on any top-level string parameter, from the Zod shape (unwrapping
+ * optional/nullable/default). zod 4: wrappers keep the inner schema at `_zod.def.innerType`, and a
+ * string exposes its cap as the public `maxLength` (zod 3 read `_def.typeName` and `_def.checks`).
+ */
 function largestStringMax(shape: Record<string, unknown>): number {
   let largest = 0;
   for (const v of Object.values(shape)) {
-    let node = v as { _def?: Record<string, unknown> } | undefined;
-    for (let i = 0; i < 4 && node?._def?.innerType !== undefined; i++) {
-      node = node._def.innerType as typeof node;
+    let node = v as z.ZodType | undefined;
+    for (let i = 0; i < 4 && node !== undefined; i++) {
+      const inner = (node as unknown as { _zod: { def: { innerType?: z.ZodType } } })._zod.def.innerType;
+      if (inner === undefined) break;
+      node = inner;
     }
-    const checks = (node?._def?.checks as Array<{ kind: string; value: number }> | undefined) ?? [];
-    if (node?._def?.typeName === 'ZodString') {
-      for (const c of checks) if (c.kind === 'max') largest = Math.max(largest, c.value);
-    }
+    if (node instanceof z.ZodString && node.maxLength !== null) largest = Math.max(largest, node.maxLength);
   }
   return largest;
 }
@@ -79,4 +84,31 @@ describe('tool-registry caps vs mcp-secure-server enforcement', () => {
       expect(toolRegistry.find((s) => s.name === name)?.maxArgsSize).toBe(ENVELOPE_BYTES);
     }
   );
+});
+
+/**
+ * No tool advertises zod 4's safe-integer bound (`maximum: 9007199254740991`): integer params keep
+ * the 0.16.x wire, `{ "type": "integer" }` (utils/tool-integer.ts). Converted with zod 4's
+ * `toJSONSchema`, the converter the MCP SDK uses for zod 4 schemas.
+ */
+describe('tool integer wire schema', () => {
+  const SAFE = String(Number.MAX_SAFE_INTEGER);
+  const wire = (shape: Record<string, unknown>): string =>
+    JSON.stringify(z.toJSONSchema(z.object(shape as Record<string, z.ZodType>), { io: 'input' }));
+
+  it('no tool advertises the safe-integer bound', () => {
+    expect(shapes.size).toBe(44);
+    expect([...shapes].filter(([, shape]) => wire(shape).includes(SAFE)).map(([name]) => name)).toEqual([]);
+  });
+
+  it('toolInteger() is advertised as a plain integer and validates as one', () => {
+    expect(JSON.parse(wire({ n: toolInteger().positive() })).properties.n).toEqual({ type: 'integer', exclusiveMinimum: 0 });
+    expect(toolInteger().safeParse(3).success).toBe(true);
+    expect(toolInteger().safeParse(1.5).success).toBe(false);
+    expect(toolInteger().safeParse('3').success).toBe(false);
+  });
+
+  it('control: bare z.number().int() does advertise the bound', () => {
+    expect(wire({ n: z.number().int() })).toContain(SAFE);
+  });
 });

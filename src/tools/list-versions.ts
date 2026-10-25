@@ -8,12 +8,13 @@ import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
+import { toolInteger } from '../utils/tool-integer.js';
 
 export const ListVersionsInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   limit: z.number().int().min(1).max(200).optional(),
-  offset: z.number().int().min(0).optional(),
+  offset: toolInteger().min(0).optional(),
 });
 
 export function registerListVersionsTool(

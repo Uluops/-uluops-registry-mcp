@@ -22,6 +22,7 @@ import {
   type McpServerToolRegistration,
 } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
+import { toolInteger } from '../utils/tool-integer.js';
 
 /** Per-item projection served by format:'compact' (the default). */
 export const COMPACT_LIST_FIELDS = [
@@ -53,7 +54,7 @@ export const ListDefinitionsInputSchema = z.object({
   authorship_type: AuthorshipTypeSchema.optional().describe('Filter by authorship type: human, agent, collaborative, or automated'),
   sort: SortFieldSchema.optional(),
   order: SortOrderSchema.optional(),
-  page: z.number().int().positive().optional(),
+  page: toolInteger().positive().optional(),
   limit: z.number().int().positive().max(100).optional(),
   format: z
     .enum(['compact', 'full'])
@@ -99,7 +100,7 @@ export function registerListDefinitionsTool(
       const error = value.name !== undefined
         ? (value.search !== undefined || value.match === 'text')
         : (value.match === 'exact' || value.match === 'prefix' || (value.match === 'text' && (value.search === undefined || !/^[\x20-\x7e]+$/.test(value.search) || value.search.length > 100 || value.search.trim().length === 0)));
-      if (error) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'exact/prefix require name without search; text requires nonblank printable ASCII search of at most 100 characters without name' });
+      if (error) ctx.addIssue({ code: 'custom', message: 'exact/prefix require name without search; text requires nonblank printable ASCII search of at most 100 characters without name' });
     }), async (n) => {
       const query: Record<string, unknown> = {};
       if (n.type !== undefined) query.type = n.type;

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mapSdkErrorToMcp, mapZodErrorToMcp, sanitizeErrorMessage } from '../client/sdk-error-mapper.js';
-import { ZodError, ZodIssueCode } from 'zod';
+import { ZodError } from 'zod';
 
 describe('upgrade recovery context', () => {
   it('treats response mismatch as an uncertain write, not bad input', () => {
@@ -432,9 +432,8 @@ describe('mapZodErrorToMcp', () => {
   it('formats Zod validation errors with paths', () => {
     const zodError = new ZodError([
       {
-        code: ZodIssueCode.invalid_type,
+        code: 'invalid_type',
         expected: 'string',
-        received: 'number',
         path: ['name'],
         message: 'Expected string, received number',
       },
@@ -448,7 +447,7 @@ describe('mapZodErrorToMcp', () => {
   it('shows ALL Zod errors, not just first 3', () => {
     const zodError = new ZodError(
       Array.from({ length: 5 }, (_, i) => ({
-        code: ZodIssueCode.invalid_type as const,
+        code: 'invalid_type' as const,
         expected: 'string' as const,
         received: 'number' as const,
         path: ['field_' + String(i)],
@@ -464,7 +463,7 @@ describe('mapZodErrorToMcp', () => {
 
   it('includes status 400 in Zod error payload', () => {
     const zodError = new ZodError([
-      { code: ZodIssueCode.invalid_type, expected: 'string', received: 'number', path: ['x'], message: 'bad' },
+      { code: 'invalid_type', expected: 'string', path: ['x'], message: 'bad' },
     ]);
     const result = mapZodErrorToMcp(zodError);
     expect(parseErrorPayload(result).status).toBe(400);

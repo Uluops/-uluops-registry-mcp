@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod';
+import { toolInteger } from '../utils/tool-integer.js';
 
 /** Registry definition types: agent, command, workflow, or pipeline. */
 export const DefinitionTypeSchema = z.enum(['agent', 'command', 'workflow', 'pipeline']);
@@ -88,6 +89,6 @@ export const ContributorSchema = z.object({
 export const ProvenanceInputSchema = z.object({
   authorship_type: AuthorshipTypeSchema,
   contributors: z.array(ContributorSchema).min(1).max(50),
-  dialectic_rounds: z.number().int().nonnegative().optional(),
+  dialectic_rounds: toolInteger().nonnegative().optional(),
   optimization_run_id: z.string().max(100).optional(),
 });

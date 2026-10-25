@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-25
+
+### Changed
+
+- **zod 3.25.76 → 4.6.7; `@uluops/registry-sdk` 0.62.0 → 0.63.0 and `@uluops/sdk-core` 0.18.1 → 0.19.0 (all exact, sdk-core in the same change; zod-4 release train spec v0.2.1, T4).** Clears GHSA-mrhx-c7xc-m3w5 (zod < 4.6.6; no zod 3 fix). The installed tree holds one zod (4.6.7; was 3.25.76 here plus 4.3.6 under registry-sdk and 4.4.3 under `mcp-secure-server`, whose `^4.1.13` range now resolves 4.6.7) and one sdk-core. Validation messages and issue codes follow zod 4.
+- **What MCP clients see (`tools/list`, Z7): 44 tools, each identical to 0.16.0 except one class.** Measured by spawning the 0.16.0 global install and this build over stdio and diffing every tool's `inputSchema`. **`additionalProperties: false` is no longer advertised on 49 object schemas.** zod 3's converter emitted it for strip-mode objects, which never refused an extra key: the server accepts and drops them, unchanged. zod 4 describes that behaviour accurately. `$schema` (draft-07) and every description are unchanged; the spec's predicted `required` change for `z.any()`/`z.unknown()` keys does not occur here (no such keys).
+- **Integer parameters keep their 0.16.0 wire.** zod 4's `.int()` is advertised with `maximum: 9007199254740991`, which would have been new on 7 parameters (`page`, `offset`, `depth`, `dialectic_rounds`). `toolInteger()` (`src/utils/tool-integer.ts`) keeps `{ "type": "integer" }`, the same choice as `@uluops/core` 0.52.0: Anthropic accepts the bound, OpenAI (Codex) could not be probed. Pinned in `tool-registry-caps.test.ts` (fails with one site reverted to `.int()`).
+
+### Fixed
+
+- **Hand-built zod 4 `ZodError`s were reported as "Invalid input parameters".** zod 4's exported `ZodError` does not extend `Error` (`ZodRealError`, thrown by `.parse()`, does), so `mapZodErrorToMcp`'s `instanceof Error` guard dropped the per-field detail for one. It now also recognises zod's trait set, the same rule as both APIs' `utils/zod-errors.ts`.
+- **zod 3 internals read at runtime, invisible to `tsc`.** `get_diff_impact` reached its refined schema's shape through a cast to `innerType()`, which zod 4 removed: tool registration threw, so no tool registered. zod 4 keeps a refined object a `ZodObject`, so the shape is read directly. `coerceNumericFields` unwrapped `ZodEffects`; it now unwraps zod 4's `ZodPipe` (`.transform()`) and keeps refined objects as they are.
+
+### Security
+
+- **Production audit: body-parser (high, DoS via trailing bytes after a compressed body) and fast-uri / ip-address (moderate) fixed** by `npm audit fix` without `--force`, lockfile only, all transitive through `@modelcontextprotocol/sdk`. Still open, moderate and below the publish gate: `hono` 4.13.7, held by the SDK's own range.
+
 ## [0.16.0] - 2026-10-16
 
 ### Changed

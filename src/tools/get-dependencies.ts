@@ -8,12 +8,13 @@ import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
+import { toolInteger } from '../utils/tool-integer.js';
 
 export const GetDependenciesInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   version: z.string().min(1).optional(),
-  depth: z.number().int().positive().optional(),
+  depth: toolInteger().positive().optional(),
 });
 
 export function registerGetDependenciesTool(

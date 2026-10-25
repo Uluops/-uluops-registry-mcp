@@ -17,13 +17,15 @@ import { toolRegistry } from '../config/tool-registry.js';
  * MCP JSON-RPC sometimes serializes numeric parameters as strings (e.g., "50" instead of 50).
  * This runs before Zod validation to prevent spurious type errors at the boundary.
  */
-function coerceNumericFields(args: unknown, schema: z.ZodSchema): unknown {
+function coerceNumericFields(args: unknown, schema: z.ZodType): unknown {
   if (typeof args !== 'object' || args === null) return args;
-  // Refined object schemas still need the same numeric coercion as plain ones.
-  while (schema instanceof z.ZodEffects) schema = schema.innerType();
+  // Refined object schemas still need the same numeric coercion as plain ones. zod 4 keeps a
+  // refined object a ZodObject (the check rides on it) and wraps a transformed one in a ZodPipe
+  // whose `in` is the object; zod 3 wrapped both in ZodEffects.
+  while (schema instanceof z.ZodPipe) schema = schema.in as z.ZodType;
   if (!(schema instanceof z.ZodObject)) return args;
 
-  const shape = schema.shape as Record<string, z.ZodTypeAny>;
+  const shape = schema.shape as Record<string, z.ZodType>;
   const obj = { ...(args as Record<string, unknown>) };
 
   for (const [key, fieldSchema] of Object.entries(shape)) {
@@ -45,11 +47,11 @@ function coerceNumericFields(args: unknown, schema: z.ZodSchema): unknown {
  * to avoid coupling to Zod's private internals — those can rename across
  * minor Zod versions and break numeric coercion without compile-time warning.
  */
-function isNumericSchema(schema: z.ZodTypeAny): boolean {
+function isNumericSchema(schema: z.ZodType): boolean {
   if (schema instanceof z.ZodNumber) return true;
-  if (schema instanceof z.ZodOptional) return isNumericSchema(schema.unwrap());
-  if (schema instanceof z.ZodNullable) return isNumericSchema(schema.unwrap());
-  if (schema instanceof z.ZodDefault) return isNumericSchema(schema.removeDefault());
+  if (schema instanceof z.ZodOptional) return isNumericSchema(schema.unwrap() as z.ZodType);
+  if (schema instanceof z.ZodNullable) return isNumericSchema(schema.unwrap() as z.ZodType);
+  if (schema instanceof z.ZodDefault) return isNumericSchema(schema.unwrap() as z.ZodType);
   return false;
 }
 
@@ -98,7 +100,7 @@ type NormalizedInput = any;
  * needed at this layer.
  */
 export function createToolHandler<TInput extends Record<string, unknown>>(
-  schema: z.ZodSchema<TInput>,
+  schema: z.ZodType<TInput>,
   sdkCall: (
     // SAFETY: `any` is intentional — see NormalizedInput type alias above.
     // Zod validates structure, normalizeKeys() renames keys. Each tool extracts
@@ -144,7 +146,7 @@ export function createToolHandler<TInput extends Record<string, unknown>>(
       // relaxed so the session default can apply) get the guard — list tools
       // carry a genuinely-optional `type` FILTER that must stay omittable.
       // The WithDefault schema is identified by its distinctive description.
-      const shape = schema instanceof z.ZodObject ? (schema.shape as Record<string, z.ZodTypeAny>) : undefined;
+      const shape = schema instanceof z.ZodObject ? (schema.shape as Record<string, z.ZodType>) : undefined;
       const typeRequiresDefault = shape?.['type']?.description?.includes('set_default_type') ?? false;
       if (typeRequiresDefault && (input as Record<string, unknown>)['type'] === undefined) {
         return createErrorResponse(

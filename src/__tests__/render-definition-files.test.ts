@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -143,7 +144,9 @@ describe('render_definition file acceptance', () => {
   });
 
   it('documents host, root, cwd and symlink constraints in the advertised schema', () => {
-    const description = RenderDefinitionInputSchema.shape.output_path.description;
+    // Read from the ADVERTISED JSON Schema: zod 4 keeps a `.describe()` on the inner schema, not on
+    // the `.optional()` wrapper, so `.shape.output_path.description` is undefined there.
+    const description = (z.toJSONSchema(RenderDefinitionInputSchema, { io: 'input' }) as { properties: Record<string, { description?: string }> }).properties['output_path']?.description;
     for (const text of ['server host', 'OUTPUT_BASE_DIR', 'cwd', 'Symlink', 'Remote callers']) {
       expect(description).toContain(text);
     }

@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-10-25
+
+### Fixed
+
+- **`@uluops/registry-sdk` 0.63.0 → 0.64.1 (exact).** 0.64.1 validates ids with `z.guid()`, not zod
+  4's RFC-strict `.uuid()`, which refused ids the registry stores (two users and 1,313 of 2,767
+  definition lineage ids failed it; production census 2026-10-25). A response carrying one could
+  fail to parse inside a tool. One copy each of registry-sdk, sdk-core (0.19.0) and zod (4.6.7).
+- **What MCP clients see: `tools/list` is byte-identical to 0.18.0** (all 44 tools, spawned over
+  stdio and diffed). Tool **results** gain fields registry-sdk 0.64.0 added (ADL v1.20 P0d) and
+  0.63.0 stripped: `validate_definition` passes through `warnings`, `schemaVersion`, `validatedAt`
+  and `closure`; `render_definition` and definition reads pass through `closure`. Additive; a
+  registry without them omits them.
+
+### Security
+
+- **`hono` override 4.13.7 → 4.13.14** (GHSA-5r4p-p66f-jhc7, moderate: `serveStatic` decodes the path
+  twice). Inherited through `@modelcontextprotocol/sdk`; this server speaks stdio and never serves
+  static files, so it was not reachable here. `npm audit --omit=dev`: 0.
+
 ## [0.18.0] - 2026-10-25
 
 ### Changed

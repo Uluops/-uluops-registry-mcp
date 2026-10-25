@@ -25,6 +25,7 @@ import { mapSdkErrorToMcp, mapZodErrorToMcp } from '../client/sdk-error-mapper.j
 import { resolveYamlInput } from '../utils/read-yaml-file.js';
 import { trimDefinitionResponse } from '../utils/trim-definition.js';
 import { injectSessionType } from '../utils/tool-handler.js';
+import { API_YAML_MAX_CHARS, YAML_TOO_LONG_MESSAGE, API_DESCRIPTION_MAX_CHARS, API_TAGS_MAX_ITEMS, API_TAG_MAX_CHARS } from '../config/api-limits.js';
 
 /** Type guard: checks if resolveYamlInput returned an error response. */
 function isMcpResponse(value: unknown): value is McpToolResponse {
@@ -35,7 +36,7 @@ export const UpdateAndPublishInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   version: z.string().min(1),
-  yaml: z.string().max(500_000).optional(),
+  yaml: z.string().max(API_YAML_MAX_CHARS, YAML_TOO_LONG_MESSAGE).optional(),
   file_path: z
     .string()
     .min(1)
@@ -43,8 +44,8 @@ export const UpdateAndPublishInputSchema = z.object({
     .describe('Path to a .yaml/.yml file on the MCP server host (read from the server\'s filesystem, not the caller\'s). Remote callers should pass yaml inline instead.')
     .optional(),
   visibility: VisibilitySchema.optional(),
-  description: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  description: z.string().max(API_DESCRIPTION_MAX_CHARS).optional(),
+  tags: z.array(z.string().max(API_TAG_MAX_CHARS)).max(API_TAGS_MAX_ITEMS).optional(),
   change_type: ChangeTypeSchema.optional(),
 });
 

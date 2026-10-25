@@ -262,6 +262,16 @@ This server uses [mcp-secure-server](https://github.com/aself101/mcp-secure-serv
 
 The four size settings are stacked ceilings — a rejection names whichever fires first, so they share one value, `ENVELOPE_BYTES`; the per-tool `maxArgsSize` in `tool-registry.ts` is the tool-scoped gate beneath them (never above; exactly at it for the YAML tools). Each tool's `maxEgressBytes` is kept ≥ 16 × its `maxArgsSize`, because mcp-secure-server checks egress at request time as argument bytes × 16.
 
+**Why 500 KB is enough:** the largest request the registry API accepts is a definition YAML at its 153,600-character cap. As a JSON-RPC message that is at most about 441 KB (CJK text, 3 bytes a character), so the envelope never refuses anything the API would take.
+
+**Tool schemas mirror the API's field caps** (`src/config/api-limits.ts`), so an over-limit request is refused locally, by field name, instead of after a round trip:
+- `yaml` at most 153,600 chars on create, update, validate, upgrade and update-and-publish, including YAML read from `file_path`;
+- `description` at most 1000 chars;
+- `tags` at most 32, each at most 50 chars;
+- deprecation `reason` at most 500 chars, `successor` as `name` or `name@x.y.z`;
+- fork `new_name` at most 200 chars, lowercase letters, digits and hyphens;
+- execution `source` at most 32 chars, `run_id` at most 64.
+
 Per-tool quotas are configured in `src/config/tool-registry.ts`. Read-heavy tools (list, get, search) allow up to 240 req/min. Write tools (create, update, publish) are 30–60 req/min.
 
 ## Development

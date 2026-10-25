@@ -16,6 +16,18 @@
     - client responses are checked.
 
     The full suite passes on 0.1.1, validated through Verdaccio before the npm publish.
+- **Tool schemas now refuse what the registry API refuses, by field name** (`src/config/api-limits.ts`; 2026-10-25 length audit).
+  - **YAML 500,000 → 153,600 chars** on the five yaml-bearing tools. Through 0.17.0 a YAML between those sizes went to the API and came back as a 400; it is now refused here with the API's own message.
+  - **`file_path`:** a file over the cap is refused when read; until now only a 5 MB guard applied.
+  - **Other fields:** `description` ≤1000, `tags` ≤32 of ≤50, deprecation `reason` ≤500 and `successor` as `name[@x.y.z]`, fork `new_name` ≤200 and lowercase-hyphen, execution `source` ≤32 and `run_id` ≤64. All were uncapped here.
+  - **What clients see:** these caps are advertised in `tools/list` (`maxLength`, `maxItems`, `pattern`).
+- **The 500 KiB envelope is unchanged and re-derived.** Its comment called a 500,000-char YAML the largest payload; the API never took more than 153,600. The real worst case, a CJK YAML at the cap, serializes to about 441 KB.
+- **`buildServerOptions` moved to `src/config/server-options.ts`,** so a test can build the exact production options. No behaviour change.
+
+### Added
+
+- **`api-limits.test.ts`:** each cap at the API's value (accepted) and one past it (refused), on every tool that carries the field; 16 of these fail against 0.17.0. It also sends a CJK YAML at the cap through the production pipeline, with a control that a message over the envelope is refused.
+- **`read-yaml-file.test.ts`:** a 153,601-char file is refused by name; one at 153,600 is read.
 
 ## [0.17.0] - 2026-10-25
 

@@ -8,12 +8,13 @@ import { z } from 'zod';
 import type { RegistryClient } from '@uluops/registry-sdk';
 import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
+import { API_DEFINITION_NAME_MAX_CHARS, API_DEFINITION_NAME_PATTERN } from '../config/api-limits.js';
 
 export const ForkDefinitionInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   version: z.string().min(1),
-  new_name: z.string().min(1),
+  new_name: z.string().min(1).max(API_DEFINITION_NAME_MAX_CHARS).regex(API_DEFINITION_NAME_PATTERN, 'Name must be lowercase letters, numbers, and hyphens'),
   description: z.string().optional(),
 });
 

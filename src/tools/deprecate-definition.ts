@@ -9,13 +9,14 @@ import type { RegistryClient } from '@uluops/registry-sdk';
 import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
 import { trimDefinitionResponse } from '../utils/trim-definition.js';
+import { API_DEPRECATION_REASON_MAX_CHARS, API_SUCCESSOR_PATTERN } from '../config/api-limits.js';
 
 export const DeprecateDefinitionInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   version: z.string().min(1),
-  reason: z.string().min(1),
-  successor: z.string().optional(),
+  reason: z.string().min(1).max(API_DEPRECATION_REASON_MAX_CHARS),
+  successor: z.string().regex(API_SUCCESSOR_PATTERN, 'Successor must be name or name@version format').optional(),
 });
 
 export function registerDeprecateDefinitionTool(

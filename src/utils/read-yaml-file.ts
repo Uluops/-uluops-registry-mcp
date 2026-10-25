@@ -8,6 +8,7 @@
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { resolve, extname } from 'node:path';
 import { createErrorResponse, type McpToolResponse } from '../types/mcp.js';
+import { API_YAML_MAX_CHARS, YAML_TOO_LONG_MESSAGE } from '../config/api-limits.js';
 
 const ALLOWED_EXTENSIONS = new Set(['.yaml', '.yml']);
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -85,8 +86,9 @@ export function readYamlFile(filePath: string): string {
     );
   }
 
+  let content: string;
   try {
-    return readFileSync(resolved, 'utf-8');
+    content = readFileSync(resolved, 'utf-8');
   } catch (error) {
     if (error instanceof Error && 'code' in error) {
       const fsError = error as NodeJS.ErrnoException;
@@ -100,6 +102,14 @@ export function readYamlFile(filePath: string): string {
     }
     throw new Error(`Failed to read file: ${resolved}`);
   }
+  // The 5 MB stat check above guards the read itself. The registry API refuses YAML over
+  // 153,600 characters, so a longer file is refused here, by name, before the network. This
+  // sits outside the try on purpose: the catch above rewrites any error without an fs `code`
+  // into "Failed to read file", which would hide the reason.
+  if (content.length > API_YAML_MAX_CHARS) {
+    throw new Error(`${YAML_TOO_LONG_MESSAGE}: ${resolved} has ${String(content.length)} characters`);
+  }
+  return content;
 }
 
 /**

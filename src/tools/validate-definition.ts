@@ -10,10 +10,11 @@ import type { RegistryClient } from '@uluops/registry-sdk';
 import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
 import { resolveYamlInput } from '../utils/read-yaml-file.js';
+import { API_YAML_MAX_CHARS, YAML_TOO_LONG_MESSAGE } from '../config/api-limits.js';
 
 export const ValidateDefinitionInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
-  yaml: z.string().min(1).max(500_000).optional(),
+  yaml: z.string().min(1).max(API_YAML_MAX_CHARS, YAML_TOO_LONG_MESSAGE).optional(),
   file_path: z
     .string()
     .min(1)

@@ -48,6 +48,16 @@ describe('readYamlFile', () => {
     );
   });
 
+  it('refuses a file over the registry API cap (153,600 chars), naming it', () => {
+    mockedReadFileSync.mockReturnValue('a'.repeat(153_601));
+    expect(() => readYamlFile('/home/user/big.yaml')).toThrow(/YAML exceeds 150KB limit .*big\.yaml has 153601 characters/);
+  });
+
+  it('accepts a file at exactly the API cap', () => {
+    mockedReadFileSync.mockReturnValue('a'.repeat(153_600));
+    expect(readYamlFile('/home/user/at-cap.yaml')).toHaveLength(153_600);
+  });
+
   it('reads a .yml file', () => {
     mockedReadFileSync.mockReturnValue('name: test');
     const result = readYamlFile('/home/user/def.yml');

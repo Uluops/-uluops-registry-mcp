@@ -10,7 +10,8 @@ export default tseslint.config(
         projectService: {
           allowDefaultProject: ['*.config.js', 'src/__tests__/*.test.ts'],
           defaultProject: 'tsconfig.test.json',
-          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 20,
+          // 21 test files as of 0.18.0 (api-limits.test.ts). Raised to 32, as in @uluops/ops-mcp.
+          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 32,
         },
         tsconfigRootDir: import.meta.dirname,
       },

@@ -24,12 +24,13 @@ import {
 import { createToolHandler } from '../utils/tool-handler.js';
 import { resolveYamlInput } from '../utils/read-yaml-file.js';
 import { trimDefinitionResponse } from '../utils/trim-definition.js';
+import { API_YAML_MAX_CHARS, YAML_TOO_LONG_MESSAGE, API_DESCRIPTION_MAX_CHARS, API_TAGS_MAX_ITEMS, API_TAG_MAX_CHARS } from '../config/api-limits.js';
 
 export const UpdateDefinitionInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   version: z.string().min(1),
-  yaml: z.string().max(500_000).optional(),
+  yaml: z.string().max(API_YAML_MAX_CHARS, YAML_TOO_LONG_MESSAGE).optional(),
   file_path: z
     .string()
     .min(1)
@@ -38,8 +39,8 @@ export const UpdateDefinitionInputSchema = z.object({
     .optional(),
   visibility: VisibilitySchema.optional(),
   tier: TierSchema.optional(),
-  description: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  description: z.string().max(API_DESCRIPTION_MAX_CHARS).optional(),
+  tags: z.array(z.string().max(API_TAG_MAX_CHARS)).max(API_TAGS_MAX_ITEMS).optional(),
   change_type: ChangeTypeSchema.optional(),
   provenance: ProvenanceInputSchema.optional().describe('Authorship provenance. Merges with existing provenance if present.'),
 });

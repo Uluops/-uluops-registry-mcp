@@ -9,13 +9,14 @@ import type { RegistryClient } from '@uluops/registry-sdk';
 import { ForbiddenError, isForbiddenError } from '@uluops/registry-sdk/errors';
 import { DefinitionTypeWithDefaultSchema, type McpServerToolRegistration } from '../types/index.js';
 import { createToolHandler } from '../utils/tool-handler.js';
+import { API_EXECUTION_SOURCE_MAX_CHARS, API_RUN_ID_MAX_CHARS } from '../config/api-limits.js';
 
 export const RecordExecutionInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   version: z.string().min(1),
-  source: z.string().min(1).default('mcp'),
-  run_id: z.string().optional(),
+  source: z.string().min(1).max(API_EXECUTION_SOURCE_MAX_CHARS).default('mcp'),
+  run_id: z.string().max(API_RUN_ID_MAX_CHARS).optional(),
 });
 
 export function registerRecordExecutionTool(

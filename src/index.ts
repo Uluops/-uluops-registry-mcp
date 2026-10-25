@@ -8,25 +8,16 @@
 
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
 import { SecureMcpServer } from 'mcp-secure-server';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { RegistryClient } from '@uluops/registry-sdk';
 
 import { loadConfig, validateConfig, VERSION } from './config/index.js';
-import { toolRegistry } from './config/tool-registry.js';
-import { ENVELOPE_BYTES } from './config/limits.js';
+import { buildServerOptions } from './config/server-options.js';
 import { registerAllTools } from './tools/index.js';
 import { registerAllResources } from './resources/index.js';
 import type { McpServerToolRegistration, McpServerResourceRegistration } from './types/index.js';
 
-// The bundled tool-policies.json (shipped in `files`). It MUST be passed explicitly:
-// mcp-secure-server's default lookup is TOOL_POLICIES_PATH -> <cwd>/tool-policies.json ->
-// ~/.config/mcp-secure-server/, and under an MCP host the cwd is the user's project, so
-// through 0.8.1 this file was never loaded and none of its relaxations were in effect.
-// Same resolution as @uluops/ops-mcp.
-const require = createRequire(import.meta.url);
-const TOOL_POLICIES_PATH = require.resolve('../tool-policies.json');
 import { createLogger } from './utils/logger.js';
 
 async function main(): Promise<void> {
@@ -69,50 +60,7 @@ async function main(): Promise<void> {
     retries: config.api.retries,
   });
 
-  const server = await SecureMcpServer.create(config.server, {
-    securityLevel: 'basic',
-    toolPoliciesPath: TOOL_POLICIES_PATH,
-    maxRequestsPerMinute: 120,
-    maxMessageSize: ENVELOPE_BYTES,
-    // Raise the per-string-parameter cap from the secure-server default (5000)
-    // to the message ceiling. Definition tools (validate/create/update) carry
-    // full YAML / runtime markdown in a single string field that routinely
-    // exceeds 5000 chars; the yaml tools' maxArgsSize is set to this same envelope,
-    // so the default string cap was the artificial bottleneck. Requires
-    // mcp-secure-server >= 0.0.17, which exposes maxStringLength at create time.
-    maxStringLength: ENVELOPE_BYTES,
-    maxParamCount: 500,
-    // Raise the Layer 2 serialized-params cap (default 50000 bytes) and the
-    // Layer 3 suspicious-message block (basic preset: 50000 bytes) to the
-    // message ceiling — definition YAML payloads routinely exceed 50KB and
-    // the yaml tools' maxArgsSize is set to this same envelope. Requires
-    // mcp-secure-server >= 0.0.19-security (maxParamBytes).
-    maxParamBytes: ENVELOPE_BYTES,
-    suspiciousMessageSize: ENVELOPE_BYTES,
-
-    burstThreshold: 15,
-    burstWindowMs: 5000,
-    // Disabled: this MCP server is designed for programmatic use by Claude Code;
-    // automation is the expected usage pattern, not abuse.
-    automationDetection: {
-      enabled: false,
-    },
-
-    toolRegistry,
-
-    defaultPolicy: {
-      allowWrites: true,
-      allowNetwork: true,
-    },
-
-    resourcePolicy: {
-      allowedSchemes: ['registry'],
-    },
-
-    enableLogging: config.security.enableLogging,
-    verboseLogging: config.security.verboseLogging,
-    logPerformanceMetrics: config.security.logPerformanceMetrics,
-  });
+  const server = await SecureMcpServer.create(config.server, buildServerOptions(config.security));
 
   // mcp-secure-server 0.0.24+ types SecureMcpServer's registration methods as the SDK's own
   // overloads, which the package's narrow (name, description, shape, handler) interfaces no longer

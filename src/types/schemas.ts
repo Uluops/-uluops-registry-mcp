@@ -82,7 +82,9 @@ export const ContributorSchema = z.object({
   type: ActorTypeSchema,
   name: z.string().max(200).optional(),
   agent_name: z.string().max(200).optional(),
-  contributed_at: z.string().optional(),
+  // The API requires an ISO 8601 datetime (ProvenanceSchema `z.iso.datetime()`); mirrored so a
+  // malformed or oversized value is refused here (0.18.0, consumer-validate run #4 CGC-3).
+  contributed_at: z.iso.datetime().optional(),
 });
 
 /** Full provenance record for a definition. */

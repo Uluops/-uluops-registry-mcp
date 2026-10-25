@@ -25,7 +25,7 @@ import { mapSdkErrorToMcp, mapZodErrorToMcp } from '../client/sdk-error-mapper.j
 import { resolveYamlInput } from '../utils/read-yaml-file.js';
 import { trimDefinitionResponse } from '../utils/trim-definition.js';
 import { injectSessionType } from '../utils/tool-handler.js';
-import { API_YAML_MAX_CHARS, YAML_TOO_LONG_MESSAGE, API_DESCRIPTION_MAX_CHARS, API_TAGS_MAX_ITEMS, API_TAG_MAX_CHARS } from '../config/api-limits.js';
+import { API_YAML_MAX_CHARS, API_YAML_PUBLISH_MAX_BYTES, YAML_TOO_LONG_MESSAGE, yamlTooLargeToPublishMessage, API_DESCRIPTION_MAX_CHARS, API_TAGS_MAX_ITEMS, API_TAG_MAX_CHARS } from '../config/api-limits.js';
 
 /** Type guard: checks if resolveYamlInput returned an error response. */
 function isMcpResponse(value: unknown): value is McpToolResponse {
@@ -36,7 +36,16 @@ export const UpdateAndPublishInputSchema = z.object({
   type: DefinitionTypeWithDefaultSchema,
   name: z.string().min(1),
   version: z.string().min(1),
-  yaml: z.string().max(API_YAML_MAX_CHARS, YAML_TOO_LONG_MESSAGE).optional(),
+  // Characters (every yaml route) and UTF-8 bytes (the publish gate): this tool publishes right
+  // after it updates, so a YAML over the byte limit would land as a draft and then fail to
+  // publish. Refused here instead, before either call (config/api-limits.ts).
+  yaml: z
+    .string()
+    .max(API_YAML_MAX_CHARS, YAML_TOO_LONG_MESSAGE)
+    .refine((value) => Buffer.byteLength(value, 'utf8') <= API_YAML_PUBLISH_MAX_BYTES, {
+      error: (issue) => yamlTooLargeToPublishMessage(Buffer.byteLength(String(issue.input), 'utf8')),
+    })
+    .optional(),
   file_path: z
     .string()
     .min(1)
@@ -115,6 +124,12 @@ export function registerUpdateAndPublishTool(
             // Patch YAML version to match requested version — the file on disk
             // may still contain the old (published) version string.
             const patchedYaml = patchYamlVersion(yaml, version);
+            // Patching can add bytes (it quotes the version), so the YAML checked above is not
+            // quite the YAML sent. Re-check before creating, or the draft lands and its publish fails.
+            const patchedBytes = Buffer.byteLength(patchedYaml, 'utf8');
+            if (patchedBytes > API_YAML_PUBLISH_MAX_BYTES) {
+              return createErrorResponse(yamlTooLargeToPublishMessage(patchedBytes));
+            }
             const created = await registryClient.definitions.create(type, name, {
               yaml: patchedYaml,
               ...(visibility !== undefined && { visibility }),

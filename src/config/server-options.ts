@@ -2,8 +2,8 @@
  * SecureMcpServer options for @uluops/registry-mcp.
  *
  * Moved out of main() (0.18.0) so a test can build the exact production options without
- * starting the server. tool-registry-caps.test.ts sends the largest request the registry
- * API accepts through a real pipeline built from these.
+ * starting the server. api-limits.test.ts sends the largest request the registry API
+ * accepts through a real pipeline built from these.
  */
 
 import { createRequire } from 'node:module';

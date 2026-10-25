@@ -17,17 +17,26 @@
 
     The full suite passes on 0.1.1, validated through Verdaccio before the npm publish.
 - **Tool schemas now refuse what the registry API refuses, by field name** (`src/config/api-limits.ts`; 2026-10-25 length audit).
-  - **YAML 500,000 → 153,600 chars** on the five yaml-bearing tools. Through 0.17.0 a YAML between those sizes went to the API and came back as a 400; it is now refused here with the API's own message.
+  - **YAML 500,000 → 153,600 characters** on the five yaml-bearing tools. Through 0.17.0 a YAML between those sizes went to the API and came back as a 400. It is now refused here, with a message that names the unit; the API's own message says "150KB" for a character count.
+  - **`update_and_publish` also refuses YAML over 153,600 UTF-8 bytes.** The registry API limits YAML in two units: every route counts characters, while validation and publishing also count UTF-8 bytes (`validateYamlSize`). Non-ASCII YAML reaches the byte limit first; a CJK YAML over 51,200 characters can be saved as a draft but not published. Through this release's first build, `update_and_publish` could write such a draft and then fail the publish. It now checks bytes before writing anything, and again after its create fallback rewrites the version line (which adds bytes). Draft tools keep the character limit only, as the API does. `validate_definition` passes the API's `valid: false` / `PAYLOAD_TOO_LARGE` verdict through. Found by consumer-validate run #4 (wittgenstein-analyst GI-3) and confirmed in the API source; the unit split itself is filed against the registry API (tracker 0639d482).
   - **`file_path`:** a file over the cap is refused when read; until now only a 5 MB guard applied.
-  - **Other fields:** `description` ≤1000, `tags` ≤32 of ≤50, deprecation `reason` ≤500 and `successor` as `name[@x.y.z]`, fork `new_name` ≤200 and lowercase-hyphen, execution `source` ≤32 and `run_id` ≤64. All were uncapped here.
+  - **Other fields:** `description` ≤1000, `tags` ≤32 of ≤50, deprecation `reason` ≤500 and `successor` as `name[@x.y.z]`, fork `new_name` ≤200 and lowercase-hyphen, execution `source` ≤32 and `run_id` ≤64, provenance `contributed_at` an ISO 8601 datetime. All were uncapped here.
   - **What clients see:** these caps are advertised in `tools/list` (`maxLength`, `maxItems`, `pattern`).
-- **The 500 KiB envelope is unchanged and re-derived.** Its comment called a 500,000-char YAML the largest payload; the API never took more than 153,600. The real worst case, a CJK YAML at the cap, serializes to about 441 KB.
+- **The transport envelope 500 KiB → 1 MiB + 64 KiB** (1,114,112 bytes; `src/config/limits.ts`). It now derives from the registry API's body limit on definition routes (`express.json({ limit: '1mb' })`) plus headroom for the JSON-RPC wrapper, as `@uluops/ops-mcp`'s does from its API. Any body the API accepts therefore fits. The 500 KiB value rested on a 500,000-character YAML the API never accepted, and it refused a draft create the API does accept: a CJK YAML at the character limit with maximal provenance (50 contributors with CJK names) is about 540 KB. The five yaml tools' `maxArgsSize` follows the envelope.
 - **`buildServerOptions` moved to `src/config/server-options.ts`,** so a test can build the exact production options. No behaviour change.
+
+- **README:** documents `ULUOPS_REGISTRY_URL` and its two opt-in variables for non-default hosts (`ULUOPS_ALLOW_ANY_REGISTRY_HOST`, `ULUOPS_ALLOW_PRIVATE_REGISTRY`), which two consumer-validate agents found missing; states that a relative `file_path` resolves against the working directory; gives exact units for every size setting; and corrects the list-limit sentence (100 on `list_definitions`/`search_definitions`, 200 on `list_versions`/`list_providers`).
 
 ### Added
 
-- **`api-limits.test.ts`:** each cap at the API's value (accepted) and one past it (refused), on every tool that carries the field; 16 of these fail against 0.17.0. It also sends a CJK YAML at the cap through the production pipeline, with a control that a message over the envelope is refused.
+- **`api-limits.test.ts`:**
+  - each cap at the API's value (accepted) and one past it (refused), on every tool that carries the field; 16 of these fail against 0.17.0;
+  - the byte limit on `update_and_publish` at exactly 153,600 bytes, with draft tools still taking more;
+  - a draft create at every API limit through the production pipeline, with a control that a message over the envelope is refused.
+
+  Mutation-checked: removing the byte check, or restoring the 500 KiB envelope, fails its test.
 - **`read-yaml-file.test.ts`:** a 153,601-char file is refused by name; one at 153,600 is read.
+- **`tools.test.ts`:** `update_and_publish` refuses before creating when its version rewrite pushes the YAML past the byte limit (fails with the check removed).
 
 ## [0.17.0] - 2026-10-25
 

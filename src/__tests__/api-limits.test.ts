@@ -11,9 +11,9 @@ import { buildServerOptions } from '../config/server-options.js';
 import {
   API_YAML_MAX_CHARS, API_DESCRIPTION_MAX_CHARS, API_TAGS_MAX_ITEMS, API_TAG_MAX_CHARS,
   API_DEPRECATION_REASON_MAX_CHARS, API_DEFINITION_NAME_MAX_CHARS, API_EXECUTION_SOURCE_MAX_CHARS,
-  API_RUN_ID_MAX_CHARS, YAML_TOO_LONG_MESSAGE,
+  API_RUN_ID_MAX_CHARS, YAML_TOO_LONG_MESSAGE, API_YAML_PUBLISH_MAX_BYTES,
 } from '../config/api-limits.js';
-import { ENVELOPE_BYTES } from '../config/limits.js';
+import { ENVELOPE_BYTES, API_DEFINITION_BODY_LIMIT_BYTES } from '../config/limits.js';
 import { ValidateDefinitionInputSchema } from '../tools/validate-definition.js';
 import { CreateDefinitionInputSchema } from '../tools/create-definition.js';
 import { UpdateDefinitionInputSchema } from '../tools/update-definition.js';
@@ -78,18 +78,73 @@ async function pipeline(): Promise<Validate> {
 }
 const call = (yaml: string): Record<string, unknown> => ({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'validate_definition', arguments: { yaml } } });
 
-/** YAML of exactly `chars` characters whose text is CJK: 3 UTF-8 bytes per character, the realistic worst case. */
+const CJK = '设计评审记录了所有的问题和建议';
+
+/** A string of exactly `n` CJK characters: 3 UTF-8 bytes each, the most a UTF-16 code unit can cost. */
+const cjk = (n: number): string => CJK.repeat(Math.ceil(n / CJK.length)).slice(0, n);
+
+/** YAML of exactly `chars` characters, all CJK after a short header. */
 function cjkYaml(chars: number): string {
-  let out = 'agent:\n  notes: |\n';
-  while (out.length < chars) out += '    设计评审记录了所有的问题和建议。设计评审记录了所有的问题和建议。\n';
-  return out.slice(0, chars);
+  const head = 'agent:\n  notes: ';
+  return head + cjk(chars - head.length);
 }
 
-describe('the transport envelope admits the largest YAML the API accepts', () => {
-  it('a CJK YAML at the API cap passes the production pipeline', async () => {
-    const message = call(cjkYaml(API_YAML_MAX_CHARS));
-    expect(Buffer.byteLength(JSON.stringify(message), 'utf8')).toBeGreaterThan(400_000);
-    const result = await (await pipeline())(message);
+describe('YAML in two units: characters everywhere, UTF-8 bytes on update_and_publish', () => {
+  const uap = (yaml: string): ReturnType<typeof UpdateAndPublishInputSchema.safeParse> =>
+    UpdateAndPublishInputSchema.safeParse({ name: 'x', version: '1.0.0', yaml });
+
+  it('update_and_publish accepts CJK YAML at exactly 153,600 bytes and refuses one character more', () => {
+    const atLimit = cjk(API_YAML_PUBLISH_MAX_BYTES / 3);
+    expect(Buffer.byteLength(atLimit, 'utf8')).toBe(API_YAML_PUBLISH_MAX_BYTES);
+    expect(uap(atLimit).success).toBe(true);
+    const over = uap(cjk(API_YAML_PUBLISH_MAX_BYTES / 3 + 1));
+    expect(over.success).toBe(false);
+    expect(JSON.stringify(over.error?.issues)).toContain('153603 UTF-8 bytes');
+  });
+
+  it('update_and_publish accepts ASCII YAML at the character limit (both limits coincide for ASCII)', () => {
+    expect(uap(s(API_YAML_MAX_CHARS)).success).toBe(true);
+  });
+
+  it('draft tools take CJK YAML over the byte limit, as the API does', () => {
+    const overBytes = cjk(API_YAML_PUBLISH_MAX_BYTES / 3 + 1);
+    expect(CreateDefinitionInputSchema.safeParse({ name: 'x', yaml: overBytes }).success).toBe(true);
+    expect(UpdateDefinitionInputSchema.safeParse({ name: 'x', version: '1.0.0', yaml: overBytes }).success).toBe(true);
+  });
+});
+
+describe('the transport envelope admits every body the API accepts', () => {
+  /** A draft create at every API limit: CJK YAML at the character cap and maximal CJK provenance. */
+  function largestCreate(): Record<string, unknown> {
+    return {
+      name: 'largest-definition',
+      yaml: cjkYaml(API_YAML_MAX_CHARS),
+      visibility: 'private',
+      provenance: {
+        authorship_type: 'collaborative',
+        optimization_run_id: s(100),
+        contributors: Array.from({ length: 50 }, () => ({
+          id: cjk(100),
+          role: 'optimizer',
+          type: 'agent',
+          name: cjk(200),
+          agent_name: cjk(200),
+          contributed_at: '2026-10-25T12:00:00.000Z',
+        })),
+      },
+    };
+  }
+  const createCall = (args: Record<string, unknown>): Record<string, unknown> => ({
+    jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'create_definition', arguments: args },
+  });
+
+  it('a draft create at every API limit is valid input, over the old 500 KiB envelope, and passes the production pipeline', async () => {
+    const args = largestCreate();
+    expect(CreateDefinitionInputSchema.safeParse(args).success).toBe(true);
+    const bytes = Buffer.byteLength(JSON.stringify(createCall(args)), 'utf8');
+    expect(bytes).toBeGreaterThan(500 * 1024);
+    expect(bytes).toBeLessThan(API_DEFINITION_BODY_LIMIT_BYTES);
+    const result = await (await pipeline())(createCall(args));
     expect({ passed: result.passed, reason: result.reason }).toMatchObject({ passed: true });
   });
 

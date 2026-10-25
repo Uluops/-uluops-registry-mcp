@@ -17,7 +17,7 @@ const MB = 1024 * KB;
 // "workflow" was refused; validate_definition topped out near 6.4 KB). Every egress is now
 // >= 16 * maxArgsSize. Since 0.0.23 maxArgsSize itself is enforced on every tool (UTF-8 bytes
 // of the JSON arguments): the five yaml-bearing tools get exactly ENVELOPE_BYTES (config/limits.ts) —
-// the shared 500 KB request envelope, so the tool gate never binds before it and never sits
+// the shared request envelope (the API's 1 MiB definition-route body limit plus 64 KiB), so the tool gate never binds before it and never sits
 // dead above it; every tool gets at least 1 KB for the universal `fields` parameter. tool-registry-caps.test.ts derives both
 // rules from the Zod shapes and fails on any regression.
 

@@ -48,6 +48,9 @@ All configuration is passed via environment variables in the `env` block. No `.e
 |----------|-------------|----------|---------|
 | `ULUOPS_API_KEY` | API key (`ulr_` prefix) from [API key settings](https://app.uluops.ai/settings/api-keys), or a session token | Yes | — |
 | `ULUOPS_ORG_SLUG` | Org for **definition writes**: sent as `X-Org-Slug` on create, update, publish, deprecate, archive, delete, retranslate, upgrade, and fork (the org the fork goes into), where it says which org's definition a name means. Reads and other calls (validate, render, record execution, user lookups) never carry it (since 0.11.0), so the marketplace stays readable; your org's private definitions still appear by membership. **A bare name on a read means the org that first published it**, so for a name another org published first, a read and a write of it mean different rows — check `namespace` (now in the compact list output) before writing back what you read. | No | — |
+| `ULUOPS_REGISTRY_URL` | Registry API base URL. Because the API key is sent to this URL on every request, only `*.uluops.ai` and loopback hosts are accepted unless you opt in below | No | production registry (loopback when `NODE_ENV=development`) |
+| `ULUOPS_ALLOW_ANY_REGISTRY_HOST` | Set to `1` to accept a `ULUOPS_REGISTRY_URL` host outside `*.uluops.ai` and loopback (a self-hosted or staging registry). The server warns at startup when it is used | No | — |
+| `ULUOPS_ALLOW_PRIVATE_REGISTRY` | Set to `1` to accept a private-network or cloud-metadata host. Required in addition to the previous variable for those addresses | No | — |
 | `ULUOPS_REGISTRY_TIMEOUT` | Request timeout (ms) | No | `30000` |
 | `ULUOPS_REGISTRY_RETRIES` | Retry attempts | No | `3` |
 | `LOG_LEVEL` | Logging level (`error`, `warn`, `info`, `debug`) | No | `info` |
@@ -55,7 +58,7 @@ All configuration is passed via environment variables in the `env` block. No `.e
 | `LOG_DIR` | Log file directory | No | `./logs` |
 | `VERBOSE_LOGGING` | Verbose security decision logging | No | `false` |
 | `LOG_PERFORMANCE_METRICS` | Log performance metrics | No | `false` |
-| `WORKSPACE_DIR` | Base directory for `file_path` containment (CWE-22 protection) | No | cwd |
+| `WORKSPACE_DIR` | Base directory for `file_path` containment (CWE-22 protection). A relative `file_path` resolves against the server's working directory, not `WORKSPACE_DIR`, and must still land inside it | No | cwd |
 | `OUTPUT_BASE_DIR` | Base directory for `output_path` containment (CWE-22 protection) | No | cwd |
 
 ## Design philosophy
@@ -246,31 +249,34 @@ read_resource("registry://definition-types")
 
 ## Rate limiting
 
-This server uses [mcp-secure-server](https://github.com/aself101/mcp-secure-server) with configuration tuned for typical harness usage patterns. Source of truth: `src/index.ts` (global), `src/config/limits.ts` (the shared envelope), `src/config/tool-registry.ts` (per-tool caps and quotas), and `tool-policies.json` (per-tool security level and relaxed fields — loaded explicitly since 0.8.2; `yaml` is not pattern-scanned at this layer, the registry API scans definitions at publish).
+This server uses [mcp-secure-server](https://github.com/aself101/mcp-secure-server) with configuration tuned for typical harness usage patterns. Source of truth: `src/config/server-options.ts` (global), `src/config/limits.ts` (the shared envelope), `src/config/tool-registry.ts` (per-tool caps and quotas), and `tool-policies.json` (per-tool security level and relaxed fields — loaded explicitly since 0.8.2; `yaml` is not pattern-scanned at this layer, the registry API scans definitions at publish).
 
 | Setting | Value | Notes |
 |---------|-------|-------|
 | Security level | `basic` | |
 | Max requests/min | 120 | Global rate limit |
-| Max message size | 500 KB | Layer 1 envelope |
-| Max string length | 500 KB | Per-string cap — definition tools carry full YAML in one field |
-| Max param bytes | 500 KB | Layer 2 serialized-params cap (requires `mcp-secure-server >= 0.0.19-security`) |
-| Suspicious message size | 500 KB | Layer 3 hard block, not a log-only flag |
+| Max message size | 1 MiB + 64 KiB (1,114,112 bytes) | Layer 1 envelope |
+| Max string length | 1,114,112 characters | Per-string cap. It counts characters, not bytes, and can never bind before the message size |
+| Max param bytes | 1,114,112 bytes | Layer 2 serialized-params cap (requires `mcp-secure-server >= 0.0.19-security`) |
+| Suspicious message size | 1,114,112 bytes | Layer 3 hard block, not a log-only flag |
 | Burst threshold | 15 | Requests within burst window |
 | Burst window | 5000 ms | |
 | Automation detection | Disabled | The calling harness is trusted automation |
 
-The four size settings are stacked ceilings — a rejection names whichever fires first, so they share one value, `ENVELOPE_BYTES`; the per-tool `maxArgsSize` in `tool-registry.ts` is the tool-scoped gate beneath them (never above; exactly at it for the YAML tools). Each tool's `maxEgressBytes` is kept ≥ 16 × its `maxArgsSize`, because mcp-secure-server checks egress at request time as argument bytes × 16.
+The four size settings share one value, `ENVELOPE_BYTES`. Because a string's characters can never outnumber the message's bytes, and the params are part of the message, the message size is the one that binds; the others never fire first. The per-tool `maxArgsSize` in `tool-registry.ts` is the tool-scoped gate beneath them (never above; exactly at it for the YAML tools). Each tool's `maxEgressBytes` is kept ≥ 16 × its `maxArgsSize`, because mcp-secure-server checks egress at request time as argument bytes × 16.
 
-**Why 500 KB is enough:** the largest request the registry API accepts is a definition YAML at its 153,600-character cap. As a JSON-RPC message that is at most about 441 KB (CJK text, 3 bytes a character), so the envelope never refuses anything the API would take.
+**Why this envelope:** it is the registry API's own body limit on definition routes (1 MiB, `express.json({ limit: '1mb' })`) plus 64 KiB for the JSON-RPC wrapper, so any body the API accepts fits. Until 0.18.0 it was 500 KiB, which a draft create with a CJK YAML at the 153,600-character limit and maximal provenance (50 contributors with CJK names, about 540 KB) did not fit.
 
 **Tool schemas mirror the API's field caps** (`src/config/api-limits.ts`), so an over-limit request is refused locally, by field name, instead of after a round trip:
-- `yaml` at most 153,600 chars on create, update, validate, upgrade and update-and-publish, including YAML read from `file_path`;
+- `yaml` at most 153,600 characters on create, update, validate, upgrade and update-and-publish, including YAML read from `file_path`;
+- on `update_and_publish` only, `yaml` also at most 153,600 UTF-8 bytes. The registry API limits YAML in two units: every route counts characters, while validation and publishing also count UTF-8 bytes, so non-ASCII YAML reaches the byte limit first (a CJK YAML over 51,200 characters can be saved as a draft but not published). `update_and_publish` checks bytes before it writes anything, so it cannot leave a draft whose publish then fails. `validate_definition` passes the API's `valid: false` verdict (`PAYLOAD_TOO_LARGE`) through instead;
 - `description` at most 1000 chars;
 - `tags` at most 32, each at most 50 chars;
 - deprecation `reason` at most 500 chars, `successor` as `name` or `name@x.y.z`;
 - fork `new_name` at most 200 chars, lowercase letters, digits and hyphens;
 - execution `source` at most 32 chars, `run_id` at most 64.
+
+Here "character" means a UTF-16 code unit (JavaScript string length), as the API counts it.
 
 Per-tool quotas are configured in `src/config/tool-registry.ts`. Read-heavy tools (list, get, search) allow up to 240 req/min. Write tools (create, update, publish) are 30–60 req/min.
 
@@ -321,7 +327,7 @@ three characters also fall back across `description`. Tags filter independently
 by OR-any and are not keyword searched. Actual FULLTEXT rows may include numeric
 `relevance`, retained in compact list output. Search responses retain the full
 list rows. A list request with `page` and no `limit` explicitly uses limit 50,
-matching the API's default; MCP limits remain capped at 100.
+matching the API's default. `list_definitions` and `search_definitions` cap `limit` at 100; `list_versions` and `list_providers` at 200.
 
 `batch_users` defaults to the existing map (`format: 'map'` is also accepted).
 With `format: 'envelope'`, UUID inputs are normalized to lowercase and deduplicated

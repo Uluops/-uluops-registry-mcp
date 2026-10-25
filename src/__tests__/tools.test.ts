@@ -802,6 +802,24 @@ describe('Tool Registration & SDK Calls', () => {
       expect(parsed._note).toBe('Updated and published in one step');
     });
 
+    it('refuses before creating when the version patch pushes the YAML over the publish byte limit', async () => {
+      registerUpdateAndPublishTool(server, client);
+      (client.definitions.update as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Not found'));
+      mockIsNotFoundError.mockReturnValue(true);
+      // Exactly 153,600 bytes as sent; the fallback rewrites `version: 2.0.0` as `version: "1.0.0"`,
+      // two bytes longer, so the YAML it would create is over the publish limit.
+      const head = 'name: my-agent\nversion: 2.0.0\nnotes: ';
+      const yaml = head + 'x'.repeat(153_600 - head.length);
+
+      const result = await getHandler(server)({ type: 'agent', name: 'my-agent', version: '1.0.0', yaml });
+
+      mockIsNotFoundError.mockReturnValue(false);
+      expect(result.isError).toBe(true);
+      expect(JSON.stringify(result)).toContain('153602 UTF-8 bytes');
+      expect(client.definitions.create).not.toHaveBeenCalled();
+      expect(client.definitions.publish).not.toHaveBeenCalled();
+    });
+
     it('falls back to create when version not found', async () => {
       registerUpdateAndPublishTool(server, client);
       const notFoundError = new Error('Not found');

@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-10-25
+
+### Changed
+
+- **mcp-secure-server 0.0.25-security → 0.1.1-security.**
+  - **Compound emoji pass:** a compound emoji in a tool argument (a definition description, a YAML comment) no longer refuses the call. 0.0.25 refused any message containing the zero-width joiner U+200D (mcp-secure-server issue 53dd1c56).
+  - **Security: every bidirectional control is refused:** U+202A–U+202E and U+2066–U+2069 (Trojan Source). Before, only U+202E was.
+  - **Releases in between:** 0.0.26, 0.0.27 and 0.1.0 are mostly HTTP-transport changes, which this stdio server does not use. Four also apply to stdio:
+    - notifications bypass Layer 4 method chaining;
+    - Layer 5 sees a renamed tool's current name;
+    - tool handlers receive every argument the SDK passes;
+    - client responses are checked.
+
+    The full suite passes on 0.1.1, validated through Verdaccio before the npm publish.
+
 ## [0.17.0] - 2026-10-25
 
 ### Changed

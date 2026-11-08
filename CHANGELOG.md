@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.18.2] - 2026-11-08
+
+### Changed
+
+- **`@uluops/sdk-core` 0.19.0 → 0.20.0 and `@uluops/registry-sdk` 0.64.1 → 0.64.2** (exact pins). No tool, schema or response changes. registry-mcp imports only `sanitizeString` from sdk-core, which 0.20.0 does not touch, and none of the 0.20.0 deltas (the `invalid` decision category, `retry({ maxRetries: 0 })`, the longer `Invalid baseUrl` message) is reached from `src/` (census 2026-11-08: `grep -rnE "\bretry\(|maxRetries|Invalid baseUrl|classifyDecision|DecisionCategory" src` → no hits).
+- **Why:** registry-sdk 0.64.1 pinned sdk-core 0.19.0, so taking sdk-core 0.20.0 alone would nest a second copy. That would not have broken error mapping: `sdk-error-mapper.ts` imports its error classes and guards from `@uluops/registry-sdk/errors`, so they always match the copy registry-sdk throws from. Moving both together keeps one copy in the install (`npm ls @uluops/sdk-core`: `deduped`) and keeps the published dependency set on the cascade's versions.
+
 ## [0.18.1] - 2026-10-25
 
 ### Fixed

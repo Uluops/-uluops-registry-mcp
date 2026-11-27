@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.18.3] - 2026-11-27
+
+### Changed
+- **`@uluops/registry-sdk` 0.64.2 → 0.64.3 and `@uluops/sdk-core` 0.20.0 → 0.21.0** (exact pins, together). No tool, schema or behaviour change: sdk-core 0.21.0 only adds the `/artifacts` subpath, which this server does not import, and registry-sdk 0.64.3 only moves its own sdk-core pin. Both move so the tree keeps ONE sdk-core: its error guards (`isSdkApiError`) are `instanceof` checks, and a second copy would let an API error thrown inside registry-sdk fail every guard this server applies.
+
 ## [0.18.2] - 2026-11-08
 
 **0.18.1 was never published to npm** (registry versions on 2026-11-08: 0.16.0, 0.17.0, 0.18.0). Its entry below was written and committed (`9fb6865`) but the publish did not happen, so this is the first release carrying 0.18.1's changes as well: registry-sdk 0.64.1's stored-id fix and hono 4.13.14. Upgrading from 0.18.0 takes both entries.
